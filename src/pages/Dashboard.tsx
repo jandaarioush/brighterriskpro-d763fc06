@@ -11,19 +11,100 @@ import {
   Activity
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { 
+  getWorkingDaysInMonth, 
+  getWorkingDaysRemaining, 
+  calculateMonthData,
+  calculateMonthlyStats,
+  Trade 
+} from "@/lib/riskCalculations";
+import { format } from "date-fns";
 
 export default function Dashboard() {
-  // Mock data - replace with real calculations
-  const monthlyRisk = 3000;
-  const workingDaysInMonth = 22;
-  const workingDaysRemaining = 15;
-  const accumulatedResult = 450;
-  const accumulatedDrawdown = -150;
-  
-  const dailyRisk = monthlyRisk / workingDaysRemaining;
-  const stopIndice = dailyRisk / 0.2;
-  const stopDolar = dailyRisk / 10;
-  const monthlyResultPercent = (accumulatedResult / monthlyRisk) * 100;
+  const { user } = useAuth();
+  const [monthlyRisk, setMonthlyRisk] = useState(0);
+  const [workingDaysInMonth, setWorkingDaysInMonth] = useState(0);
+  const [workingDaysRemaining, setWorkingDaysRemaining] = useState(0);
+  const [dailyRisk, setDailyRisk] = useState(0);
+  const [stopIndice, setStopIndice] = useState(0);
+  const [stopDolar, setStopDolar] = useState(0);
+  const [accumulatedResult, setAccumulatedResult] = useState(0);
+  const [accumulatedDrawdown, setAccumulatedDrawdown] = useState(0);
+  const [monthlyResultPercent, setMonthlyResultPercent] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      try {
+        // Fetch user profile to get monthly_risk
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('monthly_risk')
+          .eq('id', user.id)
+          .single();
+
+        const userMonthlyRisk = profile?.monthly_risk || 0;
+        setMonthlyRisk(userMonthlyRisk);
+
+        // Fetch trades for current month
+        const currentMonth = new Date();
+        const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+        const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+
+        const { data: trades } = await supabase
+          .from('trades')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('trade_date', format(startOfMonth, 'yyyy-MM-dd'))
+          .lte('trade_date', format(endOfMonth, 'yyyy-MM-dd'));
+
+        const monthTrades = (trades as Trade[]) || [];
+
+        // Calculate working days
+        const totalWorkingDays = getWorkingDaysInMonth(currentMonth);
+        const remainingWorkingDays = getWorkingDaysRemaining(currentMonth);
+        setWorkingDaysInMonth(totalWorkingDays);
+        setWorkingDaysRemaining(remainingWorkingDays);
+
+        // Calculate month data to get today's risk and stops
+        const monthData = calculateMonthData(userMonthlyRisk, monthTrades, currentMonth);
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const todayData = monthData.find(d => format(d.date, 'yyyy-MM-dd') === today);
+
+        if (todayData) {
+          setDailyRisk(todayData.dailyRisk);
+          setStopIndice(todayData.stopIndice);
+          setStopDolar(todayData.stopDolar);
+        }
+
+        // Calculate monthly stats
+        const stats = calculateMonthlyStats(monthTrades, userMonthlyRisk);
+        setAccumulatedResult(stats.totalResult);
+        
+        // Calculate drawdown (accumulated losses)
+        const totalLoss = monthTrades
+          .filter(t => t.result_reais < 0)
+          .reduce((sum, t) => sum + t.result_reais, 0);
+        setAccumulatedDrawdown(totalLoss);
+
+        // Calculate percentage
+        const resultPercent = userMonthlyRisk > 0 ? (stats.totalResult / userMonthlyRisk) * 100 : 0;
+        setMonthlyResultPercent(resultPercent);
+
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-background">
