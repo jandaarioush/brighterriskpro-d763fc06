@@ -43,9 +43,13 @@ export type Database = {
           asset_type: string
           created_at: string
           id: string
+          nota_disciplina: number | null
           notes: string | null
           result_points: number
           result_reais: number
+          screenshot_url: string | null
+          setup_utilizado: string | null
+          tag: string | null
           trade_date: string
           updated_at: string
           user_id: string
@@ -54,9 +58,13 @@ export type Database = {
           asset_type: string
           created_at?: string
           id?: string
+          nota_disciplina?: number | null
           notes?: string | null
           result_points: number
           result_reais: number
+          screenshot_url?: string | null
+          setup_utilizado?: string | null
+          tag?: string | null
           trade_date: string
           updated_at?: string
           user_id: string
@@ -65,9 +73,13 @@ export type Database = {
           asset_type?: string
           created_at?: string
           id?: string
+          nota_disciplina?: number | null
           notes?: string | null
           result_points?: number
           result_reais?: number
+          screenshot_url?: string | null
+          setup_utilizado?: string | null
+          tag?: string | null
           trade_date?: string
           updated_at?: string
           user_id?: string
