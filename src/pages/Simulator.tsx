@@ -72,9 +72,18 @@ export default function Simulator() {
 
   useEffect(() => {
     if (autoStop) {
-      setStopLoss(assetType === 'indice' ? stopIndice : stopDolar);
+      const pointValue = assetType === 'indice' ? 0.2 : 10;
+      const maxStop = assetType === 'indice' ? stopIndice : stopDolar;
+      
+      // Calculate stop loss based on daily risk divided by contracts
+      const calculatedStop = dailyRisk / (contracts * pointValue);
+      
+      // Use the minimum between calculated and max available
+      const finalStop = Math.min(calculatedStop, maxStop);
+      
+      setStopLoss(finalStop);
     }
-  }, [assetType, autoStop, stopIndice, stopDolar]);
+  }, [assetType, autoStop, stopIndice, stopDolar, contracts, dailyRisk]);
 
   const pointValue = assetType === 'indice' ? 0.2 : 10;
   const riskPerContract = stopLoss * pointValue;
