@@ -201,14 +201,14 @@ const Index = () => {
 
       {/* Plano Premium */}
       <section id="planos" className="py-20 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <Card className="p-12 border-primary bg-gradient-to-br from-primary/10 to-background">
-            <div className="text-center mb-8">
-              <h2 className="font-montserrat text-4xl md:text-5xl font-bold mb-4">Plano Premium</h2>
-              <p className="text-xl text-muted-foreground">Desbloqueie todo o potencial da plataforma</p>
-            </div>
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-12">
+            <h2 className="font-montserrat text-4xl md:text-5xl font-bold mb-4">Plano Premium</h2>
+            <p className="text-xl text-muted-foreground">Desbloqueie todo o potencial da plataforma</p>
+          </div>
 
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <Card className="p-8 md:p-12 border-primary bg-gradient-to-br from-primary/10 to-background">
+            <div className="grid md:grid-cols-2 gap-8 mb-12">
               {[
                 "Métricas avançadas de performance",
                 "Relatórios exportáveis (PDF/Excel)",
@@ -223,39 +223,43 @@ const Index = () => {
                   <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center flex-shrink-0">
                     <Check className="w-4 h-4 text-success-foreground" />
                   </div>
-                  <span>{feature}</span>
+                  <span className="text-sm md:text-base">{feature}</span>
                 </div>
               ))}
             </div>
 
-            <div className="text-center space-y-8">
-              <div className="grid md:grid-cols-2 gap-8">
-                <div className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              <Card className="p-8 bg-background/50 border-2 hover:border-primary transition-colors">
+                <div className="text-center space-y-6">
                   <div>
-                    <span className="text-5xl font-montserrat font-bold">R$ 97</span>
-                    <span className="text-muted-foreground">/mês</span>
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className="text-5xl md:text-6xl font-montserrat font-bold">R$ 97</span>
+                      <span className="text-muted-foreground text-lg">/mês</span>
+                    </div>
                   </div>
-                  <Link to="/checkout?plan=monthly">
+                  <Link to="/checkout?plan=monthly" className="block">
                     <Button size="lg" className="text-lg px-12 py-6 w-full">
                       Assinar Premium
                     </Button>
                   </Link>
                 </div>
-                
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <div>
-                      <span className="text-5xl font-montserrat font-bold">R$ 497</span>
+              </Card>
+              
+              <Card className="p-8 bg-background/50 border-2 hover:border-primary transition-colors">
+                <div className="text-center space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-center">
+                      <span className="text-5xl md:text-6xl font-montserrat font-bold">R$ 497</span>
                     </div>
                     <p className="text-xs text-muted-foreground">acesso por 1 ano</p>
                   </div>
-                  <Link to="/checkout?plan=annual">
+                  <Link to="/checkout?plan=annual" className="block">
                     <Button size="lg" className="text-lg px-12 py-6 w-full">
                       Pagamento à Vista
                     </Button>
                   </Link>
                 </div>
-              </div>
+              </Card>
             </div>
           </Card>
         </div>
