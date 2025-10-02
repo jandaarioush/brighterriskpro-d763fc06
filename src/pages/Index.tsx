@@ -2,10 +2,40 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowRight, Shield, BarChart3, FileText, Star, TrendingUp, Target, Zap, Check } from "lucide-react";
 import { Link } from "react-router-dom";
+import logoHorizontal from "@/assets/logo-brighter.png";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background font-inter">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            <Link to="/" className="flex items-center">
+              <img src={logoHorizontal} alt="Brighter" className="h-8" />
+              <span className="ml-3 font-montserrat font-bold text-xl">Risk Pro</span>
+            </Link>
+            
+            <nav className="hidden md:flex items-center gap-8">
+              <a href="#recursos" className="text-muted-foreground hover:text-foreground transition-colors">
+                Recursos
+              </a>
+              <a href="#beneficios" className="text-muted-foreground hover:text-foreground transition-colors">
+                Benefícios
+              </a>
+              <a href="#planos" className="text-muted-foreground hover:text-foreground transition-colors">
+                Planos
+              </a>
+              <Link to="/dashboard">
+                <Button variant="ghost">
+                  Entrar
+                </Button>
+              </Link>
+            </nav>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 px-4 md:py-32">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-background" />
@@ -36,7 +66,7 @@ const Index = () => {
       </section>
 
       {/* Como Funciona */}
-      <section className="py-20 px-4 bg-card/30">
+      <section id="recursos" className="py-20 px-4 bg-card/30">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h2 className="font-montserrat text-4xl md:text-5xl font-bold mb-4">Como Funciona</h2>
@@ -78,7 +108,7 @@ const Index = () => {
       </section>
 
       {/* Benefícios */}
-      <section className="py-20 px-4">
+      <section id="beneficios" className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h2 className="font-montserrat text-4xl md:text-5xl font-bold mb-4">Por que Brighter Risk Pro?</h2>
@@ -168,7 +198,7 @@ const Index = () => {
       </section>
 
       {/* Plano Premium */}
-      <section className="py-20 px-4">
+      <section id="planos" className="py-20 px-4">
         <div className="container mx-auto max-w-4xl">
           <Card className="p-12 border-primary bg-gradient-to-br from-primary/10 to-background">
             <div className="text-center mb-8">
