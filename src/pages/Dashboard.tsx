@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [accumulatedDrawdown, setAccumulatedDrawdown] = useState(0);
   const [monthlyResultPercent, setMonthlyResultPercent] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [currentMonthTrades, setCurrentMonthTrades] = useState<Trade[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -64,6 +65,7 @@ export default function Dashboard() {
           .lte('trade_date', format(endOfMonth, 'yyyy-MM-dd'));
 
         const monthTrades = (trades as Trade[]) || [];
+        setCurrentMonthTrades(monthTrades);
 
         // Calculate working days
         const totalWorkingDays = getWorkingDaysInMonth(currentMonth);
@@ -191,7 +193,7 @@ export default function Dashboard() {
 
         {/* Heatmap and Trade Form */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <MonthHeatmap />
+          <MonthHeatmap trades={currentMonthTrades} />
           <TradeForm />
         </div>
       </div>
