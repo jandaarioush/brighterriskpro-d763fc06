@@ -51,15 +51,17 @@ const Index = () => {
               Controle total sobre suas operações de Índice e Dólar com cálculos automáticos de stop, risco diário e performance em tempo real
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-              <Link to="/dashboard">
+              <Link to="/checkout">
                 <Button size="lg" className="text-lg px-8 py-6 group">
-                  Criar Conta Gratuita
+                  Criar Conta
                   <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                Ver Demonstração
-              </Button>
+              <Link to="/demo">
+                <Button size="lg" variant="outline" className="text-lg px-8 py-6">
+                  Ver Demonstração
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -226,14 +228,34 @@ const Index = () => {
               ))}
             </div>
 
-            <div className="text-center">
-              <div className="mb-6">
-                <span className="text-5xl font-montserrat font-bold">R$ 97</span>
-                <span className="text-muted-foreground">/mês</span>
+            <div className="text-center space-y-8">
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-5xl font-montserrat font-bold">R$ 97</span>
+                    <span className="text-muted-foreground">/mês</span>
+                  </div>
+                  <Link to="/checkout?plan=monthly">
+                    <Button size="lg" className="text-lg px-12 py-6 w-full">
+                      Assinar Premium
+                    </Button>
+                  </Link>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <div>
+                      <span className="text-5xl font-montserrat font-bold">R$ 497</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">acesso por 1 ano</p>
+                  </div>
+                  <Link to="/checkout?plan=annual">
+                    <Button size="lg" className="text-lg px-12 py-6 w-full">
+                      Pagamento à Vista
+                    </Button>
+                  </Link>
+                </div>
               </div>
-              <Button size="lg" className="text-lg px-12 py-6">
-                Assinar Premium
-              </Button>
             </div>
           </Card>
         </div>
