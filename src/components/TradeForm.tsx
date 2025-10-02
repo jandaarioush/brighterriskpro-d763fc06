@@ -19,6 +19,7 @@ export function TradeForm({ onTradeAdded }: { onTradeAdded?: () => void }) {
     contracts: "1",
     entry: "",
     exit: "",
+    points: "",
     observations: "",
     setupUtilizado: "",
     tag: "",
@@ -38,7 +39,18 @@ export function TradeForm({ onTradeAdded }: { onTradeAdded?: () => void }) {
     setUploading(true);
 
     try {
-      const points = parseFloat(formData.exit) - parseFloat(formData.entry);
+      // Calculate points: use direct points input or calculate from entry/exit
+      let points = 0;
+      if (formData.points) {
+        points = parseFloat(formData.points);
+      } else if (formData.entry && formData.exit) {
+        points = parseFloat(formData.exit) - parseFloat(formData.entry);
+      } else {
+        toast.error("Preencha a pontuação ou entrada/saída");
+        setUploading(false);
+        return;
+      }
+      
       const pointValue = formData.asset === "indice" ? 0.2 : 10;
       const result = points * pointValue * parseInt(formData.contracts);
 
@@ -90,6 +102,7 @@ export function TradeForm({ onTradeAdded }: { onTradeAdded?: () => void }) {
         contracts: "1",
         entry: "",
         exit: "",
+        points: "",
         observations: "",
         setupUtilizado: "",
         tag: "",
@@ -138,7 +151,7 @@ export function TradeForm({ onTradeAdded }: { onTradeAdded?: () => void }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label>Contratos</Label>
             <Input
@@ -150,26 +163,35 @@ export function TradeForm({ onTradeAdded }: { onTradeAdded?: () => void }) {
           </div>
 
           <div className="space-y-2">
-            <Label>Entrada</Label>
+            <Label>Pontuação</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="Ex: 100 ou -50"
+              value={formData.points}
+              onChange={(e) => setFormData({...formData, points: e.target.value, entry: "", exit: ""})}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Entrada (Opcional)</Label>
             <Input
               type="number"
               step="0.01"
               placeholder="Pontos"
               value={formData.entry}
-              onChange={(e) => setFormData({...formData, entry: e.target.value})}
-              required
+              onChange={(e) => setFormData({...formData, entry: e.target.value, points: ""})}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Saída</Label>
+            <Label>Saída (Opcional)</Label>
             <Input
               type="number"
               step="0.01"
               placeholder="Pontos"
               value={formData.exit}
-              onChange={(e) => setFormData({...formData, exit: e.target.value})}
-              required
+              onChange={(e) => setFormData({...formData, exit: e.target.value, points: ""})}
             />
           </div>
         </div>
