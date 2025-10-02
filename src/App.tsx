@@ -13,6 +13,16 @@ import Trades from "./pages/Trades";
 import Simulator from "./pages/Simulator";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Recursos from "./pages/Recursos";
+import Precos from "./pages/Precos";
+import Suporte from "./pages/Suporte";
+import Blog from "./pages/Blog";
+import SobreNos from "./pages/SobreNos";
+import Contato from "./pages/Contato";
+import TermosDeUso from "./pages/TermosDeUso";
+import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
+import Cookies from "./pages/Cookies";
+import LGPD from "./pages/LGPD";
 import { Navbar } from "./components/Navbar";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 
@@ -44,6 +54,16 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/demo" element={<Demo />} />
+            <Route path="/recursos" element={<Recursos />} />
+            <Route path="/precos" element={<Precos />} />
+            <Route path="/suporte" element={<Suporte />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/sobre-nos" element={<SobreNos />} />
+            <Route path="/contato" element={<Contato />} />
+            <Route path="/termos-de-uso" element={<TermosDeUso />} />
+            <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
+            <Route path="/cookies" element={<Cookies />} />
+            <Route path="/lgpd" element={<LGPD />} />
             <Route
               path="/dashboard"
               element={

@@ -281,28 +281,28 @@ const Index = () => {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><Link to="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link></li>
                 <li><Link to="/trades" className="hover:text-primary transition-colors">Trades</Link></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Recursos</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Preços</a></li>
+                <li><Link to="/recursos" className="hover:text-primary transition-colors">Recursos</Link></li>
+                <li><Link to="/precos" className="hover:text-primary transition-colors">Preços</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold mb-4">Empresa</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition-colors">Suporte</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Sobre Nós</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Contato</a></li>
+                <li><Link to="/suporte" className="hover:text-primary transition-colors">Suporte</Link></li>
+                <li><Link to="/blog" className="hover:text-primary transition-colors">Blog</Link></li>
+                <li><Link to="/sobre-nos" className="hover:text-primary transition-colors">Sobre Nós</Link></li>
+                <li><Link to="/contato" className="hover:text-primary transition-colors">Contato</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition-colors">Termos de Uso</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Política de Privacidade</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Cookies</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">LGPD</a></li>
+                <li><Link to="/termos-de-uso" className="hover:text-primary transition-colors">Termos de Uso</Link></li>
+                <li><Link to="/politica-privacidade" className="hover:text-primary transition-colors">Política de Privacidade</Link></li>
+                <li><Link to="/cookies" className="hover:text-primary transition-colors">Cookies</Link></li>
+                <li><Link to="/lgpd" className="hover:text-primary transition-colors">LGPD</Link></li>
               </ul>
             </div>
           </div>
