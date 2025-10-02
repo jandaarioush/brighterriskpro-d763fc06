@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, TrendingUp, Target, DollarSign, Calendar as CalendarIcon } from 'lucide-react';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -66,6 +66,12 @@ export default function Calendar() {
     if (trade.result_reais > 0) return 'bg-green-500/20 border-green-500';
     return 'bg-red-500/20 border-red-500';
   };
+
+  // Get the day of week the month starts on (0 = Sunday, 1 = Monday, etc.)
+  const firstDayOfMonth = startOfMonth(currentMonth);
+  const startingDayOfWeek = getDay(firstDayOfMonth);
+  // Adjust so Monday = 0, Sunday = 6
+  const offset = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1;
 
   return (
     <div className="min-h-screen bg-background">
@@ -235,6 +241,12 @@ export default function Calendar() {
           </div>
 
           <div className="grid grid-cols-7 gap-2">
+            {/* Empty cells for days before the month starts */}
+            {Array.from({ length: offset }).map((_, index) => (
+              <div key={`empty-${index}`} />
+            ))}
+            
+            {/* Actual days of the month */}
             {monthData.map((dayData, index) => (
               <Card
                 key={index}
