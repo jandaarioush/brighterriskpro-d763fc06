@@ -1,6 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +9,10 @@ import { toast } from 'sonner';
 
 export default function Settings() {
   const { user } = useAuth();
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [monthlyRisk, setMonthlyRisk] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -18,12 +23,16 @@ export default function Settings() {
   const loadProfile = async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('monthly_risk')
+      .select('name, phone, city, state, monthly_risk')
       .eq('id', user?.id)
       .single();
 
-    if (data?.monthly_risk) {
-      setMonthlyRisk(data.monthly_risk.toString());
+    if (data) {
+      setName(data.name || '');
+      setPhone(data.phone || '');
+      setCity(data.city || '');
+      setState(data.state || '');
+      setMonthlyRisk(data.monthly_risk?.toString() || '');
     }
   };
 
@@ -34,7 +43,13 @@ export default function Settings() {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ monthly_risk: parseFloat(monthlyRisk) })
+        .update({ 
+          name,
+          phone,
+          city,
+          state,
+          monthly_risk: monthlyRisk ? parseFloat(monthlyRisk) : null
+        })
         .eq('id', user?.id);
 
       if (error) throw error;
@@ -51,14 +66,81 @@ export default function Settings() {
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <h1 className="text-4xl font-bold mb-8 font-montserrat">Configurações</h1>
 
-        <Card className="p-6">
-          <h2 className="text-2xl font-semibold mb-6">Gestão de Risco</h2>
-          
-          <form onSubmit={handleSave} className="space-y-6">
+        <form onSubmit={handleSave} className="space-y-6">
+          {/* Configurações da Conta */}
+          <Card className="p-6">
+            <h2 className="text-2xl font-semibold mb-6">Configurações da Conta</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name">Nome</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Seu nome completo"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={user?.email || ''}
+                  disabled
+                  className="bg-muted"
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  O email não pode ser alterado
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="city">Cidade</Label>
+                  <Input
+                    id="city"
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="Sua cidade"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="state">Estado</Label>
+                  <Input
+                    id="state"
+                    type="text"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    placeholder="UF"
+                    maxLength={2}
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Gestão de Risco */}
+          <Card className="p-6">
+            <h2 className="text-2xl font-semibold mb-6">Gestão de Risco</h2>
+            
             <div>
-              <label htmlFor="monthlyRisk" className="text-sm font-medium mb-2 block">
-                Risco Mensal (R$)
-              </label>
+              <Label htmlFor="monthlyRisk">Risco Mensal (R$)</Label>
               <Input
                 id="monthlyRisk"
                 type="number"
@@ -71,19 +153,12 @@ export default function Settings() {
                 Valor máximo que você pode perder no mês
               </p>
             </div>
+          </Card>
 
-            <div className="pt-4">
-              <h3 className="font-semibold mb-2">Informações da Conta</h3>
-              <p className="text-sm text-muted-foreground">
-                Email: {user?.email}
-              </p>
-            </div>
-
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Salvando...' : 'Salvar Configurações'}
-            </Button>
-          </form>
-        </Card>
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? 'Salvando...' : 'Salvar Configurações'}
+          </Button>
+        </form>
       </div>
     </div>
   );
