@@ -35,6 +35,7 @@ import {
   Target, 
   Award,
   Download,
+  Upload,
   Pencil,
   Trash2,
   Image as ImageIcon
@@ -67,6 +68,7 @@ export default function Trades() {
   const [loading, setLoading] = useState(true);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [deletingTradeId, setDeletingTradeId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const fetchTrades = async () => {
     if (!user) return;
@@ -108,6 +110,131 @@ export default function Trades() {
       toast.error("Erro ao excluir trade");
     }
     setDeletingTradeId(null);
+  };
+
+  const handleExport = () => {
+    if (filteredTrades.length === 0) {
+      toast.error("Nenhum trade para exportar");
+      return;
+    }
+
+    // Create CSV content
+    const headers = ["Data", "Ativo", "Setup", "Tag", "Disciplina", "Pontos", "Resultado (R$)", "Observações"];
+    const csvContent = [
+      headers.join(","),
+      ...filteredTrades.map(trade => [
+        new Date(trade.trade_date).toLocaleDateString("pt-BR"),
+        trade.asset_type === "indice" ? "Índice" : "Dólar",
+        formatSetup(trade.setup_utilizado),
+        formatTag(trade.tag),
+        trade.nota_disciplina ?? "",
+        trade.result_points,
+        trade.result_reais.toFixed(2),
+        `"${(trade.notes || "").replace(/"/g, '""')}"`
+      ].join(","))
+    ].join("\n");
+
+    // Create blob and download
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `trades_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Trades exportados com sucesso!");
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    setImporting(true);
+
+    try {
+      const text = await file.text();
+      const lines = text.split("\n").filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        toast.error("Arquivo CSV vazio ou inválido");
+        return;
+      }
+
+      // Skip header line
+      const dataLines = lines.slice(1);
+      const tradesToImport = [];
+
+      for (const line of dataLines) {
+        // Parse CSV line (handle quoted values)
+        const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+        
+        if (values.length < 7) continue;
+
+        const [dateStr, assetStr, setupStr, tagStr, disciplinaStr, pointsStr, resultStr] = values.map(v => v.replace(/^"|"$/g, ''));
+
+        // Parse date (dd/mm/yyyy)
+        const [day, month, year] = dateStr.split("/");
+        const tradeDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+
+        tradesToImport.push({
+          user_id: user.id,
+          trade_date: tradeDate,
+          asset_type: assetStr.toLowerCase().includes("índice") ? "indice" : "dolar",
+          setup_utilizado: Object.keys({
+            "Rompimento": "rompimento",
+            "Reversão": "reversao",
+            "Tendência": "tendencia",
+            "Suporte/Resistência": "suporte-resistencia",
+            "Médias Móveis": "medias-moveis",
+            "Divergência": "divergencia",
+            "Padrão Candlestick": "padrao-candlestick",
+            "Breakout": "breakout",
+            "Pull Back": "pull-back",
+            "Scalping": "scalping",
+            "Swing Trade": "swing-trade"
+          }).find(key => key === setupStr) || null,
+          tag: Object.keys({
+            "Disciplinado": "disciplinado",
+            "Emocional": "emocional",
+            "Fora de Setup": "fora-setup",
+            "Overtrading": "overtrading",
+            "FOMO": "fomo",
+            "Revenge Trading": "revenge-trading",
+            "Perfeito": "perfeito",
+            "Experimental": "experimental",
+            "Conservador": "conservador",
+            "Agressivo": "agressivo"
+          }).find(key => key === tagStr) || null,
+          nota_disciplina: disciplinaStr ? parseInt(disciplinaStr) : null,
+          result_points: parseFloat(pointsStr),
+          result_reais: parseFloat(resultStr),
+          notes: values[7] ? values[7].replace(/^"|"$/g, '').replace(/""/g, '"') : null
+        });
+      }
+
+      if (tradesToImport.length === 0) {
+        toast.error("Nenhum trade válido encontrado no arquivo");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("trades")
+        .insert(tradesToImport);
+
+      if (error) throw error;
+
+      toast.success(`${tradesToImport.length} trades importados com sucesso!`);
+      fetchTrades();
+    } catch (error) {
+      console.error("Error importing trades:", error);
+      toast.error("Erro ao importar trades");
+    } finally {
+      setImporting(false);
+      event.target.value = "";
+    }
   };
 
   const totalTrades = trades.length;
@@ -248,10 +375,25 @@ export default function Trades() {
                 </SelectContent>
               </Select>
 
-              <Button variant="outline" className="gap-2">
-                <Download className="w-4 h-4" />
-                Exportar
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" className="gap-2" onClick={handleExport}>
+                  <Download className="w-4 h-4" />
+                  Exportar
+                </Button>
+                
+                <Button variant="outline" className="gap-2" disabled={importing} asChild>
+                  <label className="cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    {importing ? "Importando..." : "Importar"}
+                    <input
+                      type="file"
+                      accept=".csv"
+                      className="hidden"
+                      onChange={handleImport}
+                    />
+                  </label>
+                </Button>
+              </div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-4">
