@@ -102,7 +102,6 @@ export function EditTradeDialog({
       onTradeUpdated();
       onOpenChange(false);
     } catch (error) {
-      console.error("Error updating trade:", error);
       toast.error("Erro ao atualizar trade");
     } finally {
       setSaving(false);

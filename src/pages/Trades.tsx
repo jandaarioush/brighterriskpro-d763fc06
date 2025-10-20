@@ -44,6 +44,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { EditTradeDialog } from "@/components/EditTradeDialog";
+import { z } from "zod";
 
 interface Trade {
   id: string;
@@ -57,6 +58,18 @@ interface Trade {
   nota_disciplina: number | null;
   screenshot_url: string | null;
 }
+
+// Validation schema for CSV import
+const tradeImportSchema = z.object({
+  trade_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
+  asset_type: z.enum(["indice", "dolar"], { errorMap: () => ({ message: "Asset must be 'indice' or 'dolar'" }) }),
+  result_points: z.number().finite({ message: "Points must be a valid number" }),
+  result_reais: z.number().finite({ message: "Result must be a valid number" }),
+  notes: z.string().max(1000, "Notes must be less than 1000 characters").optional().nullable(),
+  setup_utilizado: z.string().max(100).optional().nullable(),
+  tag: z.string().max(100).optional().nullable(),
+  nota_disciplina: z.number().int().min(0).max(10, "Discipline score must be between 0-10").optional().nullable(),
+});
 
 export default function Trades() {
   const { user } = useAuth();
@@ -83,7 +96,6 @@ export default function Trades() {
       if (error) throw error;
       setTrades(data || []);
     } catch (error) {
-      console.error("Error fetching trades:", error);
       toast.error("Erro ao carregar trades");
     } finally {
       setLoading(false);
@@ -106,7 +118,6 @@ export default function Trades() {
       toast.success("Trade excluído com sucesso!");
       fetchTrades();
     } catch (error) {
-      console.error("Error deleting trade:", error);
       toast.error("Erro ao excluir trade");
     }
     setDeletingTradeId(null);
@@ -152,6 +163,13 @@ export default function Trades() {
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
+    // Validate file size (5MB max)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("Arquivo muito grande. Tamanho máximo: 5MB");
+      return;
+    }
+
     setImporting(true);
 
     try {
@@ -166,57 +184,86 @@ export default function Trades() {
       // Skip header line
       const dataLines = lines.slice(1);
       const tradesToImport = [];
+      const errors: string[] = [];
 
-      for (const line of dataLines) {
+      for (let i = 0; i < dataLines.length; i++) {
+        const line = dataLines[i];
         // Parse CSV line (handle quoted values)
         const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
         
-        if (values.length < 7) continue;
+        if (values.length < 7) {
+          errors.push(`Linha ${i + 2}: Formato inválido (colunas insuficientes)`);
+          continue;
+        }
 
         const [dateStr, assetStr, setupStr, tagStr, disciplinaStr, pointsStr, resultStr] = values.map(v => v.replace(/^"|"$/g, ''));
 
-        // Parse date (dd/mm/yyyy)
-        const [day, month, year] = dateStr.split("/");
-        const tradeDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        try {
+          // Parse date (dd/mm/yyyy)
+          const dateParts = dateStr.split("/");
+          if (dateParts.length !== 3) {
+            throw new Error("Data inválida");
+          }
+          const [day, month, year] = dateParts;
+          const tradeDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 
-        tradesToImport.push({
-          user_id: user.id,
-          trade_date: tradeDate,
-          asset_type: assetStr.toLowerCase().includes("índice") ? "indice" : "dolar",
-          setup_utilizado: Object.keys({
-            "Rompimento": "rompimento",
-            "Reversão": "reversao",
-            "Tendência": "tendencia",
-            "Suporte/Resistência": "suporte-resistencia",
-            "Médias Móveis": "medias-moveis",
-            "Divergência": "divergencia",
-            "Padrão Candlestick": "padrao-candlestick",
-            "Breakout": "breakout",
-            "Pull Back": "pull-back",
-            "Scalping": "scalping",
-            "Swing Trade": "swing-trade"
-          }).find(key => key === setupStr) || null,
-          tag: Object.keys({
-            "Disciplinado": "disciplinado",
-            "Emocional": "emocional",
-            "Fora de Setup": "fora-setup",
-            "Overtrading": "overtrading",
-            "FOMO": "fomo",
-            "Revenge Trading": "revenge-trading",
-            "Perfeito": "perfeito",
-            "Experimental": "experimental",
-            "Conservador": "conservador",
-            "Agressivo": "agressivo"
-          }).find(key => key === tagStr) || null,
-          nota_disciplina: disciplinaStr ? parseInt(disciplinaStr) : null,
-          result_points: parseFloat(pointsStr),
-          result_reais: parseFloat(resultStr),
-          notes: values[7] ? values[7].replace(/^"|"$/g, '').replace(/""/g, '"') : null
-        });
+          // Parse numeric values
+          const points = parseFloat(pointsStr);
+          const result = parseFloat(resultStr);
+          const disciplina = disciplinaStr ? parseInt(disciplinaStr) : null;
+
+          // Validate with zod schema
+          const tradeData = tradeImportSchema.parse({
+            trade_date: tradeDate,
+            asset_type: assetStr.toLowerCase().includes("índice") ? "indice" : "dolar",
+            result_points: points,
+            result_reais: result,
+            notes: values[7] ? values[7].replace(/^"|"$/g, '').replace(/""/g, '"') : null,
+            setup_utilizado: Object.keys({
+              "Rompimento": "rompimento",
+              "Reversão": "reversao",
+              "Tendência": "tendencia",
+              "Suporte/Resistência": "suporte-resistencia",
+              "Médias Móveis": "medias-moveis",
+              "Divergência": "divergencia",
+              "Padrão Candlestick": "padrao-candlestick",
+              "Breakout": "breakout",
+              "Pull Back": "pull-back",
+              "Scalping": "scalping",
+              "Swing Trade": "swing-trade"
+            }).find(key => key === setupStr) || null,
+            tag: Object.keys({
+              "Disciplinado": "disciplinado",
+              "Emocional": "emocional",
+              "Fora de Setup": "fora-setup",
+              "Overtrading": "overtrading",
+              "FOMO": "fomo",
+              "Revenge Trading": "revenge-trading",
+              "Perfeito": "perfeito",
+              "Experimental": "experimental",
+              "Conservador": "conservador",
+              "Agressivo": "agressivo"
+            }).find(key => key === tagStr) || null,
+            nota_disciplina: disciplina,
+          });
+
+          tradesToImport.push({
+            user_id: user.id,
+            ...tradeData
+          });
+        } catch (validationError) {
+          if (validationError instanceof z.ZodError) {
+            errors.push(`Linha ${i + 2}: ${validationError.errors[0].message}`);
+          } else {
+            errors.push(`Linha ${i + 2}: Dados inválidos`);
+          }
+        }
       }
 
       if (tradesToImport.length === 0) {
-        toast.error("Nenhum trade válido encontrado no arquivo");
+        toast.error("Nenhum trade válido encontrado no arquivo", {
+          description: errors.length > 0 ? errors.slice(0, 3).join("; ") : undefined
+        });
         return;
       }
 
@@ -226,10 +273,13 @@ export default function Trades() {
 
       if (error) throw error;
 
-      toast.success(`${tradesToImport.length} trades importados com sucesso!`);
+      const message = errors.length > 0 
+        ? `${tradesToImport.length} trades importados. ${errors.length} linhas com erro.`
+        : `${tradesToImport.length} trades importados com sucesso!`;
+      
+      toast.success(message);
       fetchTrades();
     } catch (error) {
-      console.error("Error importing trades:", error);
       toast.error("Erro ao importar trades");
     } finally {
       setImporting(false);

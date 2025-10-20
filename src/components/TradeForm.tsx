@@ -112,7 +112,6 @@ export function TradeForm({ onTradeAdded }: { onTradeAdded?: () => void }) {
 
       onTradeAdded?.();
     } catch (error) {
-      console.error("Error registering trade:", error);
       toast.error("Erro ao registrar trade");
     } finally {
       setUploading(false);
