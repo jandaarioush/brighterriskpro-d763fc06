@@ -51,7 +51,7 @@ const Index = () => {
               Controle total sobre suas operações de Índice e Dólar com cálculos automáticos de stop, risco diário e performance em tempo real
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-              <a href="https://loja.infinitepay.io/brighterinc/ewm4596-brighter-risk-pro-mensal" target="_blank" rel="noopener noreferrer">
+              <a href="https://invoice.infinitepay.io/plans/brighterinc/6X5mtkGLer" target="_blank" rel="noopener noreferrer">
                 <Button size="lg" className="text-lg px-8 py-6 group">
                   Criar Conta Mensal
                   <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
@@ -243,7 +243,7 @@ const Index = () => {
                       <span className="text-muted-foreground text-lg">/mês</span>
                     </div>
                   </div>
-                  <a href="https://loja.infinitepay.io/brighterinc/ewm4596-brighter-risk-pro-mensal" target="_blank" rel="noopener noreferrer" className="block">
+                  <a href="https://invoice.infinitepay.io/plans/brighterinc/6X5mtkGLer" target="_blank" rel="noopener noreferrer" className="block">
                     <Button size="lg" className="text-lg px-12 py-6 w-full">
                       Assinar Premium
                     </Button>
