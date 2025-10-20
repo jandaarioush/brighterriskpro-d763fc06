@@ -51,12 +51,18 @@ const Index = () => {
               Controle total sobre suas operações de Índice e Dólar com cálculos automáticos de stop, risco diário e performance em tempo real
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-              <Link to="/checkout">
+              <a href="https://loja.infinitepay.io/brighterinc/ewm4596-brighter-risk-pro-mensal" target="_blank" rel="noopener noreferrer">
                 <Button size="lg" className="text-lg px-8 py-6 group">
-                  Criar Conta
+                  Criar Conta Mensal
                   <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
-              </Link>
+              </a>
+              <a href="https://loja.infinitepay.io/brighterinc/tyo8170-brighter-risk-pro---anual" target="_blank" rel="noopener noreferrer">
+                <Button size="lg" variant="secondary" className="text-lg px-8 py-6 group">
+                  Criar Conta Anual
+                  <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </a>
               <Link to="/demo">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6">
                   Ver Demonstração
@@ -237,11 +243,11 @@ const Index = () => {
                       <span className="text-muted-foreground text-lg">/mês</span>
                     </div>
                   </div>
-                  <Link to="/checkout?plan=monthly" className="block">
+                  <a href="https://loja.infinitepay.io/brighterinc/ewm4596-brighter-risk-pro-mensal" target="_blank" rel="noopener noreferrer" className="block">
                     <Button size="lg" className="text-lg px-12 py-6 w-full">
                       Assinar Premium
                     </Button>
-                  </Link>
+                  </a>
                 </div>
               </Card>
               
@@ -253,11 +259,11 @@ const Index = () => {
                     </div>
                     <p className="text-xs text-muted-foreground">acesso por 1 ano</p>
                   </div>
-                  <Link to="/checkout?plan=annual" className="block">
+                  <a href="https://loja.infinitepay.io/brighterinc/tyo8170-brighter-risk-pro---anual" target="_blank" rel="noopener noreferrer" className="block">
                     <Button size="lg" className="text-lg px-12 py-6 w-full">
                       Pagamento à Vista
                     </Button>
-                  </Link>
+                  </a>
                 </div>
               </Card>
             </div>
