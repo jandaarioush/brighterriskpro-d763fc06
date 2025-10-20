@@ -82,14 +82,20 @@ export default function Auth() {
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-sm text-primary hover:underline"
-          >
-            {isLogin ? 'Não tem uma conta? Criar conta' : 'Já tem uma conta? Entrar'}
-          </button>
+        <div className="mt-6 text-center space-y-3">
+          <p className="text-sm text-muted-foreground">Não tem uma conta?</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <a href="https://invoice.infinitepay.io/plans/brighterinc/6X5mtkGLer" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                Criar Conta Mensal
+              </Button>
+            </a>
+            <a href="https://loja.infinitepay.io/brighterinc/tyo8170-brighter-risk-pro---anual" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                Criar Conta Anual
+              </Button>
+            </a>
+          </div>
         </div>
       </Card>
     </div>
