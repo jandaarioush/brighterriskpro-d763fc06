@@ -2,6 +2,7 @@ import { StatCard } from "@/components/StatCard";
 import { RiskCalculator } from "@/components/RiskCalculator";
 import { TradeForm } from "@/components/TradeForm";
 import { MonthHeatmap } from "@/components/MonthHeatmap";
+import GreetingBanner from "@/components/GreetingBanner";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -111,6 +112,8 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
+        <GreetingBanner user={user} />
+        
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
           <p className="text-muted-foreground">
