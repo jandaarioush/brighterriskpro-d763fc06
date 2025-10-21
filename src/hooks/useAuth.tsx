@@ -50,6 +50,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error };
     }
 
+    // Check if user profile exists
+    if (data.user) {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('status_pagamento, created_at')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        // User doesn't have a profile yet - should wait for webhook
+        await supabase.auth.signOut();
+        return { 
+          error: { 
+            message: 'Conta não encontrada. Por favor, complete sua compra ou aguarde a confirmação do pagamento.' 
+          } 
+        };
+      }
+
+      // Block access if payment was revoked (refund/cancellation)
+      if (profile.status_pagamento === 'revoked') {
+        await supabase.auth.signOut();
+        return { 
+          error: { 
+            message: 'Detectamos um reembolso ou cancelamento da sua assinatura. Se isso foi um engano, entre em contato com o suporte.' 
+          } 
+        };
+      }
+
+      // User has a profile and not revoked - allow access
+      // (Existing users maintain access regardless of pending/approved status)
+    }
+
     navigate('/dashboard');
     return { error: null };
   };
