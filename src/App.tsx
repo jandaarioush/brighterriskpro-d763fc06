@@ -11,6 +11,8 @@ import Calendar from "./pages/Calendar";
 import Trades from "./pages/Trades";
 import Simulator from "./pages/Simulator";
 import Settings from "./pages/Settings";
+import AdminWebhooks from "./pages/AdminWebhooks";
+import AdminUsers from "./pages/AdminUsers";
 import NotFound from "./pages/NotFound";
 import Recursos from "./pages/Recursos";
 import Precos from "./pages/Precos";
@@ -104,6 +106,24 @@ const App = () => (
                 <ProtectedRoute>
                   <Navbar />
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/webhooks"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <AdminWebhooks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <AdminUsers />
                 </ProtectedRoute>
               }
             />
