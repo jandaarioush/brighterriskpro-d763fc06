@@ -14,16 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          actor: string
+          created_at: string
+          id: string
+          meta: Json | null
+        }
+        Insert: {
+          action: string
+          actor: string
+          created_at?: string
+          id?: string
+          meta?: Json | null
+        }
+        Update: {
+          action?: string
+          actor?: string
+          created_at?: string
+          id?: string
+          meta?: Json | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           city: string | null
           created_at: string
           email: string
           id: string
+          kiwify_customer_id: string | null
+          kiwify_order_id: string | null
+          last_paid_at: string | null
           monthly_risk: number | null
           name: string | null
           phone: string | null
+          plano: string | null
           state: string | null
+          status_pagamento: string | null
           updated_at: string
         }
         Insert: {
@@ -31,10 +60,15 @@ export type Database = {
           created_at?: string
           email: string
           id: string
+          kiwify_customer_id?: string | null
+          kiwify_order_id?: string | null
+          last_paid_at?: string | null
           monthly_risk?: number | null
           name?: string | null
           phone?: string | null
+          plano?: string | null
           state?: string | null
+          status_pagamento?: string | null
           updated_at?: string
         }
         Update: {
@@ -42,10 +76,15 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          kiwify_customer_id?: string | null
+          kiwify_order_id?: string | null
+          last_paid_at?: string | null
           monthly_risk?: number | null
           name?: string | null
           phone?: string | null
+          plano?: string | null
           state?: string | null
+          status_pagamento?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -98,12 +137,58 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          created_at: string
+          email: string | null
+          error: string | null
+          event: string
+          id: string
+          order_id: string | null
+          processed_at: string | null
+          provider: string
+          raw_payload: Json
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          error?: string | null
+          event: string
+          id?: string
+          order_id?: string | null
+          processed_at?: string | null
+          provider?: string
+          raw_payload: Json
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          error?: string | null
+          event?: string
+          id?: string
+          order_id?: string | null
+          processed_at?: string | null
+          provider?: string
+          raw_payload?: Json
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_webhook_processed: {
+        Args: { p_event: string; p_order_id: string }
+        Returns: boolean
+      }
+      log_audit: {
+        Args: { p_action: string; p_actor: string; p_meta: Json }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
