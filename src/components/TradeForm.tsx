@@ -66,11 +66,8 @@ export function TradeForm({ onTradeAdded }: { onTradeAdded?: () => void }) {
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('trade-screenshots')
-          .getPublicUrl(fileName);
-
-        screenshotUrl = publicUrl;
+        // Store the file path instead of public URL (bucket is now private)
+        screenshotUrl = fileName;
       }
 
       // Save trade to database

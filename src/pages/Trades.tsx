@@ -82,6 +82,25 @@ export default function Trades() {
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [deletingTradeId, setDeletingTradeId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [screenshotUrls, setScreenshotUrls] = useState<{ [key: string]: string }>({});
+
+  // Generate signed URL for screenshot
+  const getScreenshotUrl = async (filePath: string, tradeId: string) => {
+    if (screenshotUrls[tradeId]) return screenshotUrls[tradeId];
+    
+    try {
+      const { data, error } = await supabase.storage
+        .from('trade-screenshots')
+        .createSignedUrl(filePath, 3600); // 1 hour expiry
+      
+      if (error || !data) return null;
+      
+      setScreenshotUrls(prev => ({ ...prev, [tradeId]: data.signedUrl }));
+      return data.signedUrl;
+    } catch {
+      return null;
+    }
+  };
 
   const fetchTrades = async () => {
     if (!user) return;
@@ -95,6 +114,15 @@ export default function Trades() {
 
       if (error) throw error;
       setTrades(data || []);
+      
+      // Pre-generate signed URLs for screenshots
+      if (data) {
+        data.forEach(trade => {
+          if (trade.screenshot_url) {
+            getScreenshotUrl(trade.screenshot_url, trade.id);
+          }
+        });
+      }
     } catch (error) {
       toast.error("Erro ao carregar trades");
     } finally {
@@ -545,7 +573,19 @@ export default function Trades() {
                     </TableCell>
                     <TableCell className="text-center">
                       {trade.screenshot_url ? (
-                        <a href={trade.screenshot_url} target="_blank" rel="noopener noreferrer">
+                        <a 
+                          href={screenshotUrls[trade.id] || "#"} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          onClick={(e) => {
+                            if (!screenshotUrls[trade.id]) {
+                              e.preventDefault();
+                              getScreenshotUrl(trade.screenshot_url!, trade.id).then(url => {
+                                if (url) window.open(url, '_blank');
+                              });
+                            }
+                          }}
+                        >
                           <ImageIcon className="w-4 h-4 inline text-primary hover:text-primary/80" />
                         </a>
                       ) : (
