@@ -83,6 +83,38 @@ export default function Trades() {
   const [deletingTradeId, setDeletingTradeId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [screenshotUrls, setScreenshotUrls] = useState<{ [key: string]: string }>({});
+  const [customSetups, setCustomSetups] = useState<string[]>([]);
+  const [customTags, setCustomTags] = useState<string[]>([]);
+  const [showImportTemplate, setShowImportTemplate] = useState(false);
+
+  // Default setup and tag options
+  const defaultSetups = [
+    { value: "rompimento", label: "Rompimento" },
+    { value: "reversao", label: "Reversão" },
+    { value: "tendencia", label: "Tendência" },
+    { value: "suporte-resistencia", label: "Suporte/Resistência" },
+    { value: "medias-moveis", label: "Médias Móveis" },
+    { value: "divergencia", label: "Divergência" },
+    { value: "padrao-candlestick", label: "Padrão Candlestick" },
+    { value: "breakout", label: "Breakout" },
+    { value: "pull-back", label: "Pull Back" },
+    { value: "scalping", label: "Scalping" },
+    { value: "swing-trade", label: "Swing Trade" },
+    { value: "outro", label: "Outro" }
+  ];
+
+  const defaultTags = [
+    { value: "disciplinado", label: "Disciplinado" },
+    { value: "emocional", label: "Emocional" },
+    { value: "fora-setup", label: "Fora de Setup" },
+    { value: "overtrading", label: "Overtrading" },
+    { value: "fomo", label: "FOMO" },
+    { value: "revenge-trading", label: "Revenge Trading" },
+    { value: "perfeito", label: "Perfeito" },
+    { value: "experimental", label: "Experimental" },
+    { value: "conservador", label: "Conservador" },
+    { value: "agressivo", label: "Agressivo" }
+  ];
 
   // Generate signed URL for screenshot
   const getScreenshotUrl = async (filePath: string, tradeId: string) => {
@@ -115,8 +147,24 @@ export default function Trades() {
       if (error) throw error;
       setTrades(data || []);
       
-      // Pre-generate signed URLs for screenshots
+      // Load custom setups and tags from trades
       if (data) {
+        const setups = new Set<string>();
+        const tags = new Set<string>();
+
+        data.forEach(trade => {
+          if (trade.setup_utilizado && !defaultSetups.find(s => s.value === trade.setup_utilizado)) {
+            setups.add(trade.setup_utilizado);
+          }
+          if (trade.tag && !defaultTags.find(t => t.value === trade.tag)) {
+            tags.add(trade.tag);
+          }
+        });
+
+        setCustomSetups(Array.from(setups));
+        setCustomTags(Array.from(tags));
+
+        // Pre-generate signed URLs for screenshots
         data.forEach(trade => {
           if (trade.screenshot_url) {
             getScreenshotUrl(trade.screenshot_url, trade.id);
@@ -459,17 +507,13 @@ export default function Trades() {
                   Exportar
                 </Button>
                 
-                <Button variant="outline" className="gap-2" disabled={importing} asChild>
-                  <label className="cursor-pointer">
-                    <Upload className="w-4 h-4" />
-                    {importing ? "Importando..." : "Importar"}
-                    <input
-                      type="file"
-                      accept=".csv"
-                      className="hidden"
-                      onChange={handleImport}
-                    />
-                  </label>
+                <Button 
+                  variant="outline" 
+                  className="gap-2" 
+                  onClick={() => setShowImportTemplate(true)}
+                >
+                  <Upload className="w-4 h-4" />
+                  Importar
                 </Button>
               </div>
             </div>
@@ -479,20 +523,25 @@ export default function Trades() {
                 <SelectTrigger className="flex-1">
                   <SelectValue placeholder="Filtrar por setup" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background">
                   <SelectItem value="all">Todos os setups</SelectItem>
-                  <SelectItem value="rompimento">Rompimento</SelectItem>
-                  <SelectItem value="reversao">Reversão</SelectItem>
-                  <SelectItem value="tendencia">Tendência</SelectItem>
-                  <SelectItem value="suporte-resistencia">Suporte/Resistência</SelectItem>
-                  <SelectItem value="medias-moveis">Médias Móveis</SelectItem>
-                  <SelectItem value="divergencia">Divergência</SelectItem>
-                  <SelectItem value="padrao-candlestick">Padrão Candlestick</SelectItem>
-                  <SelectItem value="breakout">Breakout</SelectItem>
-                  <SelectItem value="pull-back">Pull Back</SelectItem>
-                  <SelectItem value="scalping">Scalping</SelectItem>
-                  <SelectItem value="swing-trade">Swing Trade</SelectItem>
-                  <SelectItem value="outro">Outro</SelectItem>
+                  {defaultSetups.map(setup => (
+                    <SelectItem key={setup.value} value={setup.value}>
+                      {setup.label}
+                    </SelectItem>
+                  ))}
+                  {customSetups.length > 0 && (
+                    <>
+                      <SelectItem value="_divider_" disabled className="text-xs text-muted-foreground">
+                        — Setups Personalizados —
+                      </SelectItem>
+                      {customSetups.map(setup => (
+                        <SelectItem key={setup} value={setup}>
+                          {setup}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
 
@@ -500,18 +549,25 @@ export default function Trades() {
                 <SelectTrigger className="flex-1">
                   <SelectValue placeholder="Filtrar por tag" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background">
                   <SelectItem value="all">Todas as tags</SelectItem>
-                  <SelectItem value="disciplinado">Disciplinado</SelectItem>
-                  <SelectItem value="emocional">Emocional</SelectItem>
-                  <SelectItem value="fora-setup">Fora de Setup</SelectItem>
-                  <SelectItem value="overtrading">Overtrading</SelectItem>
-                  <SelectItem value="fomo">FOMO</SelectItem>
-                  <SelectItem value="revenge-trading">Revenge Trading</SelectItem>
-                  <SelectItem value="perfeito">Perfeito</SelectItem>
-                  <SelectItem value="experimental">Experimental</SelectItem>
-                  <SelectItem value="conservador">Conservador</SelectItem>
-                  <SelectItem value="agressivo">Agressivo</SelectItem>
+                  {defaultTags.map(tag => (
+                    <SelectItem key={tag.value} value={tag.value}>
+                      {tag.label}
+                    </SelectItem>
+                  ))}
+                  {customTags.length > 0 && (
+                    <>
+                      <SelectItem value="_divider_" disabled className="text-xs text-muted-foreground">
+                        — Tags Personalizadas —
+                      </SelectItem>
+                      {customTags.map(tag => (
+                        <SelectItem key={tag} value={tag}>
+                          {tag}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -639,6 +695,60 @@ export default function Trades() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => deletingTradeId && handleDelete(deletingTradeId)}>
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Import Template Dialog */}
+      <AlertDialog open={showImportTemplate} onOpenChange={setShowImportTemplate}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Modelo de Importação CSV</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>Use o formato abaixo para importar seus trades. Salve como arquivo .csv:</p>
+                
+                <div className="bg-muted p-4 rounded-md overflow-x-auto">
+                  <pre className="text-xs">
+{`Data,Ativo,Setup,Tag,Disciplina,Pontos,Resultado (R$),Observações
+01/10/2024,Índice,Rompimento,Disciplinado,8,100,20.00,"Bom setup"
+02/10/2024,Dólar,Reversão,Emocional,5,-50,-500.00,"Entrei no FOMO"`}
+                  </pre>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <p className="font-semibold">Instruções:</p>
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                    <li>Data: formato dd/mm/aaaa</li>
+                    <li>Ativo: "Índice" ou "Dólar"</li>
+                    <li>Setup: use os setups padrão ou personalizados</li>
+                    <li>Tag: use as tags padrão ou personalizadas</li>
+                    <li>Disciplina: número de 0 a 10 (opcional)</li>
+                    <li>Pontos: número positivo ou negativo</li>
+                    <li>Resultado (R$): valor em reais com até 2 decimais</li>
+                    <li>Observações: texto entre aspas (opcional)</li>
+                  </ul>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Fechar</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <label className="cursor-pointer">
+                Selecionar Arquivo CSV
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    handleImport(e);
+                    setShowImportTemplate(false);
+                  }}
+                  disabled={importing}
+                />
+              </label>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
