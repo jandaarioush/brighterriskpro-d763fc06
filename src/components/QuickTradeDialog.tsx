@@ -90,16 +90,24 @@ export function QuickTradeDialog({ open, onClose, selectedDate, onTradeAdded }: 
     const contracts = formData.contracts;
     
     let points = 0;
-    if (formData.operation === "compra") {
-      points = exit - entry;
-    } else {
-      points = entry - exit;
+    
+    // Se preencheu pontos direto, usa o valor informado
+    if (formData.points !== 0) {
+      points = formData.points * contracts;
+    } 
+    // Senão, calcula a partir de entrada/saída
+    else if (entry && exit) {
+      if (formData.operation === "compra") {
+        points = (exit - entry) * contracts;
+      } else {
+        points = (entry - exit) * contracts;
+      }
     }
 
     const pointValue = formData.assetType === "indice" ? 0.2 : 10;
-    const resultReais = points * pointValue * contracts;
+    const resultReais = points * pointValue;
 
-    return { points: points * contracts, reais: resultReais };
+    return { points, reais: resultReais };
   };
 
   const handleSubmit = async () => {
@@ -109,6 +117,12 @@ export function QuickTradeDialog({ open, onClose, selectedDate, onTradeAdded }: 
 
     if (formData.contracts <= 0) {
       toast.error("Número de contratos deve ser maior que zero");
+      return;
+    }
+
+    // Validar que pelo menos pontos OU entrada/saída foram preenchidos
+    if (result.points === 0 && !formData.entryPrice && !formData.exitPrice) {
+      toast.error("Preencha a pontuação ou entrada/saída");
       return;
     }
 
@@ -347,7 +361,7 @@ export function QuickTradeDialog({ open, onClose, selectedDate, onTradeAdded }: 
           </div>
 
           {/* Resultado Calculado */}
-          {(formData.entryPrice && formData.exitPrice) && (
+          {(result.points !== 0 || (formData.entryPrice && formData.exitPrice)) && (
             <div className="p-4 rounded-lg bg-muted">
               <p className="text-sm text-muted-foreground mb-1">Resultado calculado:</p>
               <p className={`text-2xl font-bold ${result.reais >= 0 ? "text-green-500" : "text-red-500"}`}>

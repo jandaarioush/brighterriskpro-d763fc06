@@ -24,6 +24,28 @@ export default function Calendar() {
     if (user) {
       loadProfile();
       loadTrades();
+
+      // Setup realtime subscription for trades
+      const channel = supabase
+        .channel('calendar-trades-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'trades',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            // Reload trades when any change happens
+            loadTrades();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user, currentMonth]);
 
@@ -64,10 +86,12 @@ export default function Calendar() {
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
 
-  const getDayColor = (trade?: Trade) => {
-    if (!trade) return 'bg-card border-border';
-    if (trade.result_reais > 0) return 'bg-green-500/20 border-green-500';
-    return 'bg-red-500/20 border-red-500';
+  const getDayColor = (trades: Trade[]) => {
+    if (!trades.length) return 'bg-card border-border';
+    const totalResult = trades.reduce((sum, t) => sum + t.result_reais, 0);
+    if (totalResult > 0) return 'bg-green-500/20 border-green-500';
+    if (totalResult < 0) return 'bg-red-500/20 border-red-500';
+    return 'bg-card border-border';
   };
 
   const exportReport = () => {
@@ -307,46 +331,66 @@ export default function Calendar() {
             ))}
             
             {/* Actual days of the month */}
-            {monthData.map((dayData, index) => (
-              <Card
-                key={index}
-                className={`p-3 min-h-[120px] transition-all hover:shadow-lg border-2 ${getDayColor(dayData.trade)} ${
-                  dayData.isWeekend ? 'opacity-50' : ''
-                }`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <span className="font-bold text-lg">{dayData.day}</span>
-                  {!dayData.isWeekend && !dayData.trade && (
-                    <Button 
-                      size="icon" 
-                      variant="ghost" 
-                      className="h-6 w-6"
-                      onClick={() => {
-                        setSelectedDate(new Date(dayData.date));
-                        setShowTradeDialog(true);
-                      }}
-                    >
-                      +
-                    </Button>
-                  )}
-                </div>
-                {!dayData.isWeekend && (
-                  <div className="space-y-1 text-xs">
-                    <p className="text-muted-foreground">
-                      Stop Índice: <span className="font-medium">{dayData.stopIndice.toFixed(0)} pts/contrato</span>
-                    </p>
-                    <p className="text-muted-foreground">
-                      Stop Dólar: <span className="font-medium">{dayData.stopDolar.toFixed(0)} pts/contrato</span>
-                    </p>
-                    {dayData.trade && (
-                      <p className={`font-semibold ${dayData.trade.result_reais > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {dayData.trade.result_reais > 0 ? '+' : ''}{dayData.trade.result_points.toFixed(0)} pts
-                      </p>
+            {monthData.map((dayData, index) => {
+              const totalPoints = dayData.trades.reduce((sum, t) => sum + t.result_points, 0);
+              const totalReais = dayData.trades.reduce((sum, t) => sum + t.result_reais, 0);
+              
+              return (
+                <Card
+                  key={index}
+                  className={`p-3 min-h-[140px] transition-all hover:shadow-lg border-2 ${getDayColor(dayData.trades)} ${
+                    dayData.isWeekend ? 'opacity-50' : ''
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-bold text-lg">{dayData.day}</span>
+                    {!dayData.isWeekend && (
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-6 w-6"
+                        onClick={() => {
+                          setSelectedDate(new Date(dayData.date));
+                          setShowTradeDialog(true);
+                        }}
+                      >
+                        +
+                      </Button>
                     )}
                   </div>
-                )}
-              </Card>
-            ))}
+                  {!dayData.isWeekend && (
+                    <div className="space-y-1 text-xs">
+                      <p className="text-muted-foreground">
+                        Stop Índice: <span className="font-medium">{dayData.stopIndice.toFixed(0)} pts/contrato</span>
+                      </p>
+                      <p className="text-muted-foreground">
+                        Stop Dólar: <span className="font-medium">{dayData.stopDolar.toFixed(0)} pts/contrato</span>
+                      </p>
+                      {dayData.trades.length > 0 && (
+                        <>
+                          {dayData.trades.length === 1 ? (
+                            <p className={`font-semibold ${totalReais > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              {totalReais > 0 ? '+' : ''}{totalPoints.toFixed(0)} pts
+                            </p>
+                          ) : (
+                            <div className="space-y-0.5">
+                              <p className={`font-semibold ${totalReais > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {totalReais > 0 ? '+' : ''}{totalPoints.toFixed(0)} pts ({dayData.trades.length} trades)
+                              </p>
+                              {dayData.trades.map((trade, idx) => (
+                                <p key={trade.id} className={`text-[10px] ${trade.result_reais > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  #{idx + 1}: {trade.result_reais > 0 ? '+' : ''}{trade.result_points.toFixed(0)} pts
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
           </div>
         </Card>
       </div>

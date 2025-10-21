@@ -18,7 +18,7 @@ export interface DayRiskData {
   dailyRisk: number;
   stopIndice: number;
   stopDolar: number;
-  trade?: Trade;
+  trades: Trade[];
   isWeekend: boolean;
 }
 
@@ -71,7 +71,7 @@ export function calculateMonthData(
   allDays.forEach((date, index) => {
     const isWeekendDay = isWeekend(date);
     const dateStr = format(date, 'yyyy-MM-dd');
-    const trade = trades.find(t => t.trade_date === dateStr);
+    const dayTrades = trades.filter(t => t.trade_date === dateStr);
 
     if (!isWeekendDay) {
       workingDaysProcessed++;
@@ -87,13 +87,17 @@ export function calculateMonthData(
       dailyRisk,
       stopIndice: stops.indice,
       stopDolar: stops.dolar,
-      trade,
+      trades: dayTrades,
       isWeekend: isWeekendDay,
     });
 
-    // Update accumulated loss for next day
-    if (trade && trade.result_reais < 0) {
-      accumulatedLoss += Math.abs(trade.result_reais);
+    // Update accumulated loss for next day - sum all losses from the day
+    const dayLoss = dayTrades
+      .filter(t => t.result_reais < 0)
+      .reduce((sum, t) => sum + Math.abs(t.result_reais), 0);
+    
+    if (dayLoss > 0) {
+      accumulatedLoss += dayLoss;
     }
   });
 
