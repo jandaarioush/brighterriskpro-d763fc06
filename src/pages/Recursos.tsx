@@ -126,11 +126,18 @@ const Recursos = () => {
           <p className="text-xl text-muted-foreground mb-8">
             Junte-se a centenas de traders que já estão operando com mais segurança
           </p>
-          <Link to="/checkout">
-            <Button size="lg" className="text-lg px-12 py-6">
-              Criar Conta Agora
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="https://pay.kiwify.com.br/mRJhvxj" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="text-lg px-12 py-6">
+                Conta Mensal
+              </Button>
+            </a>
+            <a href="https://pay.kiwify.com.br/dPyrB1E" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="text-lg px-12 py-6" variant="outline">
+                Conta Anual
+              </Button>
+            </a>
+          </div>
         </div>
       </section>
     </div>
