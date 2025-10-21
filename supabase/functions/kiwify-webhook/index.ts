@@ -6,22 +6,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface KiwifyWebhookData {
-  order_id: string;
-  status: string;
+interface KiwifyCustomer {
   email: string;
-  name?: string;
-  product?: string;
-  product_id?: string;
-  price?: number;
-  payment_method?: string;
-  transaction_date?: string;
-  customer_id?: string;
+  full_name?: string;
+  first_name?: string;
+  mobile?: string;
+  CPF?: string;
+}
+
+interface KiwifyProduct {
+  product_id: string;
+  product_name?: string;
+}
+
+interface KiwifySubscription {
+  subscription_id?: string;
+  status?: string;
+  start_date?: string;
+  next_payment?: string;
 }
 
 interface KiwifyWebhookPayload {
-  event: string;
-  data: KiwifyWebhookData;
+  order_id: string;
+  order_ref?: string;
+  order_status?: string;
+  webhook_event_type: string;
+  approved_date?: string;
+  created_at?: string;
+  refunded_at?: string;
+  Customer?: KiwifyCustomer;
+  Product?: KiwifyProduct;
+  Subscription?: KiwifySubscription;
+  payment_method?: string;
 }
 
 serve(async (req) => {
@@ -53,12 +69,17 @@ serve(async (req) => {
     const payload: KiwifyWebhookPayload = await req.json();
     console.log('Received webhook:', JSON.stringify(payload));
 
-    const { event, data } = payload;
-    const email = data?.email?.toLowerCase();
-    const orderId = data?.order_id;
+    const event = payload.webhook_event_type;
+    const email = payload.Customer?.email?.toLowerCase();
+    const orderId = payload.order_id;
 
     if (!email || !orderId) {
       console.error('Missing required fields: email or order_id');
+      console.error('Payload structure:', { 
+        has_customer: !!payload.Customer, 
+        has_order_id: !!payload.order_id,
+        event_type: payload.webhook_event_type 
+      });
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -105,8 +126,12 @@ serve(async (req) => {
       });
     }
 
+    // Map Kiwify event names to internal event names
+    const mappedEvent = mapKiwifyEvent(event);
+    console.log(`Processing event: ${event} → ${mappedEvent}`);
+
     // Process event
-    await processKiwifyEvent(supabase, event, data, webhookEvent.id);
+    await processKiwifyEvent(supabase, mappedEvent, payload, webhookEvent.id);
 
     return new Response(JSON.stringify({ message: 'ok' }), {
       status: 200,
@@ -121,14 +146,29 @@ serve(async (req) => {
   }
 });
 
+function mapKiwifyEvent(kiwifyEvent: string): string {
+  const eventMap: Record<string, string> = {
+    'order_approved': 'purchase_approved',
+    'billet_created': 'purchase_created',
+    'order_created': 'purchase_created',
+    'order_refunded': 'purchase_refunded',
+    'subscription_canceled': 'subscription_canceled',
+  };
+  
+  return eventMap[kiwifyEvent] || kiwifyEvent;
+}
+
 async function processKiwifyEvent(
   supabase: any,
   event: string,
-  data: KiwifyWebhookData,
+  payload: KiwifyWebhookPayload,
   webhookEventId: string
 ) {
-  const email = data.email.toLowerCase();
-  const orderId = data.order_id;
+  const email = payload.Customer?.email?.toLowerCase() || '';
+  const orderId = payload.order_id;
+  const name = payload.Customer?.full_name;
+  const product = payload.Product?.product_name || payload.Product?.product_id;
+  const transactionDate = payload.approved_date || payload.created_at;
 
   try {
     // Get or create user by email
@@ -153,12 +193,11 @@ async function processKiwifyEvent(
           .from('profiles')
           .insert({
             email,
-            name: data.name,
+            name,
             status_pagamento: event === 'purchase_approved' ? 'approved' : 'pending',
-            plano: data.product || data.product_id,
+            plano: product,
             kiwify_order_id: orderId,
-            kiwify_customer_id: data.customer_id,
-            last_paid_at: data.transaction_date ? new Date(data.transaction_date) : new Date(),
+            last_paid_at: transactionDate ? new Date(transactionDate) : new Date(),
           })
           .select()
           .single();
@@ -185,8 +224,8 @@ async function processKiwifyEvent(
           .upsert({
             id: userId,
             email,
-            name: data.name,
-            plano: data.product || data.product_id,
+            name,
+            plano: product,
             status_pagamento: 'pending',
           }, { onConflict: 'email' });
 
@@ -195,6 +234,7 @@ async function processKiwifyEvent(
           p_action: 'purchase_created',
           p_meta: { email, order_id: orderId },
         });
+        console.log('Purchase created for:', email);
         break;
 
       case 'purchase_approved':
@@ -203,21 +243,20 @@ async function processKiwifyEvent(
           .upsert({
             id: userId,
             email,
-            name: data.name,
-            plano: data.product || data.product_id,
+            name,
+            plano: product,
             status_pagamento: 'approved',
             kiwify_order_id: orderId,
-            kiwify_customer_id: data.customer_id,
-            last_paid_at: data.transaction_date ? new Date(data.transaction_date) : new Date(),
+            last_paid_at: transactionDate ? new Date(transactionDate) : new Date(),
           }, { onConflict: 'email' });
 
         await supabase.rpc('log_audit', {
           p_actor: 'system:webhook',
           p_action: 'user_activated',
-          p_meta: { email, order_id: orderId },
+          p_meta: { email, order_id: orderId, product },
         });
 
-        console.log('User activated:', email);
+        console.log('User activated:', email, 'with plan:', product);
         break;
 
       case 'purchase_refunded':
