@@ -105,7 +105,7 @@ export default function Auth() {
         <div className="mt-6 text-center space-y-3">
           <p className="text-sm text-muted-foreground">Não tem uma conta?</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href="https://pay.cakto.com.br/3pcxxff_615030" target="_blank" rel="noopener noreferrer">
+            <a href="https://pay.kiwify.com.br/mRJhvxj" target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 Criar Conta Mensal
               </Button>
