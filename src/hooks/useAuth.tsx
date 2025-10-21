@@ -50,30 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error };
     }
 
-    // Check payment status
-    if (data.user) {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('status_pagamento')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        return { error: { message: 'Erro ao verificar status da conta' } };
-      }
-
-      if (profile.status_pagamento !== 'approved') {
-        // Sign out the user
-        await supabase.auth.signOut();
-        
-        const message = profile.status_pagamento === 'pending'
-          ? 'Seu pagamento ainda não foi confirmado. Assim que for aprovado, seu acesso será liberado automaticamente.'
-          : 'Detectamos um reembolso ou cancelamento da sua assinatura. Se isso foi um engano, entre em contato com o suporte.';
-        
-        return { error: { message } };
-      }
-    }
-
     navigate('/dashboard');
     return { error: null };
   };
