@@ -6,6 +6,19 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { z } from 'zod';
+
+const settingsSchema = z.object({
+  name: z.string().trim().max(100, 'Nome muito longo').optional(),
+  phone: z.string().trim().max(20, 'Telefone inválido').optional(),
+  city: z.string().trim().max(100, 'Cidade muito longa').optional(),
+  state: z.string().trim().max(2, 'UF deve ter 2 caracteres').optional(),
+  monthlyRisk: z.string().optional().refine((val) => {
+    if (!val) return true;
+    const num = parseFloat(val);
+    return !isNaN(num) && num >= 0;
+  }, 'Risco mensal deve ser um número positivo'),
+});
 
 export default function Settings() {
   const { user } = useAuth();
@@ -41,13 +54,29 @@ export default function Settings() {
     setLoading(true);
 
     try {
+      // Validate inputs
+      const validationResult = settingsSchema.safeParse({
+        name,
+        phone,
+        city,
+        state,
+        monthlyRisk,
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({ 
-          name,
-          phone,
-          city,
-          state,
+          name: name.trim() || null,
+          phone: phone.trim() || null,
+          city: city.trim() || null,
+          state: state.trim() || null,
           monthly_risk: monthlyRisk ? parseFloat(monthlyRisk) : null
         })
         .eq('id', user?.id);

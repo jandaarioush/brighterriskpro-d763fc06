@@ -5,6 +5,21 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { z } from 'zod';
+
+const monthlyRiskSchema = z.object({
+  monthlyRisk: z.string()
+    .trim()
+    .min(1, 'Valor é obrigatório')
+    .refine((val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num > 0;
+    }, 'Valor deve ser maior que zero')
+    .refine((val) => {
+      const num = parseFloat(val);
+      return num <= 1000000;
+    }, 'Valor muito alto'),
+});
 
 interface MonthlyRiskDialogProps {
   open: boolean;
@@ -21,9 +36,21 @@ export function MonthlyRiskDialog({ open, onClose }: MonthlyRiskDialogProps) {
     setLoading(true);
 
     try {
+      // Validate input
+      const validationResult = monthlyRiskSchema.safeParse({
+        monthlyRisk,
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({ monthly_risk: parseFloat(monthlyRisk) })
+        .update({ monthly_risk: parseFloat(monthlyRisk.trim()) })
         .eq('id', user?.id);
 
       if (error) throw error;

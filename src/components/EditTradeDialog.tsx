@@ -14,6 +14,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { z } from 'zod';
+
+const editTradeSchema = z.object({
+  contracts: z.string()
+    .trim()
+    .min(1, 'Contratos é obrigatório')
+    .refine((val) => {
+      const num = parseInt(val);
+      return !isNaN(num) && num > 0;
+    }, 'Contratos deve ser maior que zero'),
+  entry: z.string().optional(),
+  exit: z.string().optional(),
+  observations: z.string().trim().max(1000, 'Observações muito longas').optional(),
+  setupUtilizado: z.string().optional(),
+  tag: z.string().optional(),
+}).refine((data) => {
+  // If entry is provided, exit must be provided too
+  if (data.entry && !data.exit) return false;
+  if (!data.entry && data.exit) return false;
+  return true;
+}, {
+  message: 'Entrada e saída devem ser preenchidos juntos',
+  path: ['exit'],
+});
 
 interface Trade {
   id: string;
@@ -74,8 +98,18 @@ export function EditTradeDialog({
 
     setSaving(true);
     try {
+      // Validate inputs
+      const validationResult = editTradeSchema.safeParse(formData);
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        setSaving(false);
+        return;
+      }
+
       const updates: any = {
-        notes: formData.observations,
+        notes: formData.observations.trim() || null,
         setup_utilizado: formData.setupUtilizado || null,
         tag: formData.tag || null,
         nota_disciplina: formData.notaDisciplina,

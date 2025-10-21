@@ -5,6 +5,12 @@ import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import logoHorizontal from '@/assets/logo-brighter.png';
+import { z } from 'zod';
+
+const authSchema = z.object({
+  email: z.string().trim().email('Email inválido').max(255, 'Email muito longo'),
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').max(100, 'Senha muito longa'),
+});
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,9 +24,23 @@ export default function Auth() {
     setLoading(true);
 
     try {
+      // Validate inputs
+      const validationResult = authSchema.safeParse({
+        email,
+        password,
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        setLoading(false);
+        return;
+      }
+
+      const trimmedEmail = email.trim();
       const { error } = isLogin 
-        ? await signIn(email, password)
-        : await signUp(email, password);
+        ? await signIn(trimmedEmail, password)
+        : await signUp(trimmedEmail, password);
 
       if (error) {
         toast.error(error.message);
