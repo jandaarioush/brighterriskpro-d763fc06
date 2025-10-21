@@ -65,11 +65,11 @@ const Precos = () => {
                 </li>
               </ul>
 
-              <Link to="/checkout?plan=monthly">
+              <a href="https://pay.kiwify.com.br/mRJhvxj" target="_blank" rel="noopener noreferrer">
                 <Button size="lg" className="w-full">
-                  Assinar Agora
+                  Conta Mensal
                 </Button>
-              </Link>
+              </a>
             </Card>
 
             {/* Plano Anual */}
@@ -106,11 +106,11 @@ const Precos = () => {
                 </li>
               </ul>
 
-              <Link to="/checkout?plan=annual">
+              <a href="https://pay.kiwify.com.br/dPyrB1E" target="_blank" rel="noopener noreferrer">
                 <Button size="lg" className="w-full" variant="outline">
-                  Pagamento à Vista
+                  Conta Anual
                 </Button>
-              </Link>
+              </a>
             </Card>
           </div>
         </div>
