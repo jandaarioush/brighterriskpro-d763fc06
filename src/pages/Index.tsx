@@ -245,7 +245,7 @@ const Index = () => {
                   </div>
                   <a href="https://pay.kiwify.com.br/mRJhvxj" target="_blank" rel="noopener noreferrer" className="block">
                     <Button size="lg" className="text-lg px-12 py-6 w-full">
-                      Assinar Premium
+                      Conta Mensal
                     </Button>
                   </a>
                 </div>
@@ -261,7 +261,7 @@ const Index = () => {
                   </div>
                   <a href="https://pay.kiwify.com.br/dPyrB1E" target="_blank" rel="noopener noreferrer" className="block">
                     <Button size="lg" className="text-lg px-12 py-6 w-full">
-                      Pagamento à Vista
+                      Conta Anual
                     </Button>
                   </a>
                 </div>
