@@ -57,7 +57,7 @@ const Index = () => {
                   <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </a>
-              <a href="https://loja.infinitepay.io/brighterinc/tyo8170-brighter-risk-pro---anual" target="_blank" rel="noopener noreferrer">
+              <a href="https://pay.kiwify.com.br/dPyrB1E" target="_blank" rel="noopener noreferrer">
                 <Button size="lg" variant="secondary" className="text-lg px-8 py-6 group">
                   Criar Conta Anual
                   <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
@@ -259,7 +259,7 @@ const Index = () => {
                     </div>
                     <p className="text-xs text-muted-foreground">acesso por 1 ano</p>
                   </div>
-                  <a href="https://loja.infinitepay.io/brighterinc/tyo8170-brighter-risk-pro---anual" target="_blank" rel="noopener noreferrer" className="block">
+                  <a href="https://pay.kiwify.com.br/dPyrB1E" target="_blank" rel="noopener noreferrer" className="block">
                     <Button size="lg" className="text-lg px-12 py-6 w-full">
                       Pagamento à Vista
                     </Button>
