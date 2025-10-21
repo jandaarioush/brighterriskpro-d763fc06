@@ -17,7 +17,7 @@ export default function GreetingBanner({ user }: Props) {
       aria-label="Saudação do usuário"
     >
       <h1 className="text-2xl md:text-3xl font-semibold tracking-tight flex items-center gap-2">
-        {greeting}, {firstName} <span aria-hidden>👋</span>
+        {greeting}{firstName && `, ${firstName}`} <span aria-hidden>👋</span>
       </h1>
       <p className="text-sm md:text-base text-muted-foreground mt-1">{subtitle}</p>
     </section>

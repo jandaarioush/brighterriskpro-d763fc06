@@ -19,15 +19,10 @@ export function getGreeting(date: Date): "Bom dia" | "Boa tarde" | "Boa noite" {
   return "Boa noite";
 }
 
-export function firstNameFrom(user?: { name?: string; email?: string } | null) {
-  if (!user) return "usuário";
+export function firstNameFrom(user?: { name?: string; email?: string } | null): string | null {
+  if (!user || !user.name?.trim()) return null;
   
-  const raw =
-    (user?.name || "")
-      .trim()
-      .split(/\s+/)[0] ||
-    (user?.email ? user.email.split("@")[0] : "usuário");
-
+  const raw = user.name.trim().split(/\s+/)[0];
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
