@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Upload } from "lucide-react";
+import { Plus } from "lucide-react";
 
 export function TradeForm({ onTradeAdded }: { onTradeAdded?: () => void }) {
   const { user } = useAuth();
@@ -27,6 +27,99 @@ export function TradeForm({ onTradeAdded }: { onTradeAdded?: () => void }) {
   });
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  
+  // Custom setup and tag management
+  const [customSetups, setCustomSetups] = useState<string[]>([]);
+  const [customTags, setCustomTags] = useState<string[]>([]);
+  const [showNewSetupInput, setShowNewSetupInput] = useState(false);
+  const [showNewTagInput, setShowNewTagInput] = useState(false);
+  const [newSetupValue, setNewSetupValue] = useState("");
+  const [newTagValue, setNewTagValue] = useState("");
+
+  // Default options
+  const defaultSetups = [
+    "Rompimento",
+    "Reversão",
+    "Tendência",
+    "Suporte/Resistência",
+    "Médias Móveis",
+    "Divergência",
+    "Padrão Candlestick",
+    "Breakout",
+    "Pull Back",
+    "Scalping",
+    "Swing Trade"
+  ];
+
+  const defaultTags = [
+    "Disciplinado",
+    "Emocional",
+    "Fora de Setup",
+    "Overtrading",
+    "FOMO",
+    "Revenge Trading",
+    "Perfeito",
+    "Experimental",
+    "Conservador",
+    "Agressivo"
+  ];
+
+  // Load user's custom setups and tags from their previous trades
+  useEffect(() => {
+    if (!user) return;
+
+    const loadCustomOptions = async () => {
+      const { data: trades } = await supabase
+        .from('trades')
+        .select('setup_utilizado, tag')
+        .eq('user_id', user.id)
+        .not('setup_utilizado', 'is', null)
+        .not('tag', 'is', null);
+
+      if (trades) {
+        const setups = new Set<string>();
+        const tags = new Set<string>();
+
+        trades.forEach(trade => {
+          if (trade.setup_utilizado && !defaultSetups.includes(trade.setup_utilizado)) {
+            setups.add(trade.setup_utilizado);
+          }
+          if (trade.tag && !defaultTags.includes(trade.tag)) {
+            tags.add(trade.tag);
+          }
+        });
+
+        setCustomSetups(Array.from(setups));
+        setCustomTags(Array.from(tags));
+      }
+    };
+
+    loadCustomOptions();
+  }, [user]);
+
+  const handleAddNewSetup = () => {
+    if (newSetupValue.trim()) {
+      const trimmed = newSetupValue.trim();
+      if (!customSetups.includes(trimmed) && !defaultSetups.includes(trimmed)) {
+        setCustomSetups([...customSetups, trimmed]);
+      }
+      setFormData({...formData, setupUtilizado: trimmed});
+      setNewSetupValue("");
+      setShowNewSetupInput(false);
+    }
+  };
+
+  const handleAddNewTag = () => {
+    if (newTagValue.trim()) {
+      const trimmed = newTagValue.trim();
+      if (!customTags.includes(trimmed) && !defaultTags.includes(trimmed)) {
+        setCustomTags([...customTags, trimmed]);
+      }
+      setFormData({...formData, tag: trimmed});
+      setNewTagValue("");
+      setShowNewTagInput(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,46 +288,166 @@ export function TradeForm({ onTradeAdded }: { onTradeAdded?: () => void }) {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Setup Utilizado</Label>
-            <Select value={formData.setupUtilizado} onValueChange={(v) => setFormData({...formData, setupUtilizado: v})}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um setup" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="rompimento">Rompimento</SelectItem>
-                <SelectItem value="reversao">Reversão</SelectItem>
-                <SelectItem value="tendencia">Tendência</SelectItem>
-                <SelectItem value="suporte-resistencia">Suporte/Resistência</SelectItem>
-                <SelectItem value="medias-moveis">Médias Móveis</SelectItem>
-                <SelectItem value="divergencia">Divergência</SelectItem>
-                <SelectItem value="padrao-candlestick">Padrão Candlestick</SelectItem>
-                <SelectItem value="breakout">Breakout</SelectItem>
-                <SelectItem value="pull-back">Pull Back</SelectItem>
-                <SelectItem value="scalping">Scalping</SelectItem>
-                <SelectItem value="swing-trade">Swing Trade</SelectItem>
-                <SelectItem value="outro">Outro</SelectItem>
-              </SelectContent>
-            </Select>
+            {showNewSetupInput ? (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Digite o nome do setup..."
+                  value={newSetupValue}
+                  onChange={(e) => setNewSetupValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddNewSetup();
+                    }
+                    if (e.key === 'Escape') {
+                      setShowNewSetupInput(false);
+                      setNewSetupValue("");
+                    }
+                  }}
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddNewSetup}
+                >
+                  OK
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowNewSetupInput(false);
+                    setNewSetupValue("");
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              <Select 
+                value={formData.setupUtilizado} 
+                onValueChange={(v) => {
+                  if (v === "_new_") {
+                    setShowNewSetupInput(true);
+                  } else {
+                    setFormData({...formData, setupUtilizado: v});
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um setup" />
+                </SelectTrigger>
+                <SelectContent className="bg-background">
+                  <SelectItem value="_new_" className="text-primary font-medium">
+                    <div className="flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Criar novo setup...
+                    </div>
+                  </SelectItem>
+                  {defaultSetups.map(setup => (
+                    <SelectItem key={setup} value={setup}>
+                      {setup}
+                    </SelectItem>
+                  ))}
+                  {customSetups.length > 0 && (
+                    <>
+                      <SelectItem value="_divider_" disabled className="text-xs text-muted-foreground">
+                        — Setups Personalizados —
+                      </SelectItem>
+                      {customSetups.map(setup => (
+                        <SelectItem key={setup} value={setup}>
+                          {setup}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label>Tag</Label>
-            <Select value={formData.tag} onValueChange={(v) => setFormData({...formData, tag: v})}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma tag" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="disciplinado">Disciplinado</SelectItem>
-                <SelectItem value="emocional">Emocional</SelectItem>
-                <SelectItem value="fora-setup">Fora de Setup</SelectItem>
-                <SelectItem value="overtrading">Overtrading</SelectItem>
-                <SelectItem value="fomo">FOMO</SelectItem>
-                <SelectItem value="revenge-trading">Revenge Trading</SelectItem>
-                <SelectItem value="perfeito">Perfeito</SelectItem>
-                <SelectItem value="experimental">Experimental</SelectItem>
-                <SelectItem value="conservador">Conservador</SelectItem>
-                <SelectItem value="agressivo">Agressivo</SelectItem>
-              </SelectContent>
-            </Select>
+            {showNewTagInput ? (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Digite o nome da tag..."
+                  value={newTagValue}
+                  onChange={(e) => setNewTagValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddNewTag();
+                    }
+                    if (e.key === 'Escape') {
+                      setShowNewTagInput(false);
+                      setNewTagValue("");
+                    }
+                  }}
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddNewTag}
+                >
+                  OK
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowNewTagInput(false);
+                    setNewTagValue("");
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              <Select 
+                value={formData.tag} 
+                onValueChange={(v) => {
+                  if (v === "_new_") {
+                    setShowNewTagInput(true);
+                  } else {
+                    setFormData({...formData, tag: v});
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma tag" />
+                </SelectTrigger>
+                <SelectContent className="bg-background">
+                  <SelectItem value="_new_" className="text-primary font-medium">
+                    <div className="flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Criar nova tag...
+                    </div>
+                  </SelectItem>
+                  {defaultTags.map(tag => (
+                    <SelectItem key={tag} value={tag}>
+                      {tag}
+                    </SelectItem>
+                  ))}
+                  {customTags.length > 0 && (
+                    <>
+                      <SelectItem value="_divider_" disabled className="text-xs text-muted-foreground">
+                        — Tags Personalizadas —
+                      </SelectItem>
+                      {customTags.map(tag => (
+                        <SelectItem key={tag} value={tag}>
+                          {tag}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
 
