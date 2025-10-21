@@ -6,6 +6,10 @@ export interface Trade {
   asset_type: 'indice' | 'dolar';
   result_reais: number;
   result_points: number;
+  notes?: string;
+  setup_utilizado?: string;
+  tag?: string;
+  nota_disciplina?: number;
 }
 
 export interface DayRiskData {

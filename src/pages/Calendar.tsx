@@ -67,6 +67,59 @@ export default function Calendar() {
     return 'bg-red-500/20 border-red-500';
   };
 
+  const exportReport = () => {
+    if (!monthlyRisk || !stats) {
+      toast.error('Não há dados para exportar');
+      return;
+    }
+
+    const monthName = format(currentMonth, 'MMMM_yyyy', { locale: ptBR });
+    
+    // Header do relatório
+    let csvContent = 'Relatório de Trading - Brighter\n';
+    csvContent += `Mês: ${format(currentMonth, 'MMMM yyyy', { locale: ptBR })}\n\n`;
+    
+    // Resumo
+    csvContent += 'RESUMO DO MÊS\n';
+    csvContent += `Resultado Total (Pontos),${stats.totalResultPoints.toFixed(2)}\n`;
+    csvContent += `Resultado Total (R$),${stats.totalResult.toFixed(2)}\n`;
+    csvContent += `Taxa de Acerto,${stats.winRate.toFixed(2)}%\n`;
+    csvContent += `Wins,${stats.wins}\n`;
+    csvContent += `Losses,${stats.losses}\n`;
+    csvContent += `Risco Mensal,${monthlyRisk.toFixed(2)}\n`;
+    csvContent += `Risco Usado,${stats.riskUsed.toFixed(2)}\n`;
+    csvContent += `Risco Usado (%),${stats.riskUsedPercent.toFixed(2)}%\n`;
+    csvContent += `Risco Restante,${stats.riskRemaining.toFixed(2)}\n\n`;
+    
+    // Trades detalhados
+    csvContent += 'TRADES DETALHADOS\n';
+    csvContent += 'Data,Ativo,Resultado (R$),Resultado (Pontos),Setup,Tag,Nota Disciplina,Observações\n';
+    
+    trades
+      .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
+      .forEach(trade => {
+        const tradeDate = format(new Date(trade.trade_date), 'dd/MM/yyyy');
+        const assetType = trade.asset_type === 'indice' ? 'Índice' : 'Dólar';
+        const notes = (trade.notes || '').replace(/,/g, ';').replace(/\n/g, ' ');
+        
+        csvContent += `${tradeDate},${assetType},${trade.result_reais.toFixed(2)},${trade.result_points.toFixed(2)},${trade.setup_utilizado || '-'},${trade.tag || '-'},${trade.nota_disciplina || '-'},${notes}\n`;
+      });
+
+    // Criar e fazer download do arquivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_${monthName}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Relatório exportado com sucesso!');
+  };
+
   // Get the day of week the month starts on (0 = Sunday, 1 = Monday, etc.)
   const firstDayOfMonth = startOfMonth(currentMonth);
   const startingDayOfWeek = getDay(firstDayOfMonth);
@@ -208,7 +261,11 @@ export default function Calendar() {
                 <DollarSign className="w-4 h-4 mr-2" />
                 Alterar Risco Mensal
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={exportReport}
+              >
                 <Target className="w-4 h-4 mr-2" />
                 Exportar Relatório
               </Button>
