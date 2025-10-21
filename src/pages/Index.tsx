@@ -98,7 +98,7 @@ const Index = () => {
               </div>
               <h3 className="font-montserrat text-2xl font-bold mb-4">2. Registre Trades</h3>
               <p className="text-muted-foreground">
-                Adicione suas operações manualmente ou via API. O sistema ajusta automaticamente o risco para os próximos dias
+                Adicione suas operações e o sistema ajusta automaticamente o risco para os próximos dias.
               </p>
             </Card>
 
