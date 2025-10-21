@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateMonthData, calculateMonthlyStats, Trade } from '@/lib/riskCalculations';
 import { MonthlyRiskDialog } from '@/components/MonthlyRiskDialog';
+import { QuickTradeDialog } from '@/components/QuickTradeDialog';
 import { toast } from 'sonner';
 
 export default function Calendar() {
@@ -15,6 +16,8 @@ export default function Calendar() {
   const [monthlyRisk, setMonthlyRisk] = useState<number | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [showRiskDialog, setShowRiskDialog] = useState(false);
+  const [showTradeDialog, setShowTradeDialog] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -313,8 +316,16 @@ export default function Calendar() {
               >
                 <div className="flex justify-between items-start mb-2">
                   <span className="font-bold text-lg">{dayData.day}</span>
-                  {!dayData.isWeekend && (
-                    <Button size="icon" variant="ghost" className="h-6 w-6">
+                  {!dayData.isWeekend && !dayData.trade && (
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      className="h-6 w-6"
+                      onClick={() => {
+                        setSelectedDate(new Date(dayData.date));
+                        setShowTradeDialog(true);
+                      }}
+                    >
                       +
                     </Button>
                   )}
@@ -345,6 +356,16 @@ export default function Calendar() {
         onClose={() => {
           setShowRiskDialog(false);
           loadProfile();
+        }}
+      />
+
+      <QuickTradeDialog
+        open={showTradeDialog}
+        onClose={() => setShowTradeDialog(false)}
+        selectedDate={selectedDate}
+        onTradeAdded={() => {
+          loadTrades();
+          setShowTradeDialog(false);
         }}
       />
     </div>
