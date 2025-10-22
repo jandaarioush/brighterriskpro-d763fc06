@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import logoHorizontal from '@/assets/logo-brighter.png';
 import { z } from 'zod';
 
@@ -103,18 +104,27 @@ export default function Auth() {
         </form>
 
         <div className="mt-6 text-center space-y-3">
-          <p className="text-sm text-muted-foreground">Não tem uma conta?</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href="https://pay.kiwify.com.br/mRJhvxj" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                Criar Conta Mensal
-              </Button>
-            </a>
-            <a href="https://loja.infinitepay.io/brighterinc/tyo8170-brighter-risk-pro---anual" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                Criar Conta Anual
-              </Button>
-            </a>
+          <p className="text-sm text-muted-foreground">
+            Já comprou mas ainda não configurou sua senha?{' '}
+            <Link to="/primeiro-acesso" className="text-primary hover:underline">
+              Clique aqui
+            </Link>
+          </p>
+          
+          <div className="border-t pt-4">
+            <p className="text-sm text-muted-foreground mb-3">Não tem uma conta?</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <a href="https://pay.kiwify.com.br/mRJhvxj" target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                  Criar Conta Mensal
+                </Button>
+              </a>
+              <a href="https://loja.infinitepay.io/brighterinc/tyo8170-brighter-risk-pro---anual" target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                  Criar Conta Anual
+                </Button>
+              </a>
+            </div>
           </div>
         </div>
       </Card>

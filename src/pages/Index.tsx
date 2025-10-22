@@ -26,11 +26,18 @@ const Index = () => {
               <a href="#planos" className="text-muted-foreground hover:text-foreground transition-colors">
                 Planos
               </a>
-              <Link to="/dashboard">
-                <Button variant="ghost">
-                  Entrar
-                </Button>
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link to="/primeiro-acesso">
+                  <Button variant="outline">
+                    1º acesso
+                  </Button>
+                </Link>
+                <Link to="/auth">
+                  <Button variant="ghost">
+                    Entrar
+                  </Button>
+                </Link>
+              </div>
             </nav>
           </div>
         </div>
