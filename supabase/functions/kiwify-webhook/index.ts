@@ -169,65 +169,44 @@ async function processKiwifyEvent(
   const name = payload.Customer?.full_name;
   const product = payload.Product?.product_name || payload.Product?.product_id;
   const transactionDate = payload.approved_date || payload.created_at;
+  const phone = payload.Customer?.mobile;
 
   try {
-    // Get or create user by email
-    const { data: authUser, error: authError } = await supabase.auth.admin.getUserByEmail(email);
-    
-    let userId: string;
-    
-    if (authError || !authUser?.user) {
-      // User doesn't exist in auth, will be created when they sign up
-      console.log('User not found in auth system, will update profile when they sign up');
-      
-      // Check if profile exists
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email)
-        .maybeSingle();
-      
-      if (!existingProfile) {
-        // Create a placeholder profile (will be updated when user signs up)
-        const { data: newProfile, error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            email,
-            name,
-            status_pagamento: event === 'purchase_approved' ? 'approved' : 'pending',
-            plano: product,
-            kiwify_order_id: orderId,
-            last_paid_at: transactionDate ? new Date(transactionDate) : new Date(),
-          })
-          .select()
-          .single();
-        
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-          throw profileError;
-        }
-        
-        userId = newProfile.id;
-        console.log('Created placeholder profile for:', email);
-      } else {
-        userId = existingProfile.id;
-      }
-    } else {
-      userId = authUser.user.id;
-    }
+    // Check if profile exists by email
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    console.log('Profile lookup for:', email, existingProfile ? 'found' : 'not found');
 
     // Process based on event type
     switch (event) {
       case 'purchase_created':
-        await supabase
-          .from('profiles')
-          .upsert({
-            id: userId,
-            email,
-            name,
-            plano: product,
-            status_pagamento: 'pending',
-          }, { onConflict: 'email' });
+        if (existingProfile) {
+          // Update existing profile
+          await supabase
+            .from('profiles')
+            .update({
+              name: name || existingProfile.name,
+              phone: phone || existingProfile.phone,
+              plano: product,
+              status_pagamento: 'pending',
+            })
+            .eq('id', existingProfile.id);
+        } else {
+          // Create new profile without id (will be created by trigger when user signs up)
+          await supabase
+            .from('profiles')
+            .insert({
+              email,
+              name,
+              phone,
+              plano: product,
+              status_pagamento: 'pending',
+            });
+        }
 
         await supabase.rpc('log_audit', {
           p_actor: 'system:webhook',
@@ -238,17 +217,33 @@ async function processKiwifyEvent(
         break;
 
       case 'purchase_approved':
-        await supabase
-          .from('profiles')
-          .upsert({
-            id: userId,
-            email,
-            name,
-            plano: product,
-            status_pagamento: 'approved',
-            kiwify_order_id: orderId,
-            last_paid_at: transactionDate ? new Date(transactionDate) : new Date(),
-          }, { onConflict: 'email' });
+        if (existingProfile) {
+          // Update existing profile
+          await supabase
+            .from('profiles')
+            .update({
+              name: name || existingProfile.name,
+              phone: phone || existingProfile.phone,
+              plano: product,
+              status_pagamento: 'approved',
+              kiwify_order_id: orderId,
+              last_paid_at: transactionDate ? new Date(transactionDate) : new Date(),
+            })
+            .eq('id', existingProfile.id);
+        } else {
+          // Create new profile
+          await supabase
+            .from('profiles')
+            .insert({
+              email,
+              name,
+              phone,
+              plano: product,
+              status_pagamento: 'approved',
+              kiwify_order_id: orderId,
+              last_paid_at: transactionDate ? new Date(transactionDate) : new Date(),
+            });
+        }
 
         await supabase.rpc('log_audit', {
           p_actor: 'system:webhook',
@@ -261,18 +256,22 @@ async function processKiwifyEvent(
 
       case 'purchase_refunded':
       case 'subscription_canceled':
-        await supabase
-          .from('profiles')
-          .update({ status_pagamento: 'revoked' })
-          .eq('email', email);
+        if (existingProfile) {
+          await supabase
+            .from('profiles')
+            .update({ status_pagamento: 'revoked' })
+            .eq('id', existingProfile.id);
 
-        await supabase.rpc('log_audit', {
-          p_actor: 'system:webhook',
-          p_action: 'user_revoked',
-          p_meta: { email, order_id: orderId, reason: event },
-        });
+          await supabase.rpc('log_audit', {
+            p_actor: 'system:webhook',
+            p_action: 'user_revoked',
+            p_meta: { email, order_id: orderId, reason: event },
+          });
 
-        console.log('User revoked:', email);
+          console.log('User revoked:', email);
+        } else {
+          console.log('Profile not found for revocation:', email);
+        }
         break;
 
       default:
