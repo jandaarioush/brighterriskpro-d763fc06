@@ -186,7 +186,7 @@ async function processKiwifyEvent(
       case 'purchase_created':
         if (existingProfile) {
           // Update existing profile
-          await supabase
+          const { error: updateError } = await supabase
             .from('profiles')
             .update({
               name: name || existingProfile.name,
@@ -195,17 +195,29 @@ async function processKiwifyEvent(
               status_pagamento: 'pending',
             })
             .eq('id', existingProfile.id);
+          
+          if (updateError) {
+            console.error('Error updating profile:', updateError);
+            throw updateError;
+          }
         } else {
-          // Create new profile without id (will be created by trigger when user signs up)
-          await supabase
+          // Create new profile with generated id
+          const newProfileId = crypto.randomUUID();
+          const { error: insertError } = await supabase
             .from('profiles')
             .insert({
+              id: newProfileId,
               email,
               name,
               phone,
               plano: product,
               status_pagamento: 'pending',
             });
+          
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+            throw insertError;
+          }
         }
 
         await supabase.rpc('log_audit', {
@@ -219,7 +231,7 @@ async function processKiwifyEvent(
       case 'purchase_approved':
         if (existingProfile) {
           // Update existing profile
-          await supabase
+          const { error: updateError } = await supabase
             .from('profiles')
             .update({
               name: name || existingProfile.name,
@@ -230,11 +242,18 @@ async function processKiwifyEvent(
               last_paid_at: transactionDate ? new Date(transactionDate) : new Date(),
             })
             .eq('id', existingProfile.id);
+          
+          if (updateError) {
+            console.error('Error updating profile:', updateError);
+            throw updateError;
+          }
         } else {
-          // Create new profile
-          await supabase
+          // Create new profile with generated id
+          const newProfileId = crypto.randomUUID();
+          const { error: insertError } = await supabase
             .from('profiles')
             .insert({
+              id: newProfileId,
               email,
               name,
               phone,
@@ -243,6 +262,11 @@ async function processKiwifyEvent(
               kiwify_order_id: orderId,
               last_paid_at: transactionDate ? new Date(transactionDate) : new Date(),
             });
+          
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+            throw insertError;
+          }
         }
 
         await supabase.rpc('log_audit', {
@@ -257,10 +281,15 @@ async function processKiwifyEvent(
       case 'purchase_refunded':
       case 'subscription_canceled':
         if (existingProfile) {
-          await supabase
+          const { error: revokeError } = await supabase
             .from('profiles')
             .update({ status_pagamento: 'revoked' })
             .eq('id', existingProfile.id);
+
+          if (revokeError) {
+            console.error('Error revoking profile:', revokeError);
+            throw revokeError;
+          }
 
           await supabase.rpc('log_audit', {
             p_actor: 'system:webhook',
