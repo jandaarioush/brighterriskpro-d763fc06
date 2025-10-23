@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageCircle, Mail, Clock, HelpCircle } from "lucide-react";
+import { Mail, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -44,34 +44,16 @@ const Suporte = () => {
       {/* Canais de Suporte */}
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
-            <Card className="p-8 text-center hover:shadow-lg transition-all">
+          <div className="flex justify-center mb-16">
+            <Card className="p-8 text-center hover:shadow-lg transition-all max-w-md w-full">
               <Mail className="w-12 h-12 text-primary mx-auto mb-4" />
               <h3 className="font-montserrat text-xl font-bold mb-2">Email</h3>
               <p className="text-muted-foreground mb-4">
                 Resposta em até 24 horas
               </p>
-              <a href="mailto:suporte@brighterriskpro.com" className="text-primary hover:underline">
-                suporte@brighterriskpro.com
+              <a href="mailto:contato@brighter.com.br" className="text-primary hover:underline">
+                contato@brighter.com.br
               </a>
-            </Card>
-
-            <Card className="p-8 text-center hover:shadow-lg transition-all">
-              <MessageCircle className="w-12 h-12 text-success mx-auto mb-4" />
-              <h3 className="font-montserrat text-xl font-bold mb-2">Chat ao Vivo</h3>
-              <p className="text-muted-foreground mb-4">
-                Disponível das 9h às 18h
-              </p>
-              <Button>Iniciar Chat</Button>
-            </Card>
-
-            <Card className="p-8 text-center hover:shadow-lg transition-all">
-              <Clock className="w-12 h-12 text-danger mx-auto mb-4" />
-              <h3 className="font-montserrat text-xl font-bold mb-2">Suporte Prioritário</h3>
-              <p className="text-muted-foreground mb-4">
-                Para clientes Premium 24/7
-              </p>
-              <Button variant="outline">Saiba Mais</Button>
             </Card>
           </div>
 
