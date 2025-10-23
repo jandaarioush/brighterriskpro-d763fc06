@@ -140,9 +140,10 @@ const Contato = () => {
                     <div>
                       <h3 className="font-semibold mb-2">Endereço</h3>
                       <p className="text-muted-foreground">
-                        Av. Paulista, 1000<br />
+                        Avenida Paulista, 1636, Sala 1105<br />
                         São Paulo - SP<br />
-                        CEP: 01310-100
+                        CEP: 01310-200<br />
+                        Edifício Paulista Corporate
                       </p>
                     </div>
                   </div>
