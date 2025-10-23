@@ -38,3 +38,10 @@ export function formatDateTimePtBR(date: Date) {
 function capitalize(s: string) {
   return s ? s[0].toUpperCase() + s.slice(1) : s;
 }
+
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+}

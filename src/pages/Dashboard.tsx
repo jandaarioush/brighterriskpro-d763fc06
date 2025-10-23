@@ -3,6 +3,7 @@ import { RiskCalculator } from "@/components/RiskCalculator";
 import { TradeForm } from "@/components/TradeForm";
 import { MonthHeatmap } from "@/components/MonthHeatmap";
 import GreetingBanner from "@/components/GreetingBanner";
+import { PnLEvolutionChart } from "@/components/PnLEvolutionChart";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -182,13 +183,7 @@ export default function Dashboard() {
         {/* Charts and Tools */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2">
-            <Card className="p-6 h-full">
-              <h3 className="text-lg font-semibold mb-4">Evolução do PnL Diário</h3>
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                {/* Chart component would go here */}
-                <p>Gráfico de evolução do PnL</p>
-              </div>
-            </Card>
+            <PnLEvolutionChart userId={user?.id || ""} defaultPeriod="month" showFilters={true} />
           </div>
           
           <RiskCalculator />

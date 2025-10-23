@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { calculateMonthData, calculateMonthlyStats, Trade } from '@/lib/riskCalculations';
 import { MonthlyRiskDialog } from '@/components/MonthlyRiskDialog';
 import { QuickTradeDialog } from '@/components/QuickTradeDialog';
+import { DailyWeeklyCharts } from '@/components/DailyWeeklyCharts';
 import { toast } from 'sonner';
 
 export default function Calendar() {
@@ -199,22 +200,8 @@ export default function Calendar() {
           </Card>
         </div>
 
-        {/* Evolution Charts Placeholder */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Evolução Diária</h3>
-            <div className="h-48 flex items-center justify-center text-muted-foreground">
-              Nenhum trade registrado ainda
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Evolução Semanal</h3>
-            <div className="h-48 flex items-center justify-center text-muted-foreground">
-              Nenhum trade registrado ainda
-            </div>
-          </Card>
-        </div>
+        {/* Evolution Charts */}
+        <DailyWeeklyCharts trades={trades} currentMonth={currentMonth} monthlyRisk={monthlyRisk || 0} />
 
         {/* Summary and Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
