@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PeriodFilter, PeriodType } from "./PeriodFilter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { processEvolutionData, Trade as ChartTrade } from "@/lib/chartDataProcessing";
 import type { Database } from "@/integrations/supabase/types";
@@ -75,6 +75,17 @@ export function PnLEvolutionChart({
     () => processEvolutionData(trades, startDate, endDate),
     [trades, startDate, endDate]
   );
+
+  const getBarColor = (value: number) => {
+    if (value > 0) return "hsl(var(--chart-2))"; // Verde
+    if (value < 0) return "hsl(var(--chart-1))"; // Vermelho
+    return "hsl(var(--muted))"; // Neutro para zero
+  };
+
+  const getLineColor = (value: number) => {
+    if (value >= 0) return "hsl(var(--chart-2))"; // Verde
+    return "hsl(var(--chart-1))"; // Vermelho
+  };
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -164,9 +175,13 @@ export function PnLEvolutionChart({
                   <Line
                     type="monotone"
                     dataKey="cumulativeResult"
-                    stroke="hsl(var(--primary))"
+                    stroke="hsl(var(--chart-2))"
                     strokeWidth={2}
-                    dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                    dot={(props: any) => {
+                      const { cx, cy, payload } = props;
+                      const color = getLineColor(payload.cumulativeResult);
+                      return <circle cx={cx} cy={cy} r={4} fill={color} />;
+                    }}
                     activeDot={{ r: 6 }}
                   />
                 </LineChart>
@@ -191,9 +206,12 @@ export function PnLEvolutionChart({
                   <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
                   <Bar
                     dataKey="dailyResult"
-                    fill="hsl(var(--primary))"
                     radius={[4, 4, 0, 0]}
-                  />
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={getBarColor(entry.dailyResult)} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </TabsContent>
