@@ -209,9 +209,7 @@ export default function Demo() {
           <div className="space-y-12">
             {/* Title and Subtitle - Centered */}
             <div className="space-y-4 text-center max-w-4xl mx-auto">
-              <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
-                Brighter Risk Pro — Gestão de Risco em tempo real, do jeito certo.
-              </h1>
+              <h1 className="text-4xl lg:text-5xl font-bold leading-tight">Brighter Risk Pro - Gestão de Risco em tempo real e do jeito certo.</h1>
               <p className="text-lg text-[#d99516]">Pare de operar no escuro: transforme risco em direção todos os dias. </p>
             </div>
 
@@ -351,9 +349,7 @@ export default function Demo() {
               {[...Array(5)].map((_, i) => <Star key={i} className="w-6 h-6 fill-primary text-primary" />)}
               <span className="text-2xl font-bold ml-2">4.9</span>
             </div>
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-              +1.000 traders confiam no Brighter Risk Pro
-            </h2>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">+500 traders confiam no Brighter Risk Pro</h2>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
