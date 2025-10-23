@@ -12,116 +12,86 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { VideoModal } from "@/components/VideoModal";
 import { usePhoneMask } from "@/hooks/usePhoneMask";
-import { 
-  Calculator, 
-  Shield, 
-  TrendingUp, 
-  Bell, 
-  FileText, 
-  Headphones, 
-  Target, 
-  Upload, 
-  Activity,
-  Lock,
-  CheckCircle,
-  MessageCircle,
-  Star,
-  ArrowRight
-} from "lucide-react";
+import { Calculator, Shield, TrendingUp, Bell, FileText, Headphones, Target, Upload, Activity, Lock, CheckCircle, MessageCircle, Star, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-
 const formSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
   email: z.string().email("E-mail inválido"),
   whatsapp: z.string().regex(/^\+55\s\(\d{2}\)\s\d{5}-\d{4}$/, "WhatsApp no formato +55 (11) 97048-1021"),
   lgpd: z.boolean().refine(val => val === true, "Você precisa aceitar os termos")
 });
-
 type FormData = z.infer<typeof formSchema>;
-
-const features = [
-  {
-    icon: Calculator,
-    title: "Cálculo Dinâmico",
-    description: "Risco diário e mensal calculado automaticamente baseado nos seus parâmetros"
-  },
-  {
-    icon: Shield,
-    title: "Stops Automáticos",
-    description: "Metas e travas consistentes com sua gestão de risco"
-  },
-  {
-    icon: TrendingUp,
-    title: "Gráficos de Evolução",
-    description: "Acompanhe seu desempenho diário, semanal e mensal"
-  },
-  {
-    icon: Bell,
-    title: "Alertas Visuais",
-    description: "Notificações de excesso de risco e travas acionadas"
-  },
-  {
-    icon: FileText,
-    title: "Import/Export CSV",
-    description: "Integração com planilhas para importar e exportar dados"
-  },
-  {
-    icon: Headphones,
-    title: "Suporte Humano",
-    description: "Atendimento personalizado quando você precisar"
-  }
-];
-
-const steps = [
-  {
-    icon: Target,
-    number: "01",
-    title: "Defina seu risco",
-    description: "Configure seu risco mensal e perfil operacional"
-  },
-  {
-    icon: Upload,
-    number: "02",
-    title: "Registre operações",
-    description: "Lance suas operações ou conecte sua planilha"
-  },
-  {
-    icon: Activity,
-    number: "03",
-    title: "Opere com disciplina",
-    description: "Deixe o sistema ajustar o risco e avisar sobre desvios"
-  }
-];
-
-const testimonials = [
-  {
-    name: "Carlos Silva",
-    role: "Day Trader - Mini-índice",
-    text: "Desde que comecei a usar o Brighter Risk Pro, minha disciplina melhorou 100%. Não opero mais no escuro.",
-    rating: 5
-  },
-  {
-    name: "Marina Costa",
-    role: "Swing Trader - Mini-dólar",
-    text: "A gestão de risco automática me economiza horas por semana. Recomendo para qualquer trader sério.",
-    rating: 5
-  },
-  {
-    name: "Roberto Almeida",
-    role: "Trader Profissional",
-    text: "Ferramenta indispensável. Os alertas visuais me salvaram de vários drawdowns desnecessários.",
-    rating: 5
-  }
-];
-
+const features = [{
+  icon: Calculator,
+  title: "Cálculo Dinâmico",
+  description: "Risco diário e mensal calculado automaticamente baseado nos seus parâmetros"
+}, {
+  icon: Shield,
+  title: "Stops Automáticos",
+  description: "Metas e travas consistentes com sua gestão de risco"
+}, {
+  icon: TrendingUp,
+  title: "Gráficos de Evolução",
+  description: "Acompanhe seu desempenho diário, semanal e mensal"
+}, {
+  icon: Bell,
+  title: "Alertas Visuais",
+  description: "Notificações de excesso de risco e travas acionadas"
+}, {
+  icon: FileText,
+  title: "Import/Export CSV",
+  description: "Integração com planilhas para importar e exportar dados"
+}, {
+  icon: Headphones,
+  title: "Suporte Humano",
+  description: "Atendimento personalizado quando você precisar"
+}];
+const steps = [{
+  icon: Target,
+  number: "01",
+  title: "Defina seu risco",
+  description: "Configure seu risco mensal e perfil operacional"
+}, {
+  icon: Upload,
+  number: "02",
+  title: "Registre operações",
+  description: "Lance suas operações ou conecte sua planilha"
+}, {
+  icon: Activity,
+  number: "03",
+  title: "Opere com disciplina",
+  description: "Deixe o sistema ajustar o risco e avisar sobre desvios"
+}];
+const testimonials = [{
+  name: "Carlos Silva",
+  role: "Day Trader - Mini-índice",
+  text: "Desde que comecei a usar o Brighter Risk Pro, minha disciplina melhorou 100%. Não opero mais no escuro.",
+  rating: 5
+}, {
+  name: "Marina Costa",
+  role: "Swing Trader - Mini-dólar",
+  text: "A gestão de risco automática me economiza horas por semana. Recomendo para qualquer trader sério.",
+  rating: 5
+}, {
+  name: "Roberto Almeida",
+  role: "Trader Profissional",
+  text: "Ferramenta indispensável. Os alertas visuais me salvaram de vários drawdowns desnecessários.",
+  rating: 5
+}];
 export default function Demo() {
   const [showModal, setShowModal] = useState(false);
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const phoneInput = usePhoneMask("+55 ");
   const playerRef = useRef<any>(null);
   const formRef = useRef<HTMLDivElement>(null);
-
-  const { register, handleSubmit, formState: { errors }, setValue } = useForm<FormData>({
+  const {
+    register,
+    handleSubmit,
+    formState: {
+      errors
+    },
+    setValue
+  } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       lgpd: false
@@ -144,9 +114,11 @@ export default function Demo() {
   useEffect(() => {
     console.log('Analytics: view_demo', getUTMParams());
   }, []);
-
   const trackEvent = (eventName: string, data?: any) => {
-    console.log(`Analytics: ${eventName}`, { ...data, ...getUTMParams() });
+    console.log(`Analytics: ${eventName}`, {
+      ...data,
+      ...getUTMParams()
+    });
   };
 
   // YouTube IFrame API
@@ -155,12 +127,12 @@ export default function Demo() {
     tag.src = 'https://www.youtube.com/iframe_api';
     const firstScriptTag = document.getElementsByTagName('script')[0];
     firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-
     (window as any).onYouTubeIframeAPIReady = () => {
       playerRef.current = new (window as any).YT.Player('youtube-player', {
         events: {
           onStateChange: (event: any) => {
-            if (event.data === 0) { // Video ended
+            if (event.data === 0) {
+              // Video ended
               setShowModal(true);
               trackEvent('video_completed');
             }
@@ -177,34 +149,32 @@ export default function Demo() {
         setShowStickyCTA(window.scrollY > 600);
       }
     };
-
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
   const onSubmit = (data: FormData) => {
-    console.log('Form submitted:', { ...data, ...getUTMParams() });
+    console.log('Form submitted:', {
+      ...data,
+      ...getUTMParams()
+    });
     trackEvent('form_submit', data);
     toast.success("Cadastro recebido! Em breve entraremos em contato.");
     // TODO: Integrar com backend/CRM
   };
-
   const handleCTAClick = (source: string, url: string) => {
     trackEvent(`cta_test_${source}`);
     window.open(url, '_blank');
   };
-
   const handleWhatsAppClick = () => {
     trackEvent('cta_whatsapp');
     window.open('https://wa.me/5511970481021?text=Quero%20testar%20o%20Brighter%20Risk%20Pro', '_blank');
   };
-
   const scrollToForm = () => {
-    formRef.current?.scrollIntoView({ behavior: 'smooth' });
+    formRef.current?.scrollIntoView({
+      behavior: 'smooth'
+    });
   };
-
-  return (
-    <>
+  return <>
       <Helmet>
         <title>Brighter Risk Pro — Gestão de Risco para Traders</title>
         <meta name="description" content="Gestão de risco dinâmica, metas e travas inteligentes. Disciplina operacional com o Brighter Risk Pro." />
@@ -224,18 +194,10 @@ export default function Demo() {
             </Link>
             
             <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => handleCTAClick('navbar_monthly', 'https://pay.kiwify.com.br/mRJhvxj')}
-                className="hidden sm:inline-flex"
-              >
+              <Button variant="outline" size="sm" onClick={() => handleCTAClick('navbar_monthly', 'https://pay.kiwify.com.br/mRJhvxj')} className="hidden sm:inline-flex">
                 Conta Mensal
               </Button>
-              <Button 
-                size="sm"
-                onClick={() => handleCTAClick('navbar_annual', 'https://pay.kiwify.com.br/dPyrB1E')}
-              >
+              <Button size="sm" onClick={() => handleCTAClick('navbar_annual', 'https://pay.kiwify.com.br/dPyrB1E')}>
                 Conta Anual
               </Button>
             </div>
@@ -250,25 +212,13 @@ export default function Demo() {
               <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
                 Brighter Risk Pro — Gestão de Risco em tempo real, do jeito certo.
               </h1>
-              <p className="text-lg text-muted-foreground">
-                Pare de operar no escuro: transforme risco em direção, todos os dias. 
-                Latência zero visual • Cálculo dinâmico • Disciplina operacional.
-              </p>
+              <p className="text-lg text-[#d99516]">Pare de operar no escuro: transforme risco em direção todos os dias. </p>
             </div>
 
             {/* YouTube Video - Centered */}
             <div className="max-w-4xl mx-auto">
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted shadow-lg">
-                <iframe
-                  id="youtube-player"
-                  src="https://www.youtube-nocookie.com/embed/Q6EzShwpwXw?si=-8yemQzIDTazV4xS&controls=0&enablejsapi=1"
-                  title="YouTube video player"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
-                  className="w-full h-full"
-                  loading="lazy"
-                />
+                <iframe id="youtube-player" src="https://www.youtube-nocookie.com/embed/Q6EzShwpwXw?si=-8yemQzIDTazV4xS&controls=0&enablejsapi=1" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen className="w-full h-full" loading="lazy" />
               </div>
             </div>
 
@@ -285,44 +235,29 @@ export default function Demo() {
                   <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Nome completo</Label>
-                      <Input 
-                        id="name" 
-                        placeholder="Seu nome"
-                        {...register("name")}
-                      />
+                      <Input id="name" placeholder="Seu nome" {...register("name")} />
                       {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="email">E-mail</Label>
-                      <Input 
-                        id="email" 
-                        type="email"
-                        placeholder="seu@email.com"
-                        {...register("email")}
-                      />
+                      <Input id="email" type="email" placeholder="seu@email.com" {...register("email")} />
                       {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="whatsapp">WhatsApp</Label>
-                      <Input 
-                        id="whatsapp"
-                        value={phoneInput.value}
-                        onChange={(e) => {
-                          const masked = phoneInput.handleChange(e.target.value);
-                          setValue("whatsapp", masked, { shouldValidate: true });
-                        }}
-                        placeholder="+55 (11) 97048-1021"
-                      />
+                      <Input id="whatsapp" value={phoneInput.value} onChange={e => {
+                      const masked = phoneInput.handleChange(e.target.value);
+                      setValue("whatsapp", masked, {
+                        shouldValidate: true
+                      });
+                    }} placeholder="+55 (11) 97048-1021" />
                       {errors.whatsapp && <p className="text-sm text-destructive">{errors.whatsapp.message}</p>}
                     </div>
 
                     <div className="flex items-start space-x-2">
-                      <Checkbox 
-                        id="lgpd"
-                        onCheckedChange={(checked) => setValue("lgpd", checked === true)}
-                      />
+                      <Checkbox id="lgpd" onCheckedChange={checked => setValue("lgpd", checked === true)} />
                       <label htmlFor="lgpd" className="text-sm text-muted-foreground leading-tight cursor-pointer">
                         Autorizo o contato e concordo com os <Link to="/termos-de-uso" className="text-primary hover:underline">Termos de Uso</Link> e <Link to="/politica-privacidade" className="text-primary hover:underline">Política de Privacidade</Link>
                       </label>
@@ -333,13 +268,7 @@ export default function Demo() {
                       Criar Conta Agora
                     </Button>
 
-                    <Button 
-                      type="button"
-                      variant="outline" 
-                      size="lg" 
-                      className="w-full"
-                      onClick={handleWhatsAppClick}
-                    >
+                    <Button type="button" variant="outline" size="lg" className="w-full" onClick={handleWhatsAppClick}>
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Falar no WhatsApp
                     </Button>
@@ -373,15 +302,13 @@ export default function Demo() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature, index) => (
-              <Card key={index} className="bg-card border-border hover:shadow-lg transition-shadow">
+            {features.map((feature, index) => <Card key={index} className="bg-card border-border hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <feature.icon className="w-10 h-10 text-primary mb-4" />
                   <CardTitle className="text-xl">{feature.title}</CardTitle>
                   <CardDescription>{feature.description}</CardDescription>
                 </CardHeader>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </section>
 
@@ -397,8 +324,7 @@ export default function Demo() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {steps.map((step, index) => (
-              <div key={index} className="relative">
+            {steps.map((step, index) => <div key={index} className="relative">
                 <Card className="bg-card border-border h-full">
                   <CardHeader className="text-center">
                     <div className="mx-auto mb-4 relative">
@@ -413,11 +339,8 @@ export default function Demo() {
                     <CardDescription>{step.description}</CardDescription>
                   </CardHeader>
                 </Card>
-                {index < steps.length - 1 && (
-                  <ArrowRight className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2 text-primary w-8 h-8" />
-                )}
-              </div>
-            ))}
+                {index < steps.length - 1 && <ArrowRight className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2 text-primary w-8 h-8" />}
+              </div>)}
           </div>
         </section>
 
@@ -425,9 +348,7 @@ export default function Demo() {
         <section className="container mx-auto px-4 py-16 bg-muted/30">
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-2 mb-4">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-6 h-6 fill-primary text-primary" />
-              ))}
+              {[...Array(5)].map((_, i) => <Star key={i} className="w-6 h-6 fill-primary text-primary" />)}
               <span className="text-2xl font-bold ml-2">4.9</span>
             </div>
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
@@ -436,13 +357,10 @@ export default function Demo() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="bg-card border-border">
+            {testimonials.map((testimonial, index) => <Card key={index} className="bg-card border-border">
                 <CardHeader>
                   <div className="flex gap-1 mb-3">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-primary text-primary" />
-                    ))}
+                    {[...Array(testimonial.rating)].map((_, i) => <Star key={i} className="w-4 h-4 fill-primary text-primary" />)}
                   </div>
                   <CardDescription className="text-base text-foreground mb-4">
                     "{testimonial.text}"
@@ -452,8 +370,7 @@ export default function Demo() {
                     <p className="text-sm text-muted-foreground">{testimonial.role}</p>
                   </div>
                 </CardHeader>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </section>
 
@@ -519,19 +436,10 @@ export default function Demo() {
               Junte-se a mais de 1.000 traders que já transformaram sua gestão de risco
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg"
-                className="text-lg px-8 py-6"
-                onClick={() => handleCTAClick('final_monthly', 'https://pay.kiwify.com.br/mRJhvxj')}
-              >
+              <Button size="lg" className="text-lg px-8 py-6" onClick={() => handleCTAClick('final_monthly', 'https://pay.kiwify.com.br/mRJhvxj')}>
                 Criar minha conta mensal agora!
               </Button>
-              <Button 
-                size="lg"
-                variant="outline"
-                className="text-lg px-8 py-6"
-                onClick={() => handleCTAClick('final_annual', 'https://pay.kiwify.com.br/dPyrB1E')}
-              >
+              <Button size="lg" variant="outline" className="text-lg px-8 py-6" onClick={() => handleCTAClick('final_annual', 'https://pay.kiwify.com.br/dPyrB1E')}>
                 Criar minha conta anual agora!
               </Button>
             </div>
@@ -567,29 +475,17 @@ export default function Demo() {
         </footer>
 
         {/* Sticky Mobile CTA */}
-        {showStickyCTA && (
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 p-4 bg-background/95 backdrop-blur border-t border-border shadow-lg">
-            <Button 
-              size="lg" 
-              className="w-full"
-              onClick={scrollToForm}
-            >
+        {showStickyCTA && <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 p-4 bg-background/95 backdrop-blur border-t border-border shadow-lg">
+            <Button size="lg" className="w-full" onClick={scrollToForm}>
               Testar Agora
             </Button>
-          </div>
-        )}
+          </div>}
 
         {/* Video End Modal */}
-        <VideoModal 
-          open={showModal}
-          onOpenChange={setShowModal}
-          onCreateAccount={() => {
-            trackEvent('cta_test_modal');
-            window.open('https://pay.kiwify.com.br/mRJhvxj', '_blank');
-          }}
-          onWhatsApp={handleWhatsAppClick}
-        />
+        <VideoModal open={showModal} onOpenChange={setShowModal} onCreateAccount={() => {
+        trackEvent('cta_test_modal');
+        window.open('https://pay.kiwify.com.br/mRJhvxj', '_blank');
+      }} onWhatsApp={handleWhatsAppClick} />
       </div>
-    </>
-  );
+    </>;
 }
