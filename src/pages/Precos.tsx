@@ -53,10 +53,6 @@ const Precos = () => {
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5 text-success flex-shrink-0" />
-                  <span>Integração com APIs de corretoras</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-success flex-shrink-0" />
                   <span>Heatmaps e gráficos personalizados</span>
                 </li>
                 <li className="flex items-center gap-3">

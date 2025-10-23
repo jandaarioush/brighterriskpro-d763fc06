@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Shield, BarChart3, FileText, TrendingUp, Target, Zap, Calendar, Bell } from "lucide-react";
+import { Shield, BarChart3, FileText, TrendingUp, Target, Calendar, Bell } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Recursos = () => {
@@ -95,14 +95,6 @@ const Recursos = () => {
               <h3 className="font-montserrat text-xl font-bold mb-3">Alertas Inteligentes</h3>
               <p className="text-muted-foreground">
                 Receba notificações quando atingir limites de risco ou metas de lucro
-              </p>
-            </Card>
-
-            <Card className="p-6 hover:shadow-lg transition-all">
-              <Zap className="w-12 h-12 text-success mb-4" />
-              <h3 className="font-montserrat text-xl font-bold mb-3">Integração com APIs</h3>
-              <p className="text-muted-foreground">
-                Conecte com sua corretora para importação automática de trades
               </p>
             </Card>
 

@@ -223,10 +223,9 @@ const Index = () => {
           <Card className="p-8 md:p-12 border-primary bg-gradient-to-br from-primary/10 to-background">
             <div className="grid md:grid-cols-2 gap-8 mb-12">
               {[
-                "Métricas avançadas de performance",
-                "Relatórios exportáveis (PDF/Excel)",
-                "Integração com APIs de corretoras",
-                "Heatmaps e gráficos personalizados",
+            "Métricas avançadas de performance",
+            "Relatórios exportáveis (PDF/Excel)",
+            "Heatmaps e gráficos personalizados",
                 "Sistema de gamificação e conquistas",
                 "Suporte prioritário 24/7",
                 "Backup automático em nuvem",

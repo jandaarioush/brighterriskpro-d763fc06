@@ -170,18 +170,6 @@ const Suporte = () => {
                   <div className="flex gap-4">
                     <HelpCircle className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold mb-2">Como conectar minha corretora?</h3>
-                      <p className="text-muted-foreground text-sm">
-                        Acesse Configurações → Integrações e siga o passo a passo para conectar sua API.
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-6">
-                  <div className="flex gap-4">
-                    <HelpCircle className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
-                    <div>
                       <h3 className="font-semibold mb-2">Posso mudar de plano?</h3>
                       <p className="text-muted-foreground text-sm">
                         Sim! Você pode fazer upgrade ou downgrade a qualquer momento em Configurações → Assinatura.
