@@ -244,26 +244,27 @@ export default function Demo() {
 
         {/* Hero Section */}
         <section className="container mx-auto px-4 py-12 lg:py-20">
-          <div className="grid lg:grid-cols-[1.2fr,1fr] gap-8 lg:gap-12 items-start">
-            {/* Left Column - Video */}
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
-                  Brighter Risk Pro — Gestão de Risco em tempo real, do jeito certo.
-                </h1>
-                <p className="text-lg text-muted-foreground">
-                  Pare de operar no escuro: transforme risco em direção, todos os dias. 
-                  Latência zero visual • Cálculo dinâmico • Disciplina operacional.
-                </p>
-              </div>
+          <div className="space-y-12">
+            {/* Title and Subtitle - Centered */}
+            <div className="space-y-4 text-center max-w-4xl mx-auto">
+              <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
+                Brighter Risk Pro — Gestão de Risco em tempo real, do jeito certo.
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                Pare de operar no escuro: transforme risco em direção, todos os dias. 
+                Latência zero visual • Cálculo dinâmico • Disciplina operacional.
+              </p>
+            </div>
 
-              {/* YouTube Video */}
+            {/* YouTube Video - Centered */}
+            <div className="max-w-4xl mx-auto">
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted shadow-lg">
                 <iframe
                   id="youtube-player"
-                  src="https://www.youtube.com/embed/Q6EzShwpwXw?enablejsapi=1"
-                  title="Vídeo de demonstração do Brighter Risk Pro"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  src="https://www.youtube-nocookie.com/embed/Q6EzShwpwXw?si=-8yemQzIDTazV4xS&controls=0&enablejsapi=1"
+                  title="YouTube video player"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
                   allowFullScreen
                   className="w-full h-full"
                   loading="lazy"
@@ -271,9 +272,9 @@ export default function Demo() {
               </div>
             </div>
 
-            {/* Right Column - Conversion Card */}
-            <div ref={formRef}>
-              <Card className="sticky top-24 shadow-xl bg-card border-border">
+            {/* Conversion Form - Centered Below Video */}
+            <div ref={formRef} className="max-w-xl mx-auto">
+              <Card className="shadow-xl bg-card border-border">
                 <CardHeader>
                   <CardTitle className="text-2xl">Comece Agora</CardTitle>
                   <CardDescription>
