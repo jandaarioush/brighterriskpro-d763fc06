@@ -117,8 +117,7 @@ const Contato = () => {
                     <Mail className="w-6 h-6 text-primary flex-shrink-0" />
                     <div>
                       <h3 className="font-semibold mb-2">Email</h3>
-                      <p className="text-muted-foreground">contato@brighterriskpro.com</p>
-                      <p className="text-muted-foreground">suporte@brighterriskpro.com</p>
+                      <p className="text-muted-foreground">contato@brighter.com.br</p>
                     </div>
                   </div>
                 </Card>
@@ -128,8 +127,8 @@ const Contato = () => {
                     <Phone className="w-6 h-6 text-success flex-shrink-0" />
                     <div>
                       <h3 className="font-semibold mb-2">Telefone</h3>
-                      <p className="text-muted-foreground">(11) 3000-0000</p>
-                      <p className="text-muted-foreground">WhatsApp: (11) 99999-9999</p>
+                      <p className="text-muted-foreground">+55 11 97048-1021</p>
+                      <p className="text-muted-foreground">WhatsApp: +55 11 97048-1021</p>
                     </div>
                   </div>
                 </Card>
@@ -155,9 +154,7 @@ const Contato = () => {
                     <div>
                       <h3 className="font-semibold mb-2">Horário de Atendimento</h3>
                       <p className="text-muted-foreground">
-                        Segunda a Sexta: 9h às 18h<br />
-                        Sábado: 9h às 13h<br />
-                        Domingo: Fechado
+                        Segunda a sexta: 09:00 as 18:00
                       </p>
                     </div>
                   </div>
