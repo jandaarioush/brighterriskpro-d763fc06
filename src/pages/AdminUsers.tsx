@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ interface UserProfile {
 }
 
 export default function AdminUsers() {
+  const { user } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchEmail, setSearchEmail] = useState('');
@@ -75,11 +77,15 @@ export default function AdminUsers() {
       if (error) throw error;
 
       // Log audit
-      const user = users.find((u) => u.id === userId);
+      const targetUser = users.find((u) => u.id === userId);
       await supabase.rpc('log_audit', {
-        p_actor: 'admin:manual',
+        p_actor: `admin:${user?.email}`,
         p_action: newStatus === 'approved' ? 'user_activated_manual' : 'user_revoked_manual',
-        p_meta: { email: user?.email, user_id: userId },
+        p_meta: { 
+          email: targetUser?.email, 
+          user_id: userId,
+          admin_id: user?.id
+        },
       });
 
       toast.success(

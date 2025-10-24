@@ -1,12 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Calendar, List, Settings, Activity } from "lucide-react";
+import { Home, Calendar, List, Settings, Activity, Shield, Users, Webhook } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import logoHorizontal from "@/assets/logo-brighter.png";
 
 export function Navbar() {
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const isActive = (path: string) => location.pathname === path;
 
   return (
@@ -79,7 +80,41 @@ export function Navbar() {
               <span className="font-medium hidden md:inline">Configurações</span>
             </Link>
 
+            {isAdmin && (
+              <>
+                <Link
+                  to="/admin/users"
+                  className={`px-4 py-2 rounded-md flex items-center gap-2 transition-all ${
+                    isActive("/admin/users")
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  <span className="font-medium hidden md:inline">Usuários</span>
+                </Link>
+                
+                <Link
+                  to="/admin/webhooks"
+                  className={`px-4 py-2 rounded-md flex items-center gap-2 transition-all ${
+                    isActive("/admin/webhooks")
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
+                >
+                  <Webhook className="w-4 h-4" />
+                  <span className="font-medium hidden md:inline">Webhooks</span>
+                </Link>
+              </>
+            )}
+
             <div className="flex items-center gap-2 ml-4 pl-4 border-l border-border">
+              {isAdmin && (
+                <Badge variant="default" className="gap-1">
+                  <Shield className="w-3 h-3" />
+                  Admin
+                </Badge>
+              )}
               <span className="text-sm text-muted-foreground hidden md:inline">
                 {user?.email}
               </span>

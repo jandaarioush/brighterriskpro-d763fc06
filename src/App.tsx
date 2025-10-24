@@ -29,6 +29,7 @@ import UploadVideos from "./pages/UploadVideos";
 import UploadAdmin from "./pages/UploadAdmin";
 import { Navbar } from "./components/Navbar";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { AdminRoute } from "./components/AdminRoute";
 
 const queryClient = new QueryClient();
 
@@ -119,8 +120,10 @@ const App = () => (
               path="/admin/webhooks"
               element={
                 <ProtectedRoute>
-                  <Navbar />
-                  <AdminWebhooks />
+                  <AdminRoute>
+                    <Navbar />
+                    <AdminWebhooks />
+                  </AdminRoute>
                 </ProtectedRoute>
               }
             />
@@ -128,8 +131,10 @@ const App = () => (
               path="/admin/users"
               element={
                 <ProtectedRoute>
-                  <Navbar />
-                  <AdminUsers />
+                  <AdminRoute>
+                    <Navbar />
+                    <AdminUsers />
+                  </AdminRoute>
                 </ProtectedRoute>
               }
             />
