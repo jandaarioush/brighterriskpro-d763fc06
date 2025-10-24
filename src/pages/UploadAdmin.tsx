@@ -18,11 +18,12 @@ interface VideoUpload {
 }
 
 const EXPECTED_VIDEOS = [
-  { id: "1", title: "Vídeo 1 - Introdução", filename: "video-1-introducao.mp4" },
-  { id: "2", title: "Vídeo 2 - Dashboard", filename: "video-2-dashboard.mp4" },
-  { id: "3", title: "Vídeo 3 - Calendário", filename: "video-3-calendario.mp4" },
-  { id: "4", title: "Vídeo 4 - Trades", filename: "video-4-trades.mp4" },
-  { id: "5", title: "Vídeo 5 - Simulador", filename: "video-5-simulador.mp4" },
+  { id: "1", title: "Vídeo Principal - Demo", filename: "demo-video.mp4" },
+  { id: "2", title: "Tutorial 1 - Configurações de Risco", filename: "tutorial-01-configuracoes-risco.mp4" },
+  { id: "3", title: "Tutorial 2 - Registro de Operações", filename: "tutorial-02-registro-operacoes.mp4" },
+  { id: "4", title: "Tutorial 3 - Análise de Desempenho", filename: "tutorial-03-analise-desempenho.mp4" },
+  { id: "5", title: "Tutorial 4 - Simulador de Risco", filename: "tutorial-04-simulador-risco.mp4" },
+  { id: "6", title: "Tutorial 5 - Gestão de Capital", filename: "tutorial-05-gestao-capital.mp4" },
 ];
 
 export default function UploadAdmin() {
@@ -122,7 +123,7 @@ export default function UploadAdmin() {
           <CardHeader>
             <CardTitle className="text-2xl">Upload de Vídeos Administrativo</CardTitle>
             <CardDescription>
-              Envie os 5 vídeos tutoriais para o bucket 'videos'. Progresso: {successCount}/5
+              Envie os 6 vídeos (1 demo + 5 tutoriais) para o bucket 'videos'. Progresso: {successCount}/6
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
