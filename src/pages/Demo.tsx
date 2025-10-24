@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { VideoModal } from "@/components/VideoModal";
 import { usePhoneMask } from "@/hooks/usePhoneMask";
-import { Calculator, Shield, TrendingUp, Bell, FileText, Headphones, Target, Upload, Activity, Lock, CheckCircle, MessageCircle, Star, ArrowRight } from "lucide-react";
+import { Calculator, Shield, TrendingUp, Bell, FileText, Headphones, Target, Upload, Activity, Lock, CheckCircle, MessageCircle, Star, ArrowRight, Settings, LayoutDashboard, Calendar, BarChart3, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 const formSchema = z.object({
@@ -79,6 +79,48 @@ const testimonials = [{
   text: "Ferramenta indispensável. Os alertas visuais me salvaram de vários drawdowns desnecessários.",
   rating: 5
 }];
+const tutorialVideos = [
+  {
+    id: 1,
+    title: "Configurações do Risco Mensal",
+    description: "Aprenda a definir seu risco mensal e configurar seus parâmetros operacionais",
+    videoFile: "tutorial-01-configuracoes-risco.mp4",
+    icon: Settings,
+    duration: "5 min"
+  },
+  {
+    id: 2,
+    title: "Dashboard Inicial - Parte 1",
+    description: "Conheça todas as funcionalidades e métricas do seu dashboard principal",
+    videoFile: "tutorial-02-dashboard-parte1.mp4",
+    icon: LayoutDashboard,
+    duration: "7 min"
+  },
+  {
+    id: 3,
+    title: "Dashboard Inicial - Parte 2",
+    description: "Continuação: análise de gráficos e estatísticas avançadas",
+    videoFile: "tutorial-03-dashboard-parte2.mp4",
+    icon: TrendingUp,
+    duration: "6 min"
+  },
+  {
+    id: 4,
+    title: "Calendário de Operações",
+    description: "Como usar o calendário para visualizar e organizar suas operações",
+    videoFile: "tutorial-04-calendario.mp4",
+    icon: Calendar,
+    duration: "4 min"
+  },
+  {
+    id: 5,
+    title: "Trades e Simulador de Alavancagem",
+    description: "Registre operações e simule cenários com o simulador de alavancagem",
+    videoFile: "tutorial-05-trades-simulador.mp4",
+    icon: BarChart3,
+    duration: "8 min"
+  }
+];
 export default function Demo() {
   const [showModal, setShowModal] = useState(false);
   const [showStickyCTA, setShowStickyCTA] = useState(false);
@@ -274,6 +316,90 @@ export default function Demo() {
                   </form>
                 </CardContent>
               </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* Tutorial Videos Section */}
+        <section className="container mx-auto px-4 py-16 bg-gradient-to-b from-background to-muted/30">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full mb-4">
+              <PlayCircle className="w-5 h-5" />
+              <span className="font-semibold">Tutorial Completo</span>
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              Aprenda a usar todas as funcionalidades
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Tutoriais passo a passo para você dominar a plataforma e operar com máxima eficiência
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+            {tutorialVideos.map((video, index) => (
+              <Card 
+                key={video.id} 
+                className={`bg-card border-border hover:shadow-xl transition-all ${
+                  index === 4 ? 'md:col-span-2 md:max-w-2xl md:mx-auto' : ''
+                }`}
+              >
+                <CardHeader>
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <video.icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded">
+                          {video.duration}
+                        </span>
+                      </div>
+                      <CardTitle className="text-xl mb-2">{video.title}</CardTitle>
+                      <CardDescription>{video.description}</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                
+                <CardContent>
+                  <div className="relative aspect-video rounded-lg overflow-hidden bg-muted shadow-md">
+                    <video
+                      className="w-full h-full object-cover"
+                      controls
+                      playsInline
+                      preload="metadata"
+                      onPlay={() => trackEvent(`tutorial_video_play_${video.id}`)}
+                    >
+                      <source 
+                        src={`${supabase.storage.from('videos').getPublicUrl(video.videoFile).data.publicUrl}`}
+                        type="video/mp4" 
+                      />
+                      Seu navegador não suporta a reprodução de vídeos.
+                    </video>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* CTA após vídeos */}
+          <div className="text-center mt-12">
+            <p className="text-muted-foreground mb-4">
+              Gostou do que viu? Comece a usar agora mesmo!
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                size="lg" 
+                onClick={() => handleCTAClick('tutorial_monthly', 'https://pay.kiwify.com.br/mRJhvxj')}
+              >
+                Criar Conta Mensal
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline"
+                onClick={() => handleCTAClick('tutorial_annual', 'https://pay.kiwify.com.br/dPyrB1E')}
+              >
+                Criar Conta Anual
+              </Button>
             </div>
           </div>
         </section>
