@@ -212,7 +212,7 @@ export default function Demo() {
             {/* YouTube Video - Centered */}
             <div className="max-w-4xl mx-auto">
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted shadow-lg">
-                <iframe id="youtube-player" src="https://www.youtube-nocookie.com/embed/Q6EzShwpwXw?si=-8yemQzIDTazV4xS&controls=0&enablejsapi=1" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen className="w-full h-full" loading="lazy" />
+                <iframe id="youtube-player" src="https://www.youtube-nocookie.com/embed/92TBh8eRzeg?controls=0&enablejsapi=1" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen className="w-full h-full" loading="lazy" />
               </div>
             </div>
 
