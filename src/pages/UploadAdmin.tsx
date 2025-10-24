@@ -71,6 +71,9 @@ export default function UploadAdmin() {
       return;
     }
 
+    console.log(`[UPLOAD] Iniciando upload de: ${video.filename}`);
+    console.log(`[UPLOAD] Tamanho do arquivo: ${(video.file.size / 1024 / 1024).toFixed(2)}MB`);
+
     setVideos((prev) =>
       prev.map((v) =>
         v.id === video.id ? { ...v, status: "uploading" as const, progress: 0 } : v
@@ -78,16 +81,31 @@ export default function UploadAdmin() {
     );
 
     try {
-      const filePath = video.filename;
+      // Criar FormData para enviar à edge function
+      const formData = new FormData();
+      formData.append('file', video.file);
+      formData.append('fileName', video.filename);
 
-      const { error: uploadError } = await supabase.storage
-        .from("videos")
-        .upload(filePath, video.file, {
-          cacheControl: "3600",
-          upsert: true,
-        });
+      console.log(`[UPLOAD] Enviando para edge function upload-video...`);
 
-      if (uploadError) throw uploadError;
+      // Chamar a edge function usando supabase.functions.invoke
+      const { data, error } = await supabase.functions.invoke('upload-video', {
+        body: formData,
+      });
+
+      console.log(`[UPLOAD] Resposta recebida:`, { data, error });
+
+      if (error) {
+        console.error(`[UPLOAD] Erro da edge function:`, error);
+        throw new Error(error.message || "Erro ao chamar edge function");
+      }
+
+      if (!data?.success) {
+        console.error(`[UPLOAD] Upload falhou:`, data);
+        throw new Error(data?.error || "Upload falhou sem mensagem de erro");
+      }
+
+      console.log(`[UPLOAD] ✓ Upload concluído com sucesso:`, data.publicUrl);
 
       setVideos((prev) =>
         prev.map((v) =>
@@ -97,19 +115,22 @@ export default function UploadAdmin() {
 
       toast.success(`${video.title} enviado com sucesso!`);
     } catch (error: any) {
-      console.error("Erro ao fazer upload:", error);
+      console.error("[UPLOAD] ✗ Erro ao fazer upload:", error);
+      const errorMessage = error.message || "Erro desconhecido";
+      
       setVideos((prev) =>
         prev.map((v) =>
           v.id === video.id
             ? {
                 ...v,
                 status: "error" as const,
-                error: error.message || "Erro desconhecido",
+                error: errorMessage,
               }
             : v
         )
       );
-      toast.error(`Erro ao enviar ${video.title}: ${error.message}`);
+      
+      toast.error(`Erro ao enviar ${video.title}: ${errorMessage}`);
     }
   };
 
