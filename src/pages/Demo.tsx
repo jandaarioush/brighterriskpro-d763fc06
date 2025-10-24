@@ -14,6 +14,7 @@ import { VideoModal } from "@/components/VideoModal";
 import { usePhoneMask } from "@/hooks/usePhoneMask";
 import { Calculator, Shield, TrendingUp, Bell, FileText, Headphones, Target, Upload, Activity, Lock, CheckCircle, MessageCircle, Star, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 const formSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
   email: z.string().email("E-mail inválido"),
@@ -82,7 +83,7 @@ export default function Demo() {
   const [showModal, setShowModal] = useState(false);
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const phoneInput = usePhoneMask("+55 ");
-  const playerRef = useRef<any>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const {
     register,
@@ -121,26 +122,11 @@ export default function Demo() {
     });
   };
 
-  // YouTube IFrame API
-  useEffect(() => {
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-    (window as any).onYouTubeIframeAPIReady = () => {
-      playerRef.current = new (window as any).YT.Player('youtube-player', {
-        events: {
-          onStateChange: (event: any) => {
-            if (event.data === 0) {
-              // Video ended
-              setShowModal(true);
-              trackEvent('video_completed');
-            }
-          }
-        }
-      });
-    };
-  }, []);
+  // Handler para quando o vídeo HTML5 terminar
+  const handleVideoEnded = () => {
+    setShowModal(true);
+    trackEvent('video_completed');
+  };
 
   // Sticky CTA on scroll (mobile)
   useEffect(() => {
@@ -209,10 +195,23 @@ export default function Demo() {
               <p className="text-lg text-[#d99516]">Pare de operar no escuro: transforme risco em direção todos os dias. </p>
             </div>
 
-            {/* YouTube Video - Centered */}
+            {/* Video Player - Centered */}
             <div className="max-w-4xl mx-auto">
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted shadow-lg">
-                <iframe id="youtube-player" src="https://www.youtube-nocookie.com/embed/92TBh8eRzeg?controls=0&enablejsapi=1" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen className="w-full h-full" loading="lazy" />
+                <video
+                  ref={videoRef}
+                  className="w-full h-full object-cover"
+                  controls
+                  onEnded={handleVideoEnded}
+                  playsInline
+                  preload="metadata"
+                >
+                  <source 
+                    src={`${supabase.storage.from('videos').getPublicUrl('demo-video.mp4').data.publicUrl}`}
+                    type="video/mp4" 
+                  />
+                  Seu navegador não suporta a reprodução de vídeos.
+                </video>
               </div>
             </div>
 
