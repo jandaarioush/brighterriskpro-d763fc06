@@ -25,6 +25,7 @@ import TermosDeUso from "./pages/TermosDeUso";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import Cookies from "./pages/Cookies";
 import LGPD from "./pages/LGPD";
+import UploadVideos from "./pages/UploadVideos";
 import { Navbar } from "./components/Navbar";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 
@@ -66,6 +67,7 @@ const App = () => (
             <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
             <Route path="/cookies" element={<Cookies />} />
             <Route path="/lgpd" element={<LGPD />} />
+            <Route path="/upload-videos" element={<UploadVideos />} />
             <Route
               path="/dashboard"
               element={
