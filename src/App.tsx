@@ -26,6 +26,7 @@ import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import Cookies from "./pages/Cookies";
 import LGPD from "./pages/LGPD";
 import UploadVideos from "./pages/UploadVideos";
+import UploadAdmin from "./pages/UploadAdmin";
 import { Navbar } from "./components/Navbar";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 
@@ -68,6 +69,7 @@ const App = () => (
             <Route path="/cookies" element={<Cookies />} />
             <Route path="/lgpd" element={<LGPD />} />
             <Route path="/upload-videos" element={<UploadVideos />} />
+            <Route path="/upload-admin" element={<UploadAdmin />} />
             <Route
               path="/dashboard"
               element={
