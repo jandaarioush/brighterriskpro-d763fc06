@@ -92,7 +92,7 @@ const TermosDeUso = () => {
 
               <h2 className="text-2xl font-montserrat font-bold mb-4">12. Contato</h2>
               <p className="text-muted-foreground">
-                Para questões sobre estes termos, entre em contato conosco em: juridico@brighterriskpro.com
+                Para questões sobre estes termos, entre em contato conosco em: contato@brighter.com.br
               </p>
             </div>
           </Card>

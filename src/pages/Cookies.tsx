@@ -125,7 +125,7 @@ const Cookies = () => {
               <h2 className="text-2xl font-montserrat font-bold mb-4">Contato</h2>
               <p className="text-muted-foreground">
                 Se você tiver dúvidas sobre nossa política de cookies:<br />
-                Email: privacidade@brighterriskpro.com<br />
+                Email: contato@brighter.com.br<br />
                 Telefone: (11) 3000-0000
               </p>
             </div>

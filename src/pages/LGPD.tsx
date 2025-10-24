@@ -208,21 +208,6 @@ const LGPD = () => {
             </ul>
           </Card>
 
-          {/* DPO */}
-          <Card className="p-8 md:p-12 mb-12">
-            <h2 className="text-3xl font-montserrat font-bold mb-6">
-              Encarregado de Proteção de Dados (DPO)
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              Nosso Encarregado de Proteção de Dados está disponível para esclarecer dúvidas, receber solicitações e garantir o cumprimento da LGPD.
-            </p>
-            <div className="space-y-2 text-muted-foreground">
-              <p><strong>Nome:</strong> [Nome do DPO]</p>
-              <p><strong>Email:</strong> dpo@brighterriskpro.com</p>
-              <p><strong>Telefone:</strong> (11) 3000-0000</p>
-              <p><strong>Endereço:</strong> Av. Paulista, 1000 - São Paulo, SP - CEP: 01310-100</p>
-            </div>
-          </Card>
 
           {/* CTA */}
           <Card className="p-8 bg-primary/5 border-primary/30">

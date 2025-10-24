@@ -81,7 +81,7 @@ const PoliticaPrivacidade = () => {
                 <li>Obter informações sobre compartilhamento</li>
               </ul>
               <p className="text-muted-foreground mb-6">
-                Para exercer esses direitos, entre em contato: privacidade@brighterriskpro.com
+                Para exercer esses direitos, entre em contato: contato@brighter.com.br
               </p>
 
               <h2 className="text-2xl font-montserrat font-bold mb-4">7. Cookies e Tecnologias Similares</h2>
@@ -104,18 +104,11 @@ const PoliticaPrivacidade = () => {
                 Podemos atualizar esta política periodicamente. Notificaremos sobre mudanças significativas via email ou através da plataforma. Recomendamos revisar esta página regularmente.
               </p>
 
-              <h2 className="text-2xl font-montserrat font-bold mb-4">11. Encarregado de Proteção de Dados (DPO)</h2>
-              <p className="text-muted-foreground mb-6">
-                Para questões relacionadas à privacidade e proteção de dados, contate nosso DPO:<br />
-                Email: dpo@brighterriskpro.com<br />
-                Telefone: (11) 3000-0000
-              </p>
-
-              <h2 className="text-2xl font-montserrat font-bold mb-4">12. Contato</h2>
+              <h2 className="text-2xl font-montserrat font-bold mb-4">11. Contato</h2>
               <p className="text-muted-foreground">
                 Para dúvidas sobre esta política de privacidade:<br />
-                Email: privacidade@brighterriskpro.com<br />
-                Endereço: Av. Paulista, 1000 - São Paulo, SP - CEP: 01310-100
+                Email: contato@brighter.com.br<br />
+                Endereço: Avenida Paulista, 1636, Sala 1105 - São Paulo, SP - CEP: 01310-200 - Edifício Paulista Corporate
               </p>
             </div>
           </Card>
