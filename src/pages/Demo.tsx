@@ -165,10 +165,6 @@ export default function Demo() {
     trackEvent(`cta_test_${source}`);
     window.open(url, '_blank');
   };
-  const handleWhatsAppClick = () => {
-    trackEvent('cta_whatsapp');
-    window.open('https://wa.me/5511970481021?text=Quero%20testar%20o%20Brighter%20Risk%20Pro', '_blank');
-  };
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({
       behavior: 'smooth'
@@ -264,11 +260,6 @@ export default function Demo() {
 
                     <Button type="submit" size="lg" className="w-full">
                       Criar Conta Agora
-                    </Button>
-
-                    <Button type="button" variant="outline" size="lg" className="w-full" onClick={handleWhatsAppClick}>
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      Falar no WhatsApp
                     </Button>
 
                     <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground pt-2">
@@ -481,7 +472,7 @@ export default function Demo() {
         <VideoModal open={showModal} onOpenChange={setShowModal} onCreateAccount={() => {
         trackEvent('cta_test_modal');
         window.open('https://pay.kiwify.com.br/mRJhvxj', '_blank');
-      }} onWhatsApp={handleWhatsAppClick} />
+      }} />
       </div>
     </>;
 }

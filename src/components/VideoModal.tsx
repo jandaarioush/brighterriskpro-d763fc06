@@ -1,15 +1,14 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, CheckCircle } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 
 interface VideoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreateAccount: () => void;
-  onWhatsApp: () => void;
 }
 
-export const VideoModal = ({ open, onOpenChange, onCreateAccount, onWhatsApp }: VideoModalProps) => {
+export const VideoModal = ({ open, onOpenChange, onCreateAccount }: VideoModalProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-card border-border">
@@ -30,16 +29,6 @@ export const VideoModal = ({ open, onOpenChange, onCreateAccount, onWhatsApp }: 
             onClick={onCreateAccount}
           >
             Criar Minha Conta Agora
-          </Button>
-          
-          <Button 
-            size="lg" 
-            variant="outline"
-            className="w-full"
-            onClick={onWhatsApp}
-          >
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Falar no WhatsApp
           </Button>
         </div>
       </DialogContent>
