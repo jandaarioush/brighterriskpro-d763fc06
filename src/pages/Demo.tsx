@@ -10,11 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { VideoModal } from "@/components/VideoModal";
 import { usePhoneMask } from "@/hooks/usePhoneMask";
 import { Calculator, Shield, TrendingUp, Bell, FileText, Headphones, Target, Upload, Activity, Lock, CheckCircle, MessageCircle, Star, ArrowRight, Settings, LayoutDashboard, Calendar, BarChart3, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 const formSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
   email: z.string().email("E-mail inválido"),
@@ -84,7 +82,7 @@ const tutorialVideos = [
     id: 1,
     title: "Configurações do Risco Mensal",
     description: "Aprenda a definir seu risco mensal e configurar seus parâmetros operacionais",
-    videoFile: "tutorial-01-configuracoes-risco.mp4",
+    youtubeId: "zWl5uWGyg3U",
     icon: Settings,
     duration: "5 min"
   },
@@ -92,7 +90,7 @@ const tutorialVideos = [
     id: 2,
     title: "Dashboard Inicial - Parte 1",
     description: "Conheça todas as funcionalidades e métricas do seu dashboard principal",
-    videoFile: "tutorial-02-dashboard-parte1.mp4",
+    youtubeId: "fqHgX-zPYHI",
     icon: LayoutDashboard,
     duration: "7 min"
   },
@@ -100,7 +98,7 @@ const tutorialVideos = [
     id: 3,
     title: "Dashboard Inicial - Parte 2",
     description: "Continuação: análise de gráficos e estatísticas avançadas",
-    videoFile: "tutorial-03-dashboard-parte2.mp4",
+    youtubeId: "CrysTWd15Dg",
     icon: TrendingUp,
     duration: "6 min"
   },
@@ -108,7 +106,7 @@ const tutorialVideos = [
     id: 4,
     title: "Calendário de Operações",
     description: "Como usar o calendário para visualizar e organizar suas operações",
-    videoFile: "tutorial-04-calendario.mp4",
+    youtubeId: "T4OhZHgoaqg",
     icon: Calendar,
     duration: "4 min"
   },
@@ -116,16 +114,14 @@ const tutorialVideos = [
     id: 5,
     title: "Trades e Simulador de Alavancagem",
     description: "Registre operações e simule cenários com o simulador de alavancagem",
-    videoFile: "tutorial-05-trades-simulador.mp4",
+    youtubeId: "qG7tEpTDv74",
     icon: BarChart3,
     duration: "8 min"
   }
 ];
 export default function Demo() {
-  const [showModal, setShowModal] = useState(false);
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const phoneInput = usePhoneMask("+55 ");
-  const videoRef = useRef<HTMLVideoElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const {
     register,
@@ -162,12 +158,6 @@ export default function Demo() {
       ...data,
       ...getUTMParams()
     });
-  };
-
-  // Handler para quando o vídeo HTML5 terminar
-  const handleVideoEnded = () => {
-    setShowModal(true);
-    trackEvent('video_completed');
   };
 
   // Sticky CTA on scroll (mobile)
@@ -240,82 +230,15 @@ export default function Demo() {
             {/* Video Player - Centered */}
             <div className="max-w-4xl mx-auto">
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted shadow-lg">
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  controls
-                  onEnded={handleVideoEnded}
-                  playsInline
-                  preload="metadata"
-                >
-                  <source 
-                    src={`${supabase.storage.from('videos').getPublicUrl('demo-video.mp4').data.publicUrl}`}
-                    type="video/mp4" 
-                  />
-                  Seu navegador não suporta a reprodução de vídeos.
-                </video>
+                <iframe
+                  className="w-full h-full"
+                  src="https://www.youtube.com/embed/92TBh8eRzeg"
+                  title="Brighter Risk Pro - Demo"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               </div>
-            </div>
-
-            {/* Conversion Form - Centered Below Video */}
-            <div ref={formRef} className="max-w-xl mx-auto">
-              <Card className="shadow-xl bg-card border-border">
-                <CardHeader>
-                  <CardTitle className="text-2xl">Comece Agora</CardTitle>
-                  <CardDescription>
-                    Preencha os dados e crie sua conta em segundos
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Nome completo</Label>
-                      <Input id="name" placeholder="Seu nome" {...register("name")} />
-                      {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email">E-mail</Label>
-                      <Input id="email" type="email" placeholder="seu@email.com" {...register("email")} />
-                      {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="whatsapp">WhatsApp</Label>
-                      <Input id="whatsapp" value={phoneInput.value} onChange={e => {
-                      const masked = phoneInput.handleChange(e.target.value);
-                      setValue("whatsapp", masked, {
-                        shouldValidate: true
-                      });
-                    }} placeholder="+55 (11) 97048-1021" />
-                      {errors.whatsapp && <p className="text-sm text-destructive">{errors.whatsapp.message}</p>}
-                    </div>
-
-                    <div className="flex items-start space-x-2">
-                      <Checkbox id="lgpd" onCheckedChange={checked => setValue("lgpd", checked === true)} />
-                      <label htmlFor="lgpd" className="text-sm text-muted-foreground leading-tight cursor-pointer">
-                        Autorizo o contato e concordo com os <Link to="/termos-de-uso" className="text-primary hover:underline">Termos de Uso</Link> e <Link to="/politica-privacidade" className="text-primary hover:underline">Política de Privacidade</Link>
-                      </label>
-                    </div>
-                    {errors.lgpd && <p className="text-sm text-destructive">{errors.lgpd.message}</p>}
-
-                    <Button type="submit" size="lg" className="w-full">
-                      Criar Conta Agora
-                    </Button>
-
-                    <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground pt-2">
-                      <div className="flex items-center gap-1">
-                        <Lock className="w-3 h-3" />
-                        Dados criptografados
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" />
-                        Sem spam
-                      </div>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
             </div>
           </div>
         </section>
@@ -362,19 +285,14 @@ export default function Demo() {
                 
                 <CardContent>
                   <div className="relative aspect-video rounded-lg overflow-hidden bg-muted shadow-md">
-                    <video
-                      className="w-full h-full object-cover"
-                      controls
-                      playsInline
-                      preload="metadata"
-                      onPlay={() => trackEvent(`tutorial_video_play_${video.id}`)}
-                    >
-                      <source 
-                        src={`${supabase.storage.from('videos').getPublicUrl(video.videoFile).data.publicUrl}`}
-                        type="video/mp4" 
-                      />
-                      Seu navegador não suporta a reprodução de vídeos.
-                    </video>
+                    <iframe
+                      className="w-full h-full"
+                      src={`https://www.youtube.com/embed/${video.youtubeId}`}
+                      title={video.title}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -401,6 +319,69 @@ export default function Demo() {
                 Criar Conta Anual
               </Button>
             </div>
+          </div>
+        </section>
+
+        {/* Registration Form Section */}
+        <section className="container mx-auto px-4 py-16">
+          <div className="max-w-xl mx-auto" ref={formRef}>
+            <Card className="shadow-xl bg-card border-border">
+              <CardHeader>
+                <CardTitle className="text-2xl">Comece Agora</CardTitle>
+                <CardDescription>
+                  Preencha os dados e crie sua conta em segundos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome completo</Label>
+                    <Input id="name" placeholder="Seu nome" {...register("name")} />
+                    {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">E-mail</Label>
+                    <Input id="email" type="email" placeholder="seu@email.com" {...register("email")} />
+                    {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="whatsapp">WhatsApp</Label>
+                    <Input id="whatsapp" value={phoneInput.value} onChange={e => {
+                    const masked = phoneInput.handleChange(e.target.value);
+                    setValue("whatsapp", masked, {
+                      shouldValidate: true
+                    });
+                  }} placeholder="+55 (11) 97048-1021" />
+                    {errors.whatsapp && <p className="text-sm text-destructive">{errors.whatsapp.message}</p>}
+                  </div>
+
+                  <div className="flex items-start space-x-2">
+                    <Checkbox id="lgpd" onCheckedChange={checked => setValue("lgpd", checked === true)} />
+                    <label htmlFor="lgpd" className="text-sm text-muted-foreground leading-tight cursor-pointer">
+                      Autorizo o contato e concordo com os <Link to="/termos-de-uso" className="text-primary hover:underline">Termos de Uso</Link> e <Link to="/politica-privacidade" className="text-primary hover:underline">Política de Privacidade</Link>
+                    </label>
+                  </div>
+                  {errors.lgpd && <p className="text-sm text-destructive">{errors.lgpd.message}</p>}
+
+                  <Button type="submit" size="lg" className="w-full">
+                    Criar Conta Agora
+                  </Button>
+
+                  <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground pt-2">
+                    <div className="flex items-center gap-1">
+                      <Lock className="w-3 h-3" />
+                      Dados criptografados
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Sem spam
+                    </div>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
           </div>
         </section>
 
@@ -592,12 +573,6 @@ export default function Demo() {
               Testar Agora
             </Button>
           </div>}
-
-        {/* Video End Modal */}
-        <VideoModal open={showModal} onOpenChange={setShowModal} onCreateAccount={() => {
-        trackEvent('cta_test_modal');
-        window.open('https://pay.kiwify.com.br/mRJhvxj', '_blank');
-      }} />
       </div>
     </>;
 }
