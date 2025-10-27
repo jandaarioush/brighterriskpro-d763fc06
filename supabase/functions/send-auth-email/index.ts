@@ -122,7 +122,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Sua Plataforma <onboarding@resend.dev>',
+        from: 'Brighter <contato@brighter.com.br>',
         to: [user.email],
         subject: 'Redefinir sua senha',
         html,
