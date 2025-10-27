@@ -268,9 +268,8 @@ export default function Demo() {
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
               Aprenda a usar todas as funcionalidades
             </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Tutoriais passo a passo para você dominar a plataforma e operar com máxima eficiência
-            </p>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">Tutoriais passo a passo para você dominar a plataforma e
+ operar com máxima eficiência</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
