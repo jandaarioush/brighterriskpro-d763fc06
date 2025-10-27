@@ -78,48 +78,42 @@ const testimonials = [{
   text: "Ferramenta indispensável. Os alertas visuais me salvaram de vários drawdowns desnecessários.",
   rating: 5
 }];
-const tutorialVideos = [
-  {
-    id: 1,
-    title: "Configurações do Risco Mensal",
-    description: "Aprenda a definir seu risco mensal e configurar seus parâmetros operacionais",
-    youtubeId: "zWl5uWGyg3U",
-    icon: Settings,
-    duration: "5 min"
-  },
-  {
-    id: 2,
-    title: "Dashboard Inicial - Parte 1",
-    description: "Conheça todas as funcionalidades e métricas do seu dashboard principal",
-    youtubeId: "fqHgX-zPYHI",
-    icon: LayoutDashboard,
-    duration: "7 min"
-  },
-  {
-    id: 3,
-    title: "Dashboard Inicial - Parte 2",
-    description: "Continuação: análise de gráficos e estatísticas avançadas",
-    youtubeId: "CrysTWd15Dg",
-    icon: TrendingUp,
-    duration: "6 min"
-  },
-  {
-    id: 4,
-    title: "Calendário de Operações",
-    description: "Como usar o calendário para visualizar e organizar suas operações",
-    youtubeId: "T4OhZHgoaqg",
-    icon: Calendar,
-    duration: "4 min"
-  },
-  {
-    id: 5,
-    title: "Trades e Simulador de Alavancagem",
-    description: "Registre operações e simule cenários com o simulador de alavancagem",
-    youtubeId: "qG7tEpTDv74",
-    icon: BarChart3,
-    duration: "8 min"
-  }
-];
+const tutorialVideos = [{
+  id: 1,
+  title: "Configurações do Risco Mensal",
+  description: "Aprenda a definir seu risco mensal e configurar seus parâmetros operacionais",
+  youtubeId: "zWl5uWGyg3U",
+  icon: Settings,
+  duration: "5 min"
+}, {
+  id: 2,
+  title: "Dashboard Inicial - Parte 1",
+  description: "Conheça todas as funcionalidades e métricas do seu dashboard principal",
+  youtubeId: "fqHgX-zPYHI",
+  icon: LayoutDashboard,
+  duration: "7 min"
+}, {
+  id: 3,
+  title: "Dashboard Inicial - Parte 2",
+  description: "Continuação: análise de gráficos e estatísticas avançadas",
+  youtubeId: "CrysTWd15Dg",
+  icon: TrendingUp,
+  duration: "6 min"
+}, {
+  id: 4,
+  title: "Calendário de Operações",
+  description: "Como usar o calendário para visualizar e organizar suas operações",
+  youtubeId: "T4OhZHgoaqg",
+  icon: Calendar,
+  duration: "4 min"
+}, {
+  id: 5,
+  title: "Trades e Simulador de Alavancagem",
+  description: "Registre operações e simule cenários com o simulador de alavancagem",
+  youtubeId: "qG7tEpTDv74",
+  icon: BarChart3,
+  duration: "8 min"
+}];
 export default function Demo() {
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const phoneInput = usePhoneMask("+55 ");
@@ -130,7 +124,6 @@ export default function Demo() {
       lgpd: false
     }
   });
-  
   const {
     register,
     handleSubmit,
@@ -177,9 +170,11 @@ export default function Demo() {
   const onSubmit = async (data: FormData) => {
     try {
       const utmParams = getUTMParams();
-      
+
       // Save to database
-      const { error } = await supabase.from('demo_leads').insert({
+      const {
+        error
+      } = await supabase.from('demo_leads').insert({
         name: data.name.trim(),
         email: data.email.trim(),
         whatsapp: data.whatsapp.trim(),
@@ -189,21 +184,17 @@ export default function Demo() {
         utm_content: utmParams.utm_content,
         utm_term: utmParams.utm_term,
         ip_address: null,
-        user_agent: navigator.userAgent,
+        user_agent: navigator.userAgent
       });
-
       if (error) {
         console.error("Error saving lead:", error);
         toast.error("Erro ao enviar dados. Tente novamente.");
         return;
       }
-      
       trackEvent('demo_form_submit', utmParams);
-      
       toast.success("Dados enviados com sucesso! Em breve entraremos em contato.", {
-        duration: 5000,
+        duration: 5000
       });
-
       reset();
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -261,14 +252,7 @@ export default function Demo() {
             {/* Video Player - Centered */}
             <div className="max-w-4xl mx-auto">
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted shadow-lg">
-                <iframe
-                  className="w-full h-full"
-                  src="https://www.youtube.com/embed/92TBh8eRzeg"
-                  title="Brighter Risk Pro - Demo"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+                <iframe className="w-full h-full" src="https://www.youtube.com/embed/92TBh8eRzeg" title="Brighter Risk Pro - Demo" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
               </div>
             </div>
           </div>
@@ -290,13 +274,7 @@ export default function Demo() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            {tutorialVideos.map((video, index) => (
-              <Card 
-                key={video.id} 
-                className={`bg-card border-border hover:shadow-xl transition-all ${
-                  index === 4 ? 'md:col-span-2 md:max-w-2xl md:mx-auto' : ''
-                }`}
-              >
+            {tutorialVideos.map((video, index) => <Card key={video.id} className={`bg-card border-border hover:shadow-xl transition-all ${index === 4 ? 'md:col-span-2 md:max-w-2xl md:mx-auto' : ''}`}>
                 <CardHeader>
                   <div className="flex items-start gap-4 mb-4">
                     <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -316,18 +294,10 @@ export default function Demo() {
                 
                 <CardContent>
                   <div className="relative aspect-video rounded-lg overflow-hidden bg-muted shadow-md">
-                    <iframe
-                      className="w-full h-full"
-                      src={`https://www.youtube.com/embed/${video.youtubeId}`}
-                      title={video.title}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
+                    <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${video.youtubeId}`} title={video.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                   </div>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
 
           {/* CTA após vídeos */}
@@ -336,17 +306,10 @@ export default function Demo() {
               Gostou do que viu? Comece a usar agora mesmo!
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
-                onClick={() => handleCTAClick('tutorial_monthly', 'https://pay.kiwify.com.br/mRJhvxj')}
-              >
+              <Button size="lg" onClick={() => handleCTAClick('tutorial_monthly', 'https://pay.kiwify.com.br/mRJhvxj')}>
                 Criar Conta Mensal
               </Button>
-              <Button 
-                size="lg" 
-                variant="outline"
-                onClick={() => handleCTAClick('tutorial_annual', 'https://pay.kiwify.com.br/dPyrB1E')}
-              >
+              <Button size="lg" variant="outline" onClick={() => handleCTAClick('tutorial_annual', 'https://pay.kiwify.com.br/dPyrB1E')}>
                 Criar Conta Anual
               </Button>
             </div>
@@ -396,12 +359,7 @@ export default function Demo() {
                   </div>
                   {errors.lgpd && <p className="text-sm text-destructive">{errors.lgpd.message}</p>}
 
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    className="w-full"
-                    disabled={form.formState.isSubmitting}
-                  >
+                  <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting ? "Enviando..." : "Criar Conta Agora"}
                   </Button>
 
@@ -561,9 +519,7 @@ export default function Demo() {
             <h2 className="text-3xl lg:text-5xl font-bold mb-6">
               Pronto para operar com disciplina e clareza?
             </h2>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Junte-se a mais de 1.000 traders que já transformaram sua gestão de risco
-            </p>
+            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">Junte-se a mais de 500 traders que já transformaram sua gestão de risco</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="text-lg px-8 py-6" onClick={() => handleCTAClick('final_monthly', 'https://pay.kiwify.com.br/mRJhvxj')}>
                 Criar minha conta mensal agora!
