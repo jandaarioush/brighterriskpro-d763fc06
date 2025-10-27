@@ -96,6 +96,14 @@ export default function Auth() {
               placeholder="••••••••"
               minLength={6}
             />
+            <div className="text-right mt-2">
+              <Link 
+                to="/recuperar-senha" 
+                className="text-sm text-primary hover:underline"
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>

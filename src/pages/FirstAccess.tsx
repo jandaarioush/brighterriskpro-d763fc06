@@ -180,6 +180,12 @@ export default function FirstAccess() {
             </Link>
           </p>
           <p className="text-sm text-muted-foreground">
+            Esqueceu sua senha?{' '}
+            <Link to="/recuperar-senha" className="text-primary hover:underline">
+              Recuperar senha
+            </Link>
+          </p>
+          <p className="text-sm text-muted-foreground">
             Ainda não comprou?{' '}
             <Link to="/" className="text-primary hover:underline">
               Ver planos

@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import FirstAccess from "./pages/FirstAccess";
+import RecuperarSenha from "./pages/RecuperarSenha";
+import RedefinirSenha from "./pages/RedefinirSenha";
 import Demo from "./pages/Demo";
 import Dashboard from "./pages/Dashboard";
 import Calendar from "./pages/Calendar";
@@ -58,6 +60,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/primeiro-acesso" element={<FirstAccess />} />
+            <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
             <Route path="/demo" element={<Demo />} />
             <Route path="/recursos" element={<Recursos />} />
             <Route path="/precos" element={<Precos />} />
