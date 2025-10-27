@@ -13,6 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { usePhoneMask } from "@/hooks/usePhoneMask";
 import { Calculator, Shield, TrendingUp, Bell, FileText, Headphones, Target, Upload, Activity, Lock, CheckCircle, MessageCircle, Star, ArrowRight, Settings, LayoutDashboard, Calendar, BarChart3, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 const formSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
   email: z.string().email("E-mail inválido"),
@@ -123,19 +124,22 @@ export default function Demo() {
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const phoneInput = usePhoneMask("+55 ");
   const formRef = useRef<HTMLDivElement>(null);
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      lgpd: false
+    }
+  });
+  
   const {
     register,
     handleSubmit,
     formState: {
       errors
     },
-    setValue
-  } = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      lgpd: false
-    }
-  });
+    setValue,
+    reset
+  } = form;
 
   // Capturar UTM parameters
   const getUTMParams = () => {
@@ -170,14 +174,41 @@ export default function Demo() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-  const onSubmit = (data: FormData) => {
-    console.log('Form submitted:', {
-      ...data,
-      ...getUTMParams()
-    });
-    trackEvent('form_submit', data);
-    toast.success("Cadastro recebido! Em breve entraremos em contato.");
-    // TODO: Integrar com backend/CRM
+  const onSubmit = async (data: FormData) => {
+    try {
+      const utmParams = getUTMParams();
+      
+      // Save to database
+      const { error } = await supabase.from('demo_leads').insert({
+        name: data.name.trim(),
+        email: data.email.trim(),
+        whatsapp: data.whatsapp.trim(),
+        utm_source: utmParams.utm_source,
+        utm_medium: utmParams.utm_medium,
+        utm_campaign: utmParams.utm_campaign,
+        utm_content: utmParams.utm_content,
+        utm_term: utmParams.utm_term,
+        ip_address: null,
+        user_agent: navigator.userAgent,
+      });
+
+      if (error) {
+        console.error("Error saving lead:", error);
+        toast.error("Erro ao enviar dados. Tente novamente.");
+        return;
+      }
+      
+      trackEvent('demo_form_submit', utmParams);
+      
+      toast.success("Dados enviados com sucesso! Em breve entraremos em contato.", {
+        duration: 5000,
+      });
+
+      reset();
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast.error("Erro ao enviar dados. Tente novamente.");
+    }
   };
   const handleCTAClick = (source: string, url: string) => {
     trackEvent(`cta_test_${source}`);
@@ -365,8 +396,13 @@ export default function Demo() {
                   </div>
                   {errors.lgpd && <p className="text-sm text-destructive">{errors.lgpd.message}</p>}
 
-                  <Button type="submit" size="lg" className="w-full">
-                    Criar Conta Agora
+                  <Button 
+                    type="submit" 
+                    size="lg" 
+                    className="w-full"
+                    disabled={form.formState.isSubmitting}
+                  >
+                    {form.formState.isSubmitting ? "Enviando..." : "Criar Conta Agora"}
                   </Button>
 
                   <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground pt-2">
