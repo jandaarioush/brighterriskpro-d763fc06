@@ -6,6 +6,17 @@ const resendApiKey = Deno.env.get('RESEND_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
+// Validate required environment variables
+if (!resendApiKey) {
+  console.error('❌ RESEND_API_KEY não configurado');
+}
+if (!supabaseUrl) {
+  console.error('❌ SUPABASE_URL não configurado');
+}
+if (!supabaseServiceRoleKey) {
+  console.error('❌ SUPABASE_SERVICE_ROLE_KEY não configurado');
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -87,34 +98,48 @@ serve(async (req) => {
     
     // Check if this is a direct call from frontend (has email and type)
     if (data.email && data.type === 'recovery') {
-      console.log('Direct recovery request for:', data.email);
+      console.log('🔑 [RECOVERY] Requisição direta do frontend para:', data.email);
+      
+      // Validate API key
+      if (!resendApiKey) {
+        console.error('❌ [RECOVERY] RESEND_API_KEY não está configurado!');
+        throw new Error('RESEND_API_KEY não configurado. Configure o secret no painel.');
+      }
+
+      console.log('✅ [RECOVERY] RESEND_API_KEY encontrado');
       
       // Create admin client
       const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+      console.log('✅ [RECOVERY] Cliente Supabase Admin criado');
       
       // Generate password reset link
+      console.log('🔄 [RECOVERY] Gerando link de reset...');
       const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'recovery',
         email: data.email,
         options: {
-          redirectTo: `${data.redirectTo || window.location.origin}/redefinir-senha`,
+          redirectTo: data.redirectTo || `${supabaseUrl}/redefinir-senha`,
         },
       });
 
       if (resetError) {
-        console.error('Error generating reset link:', resetError);
-        throw new Error(`Failed to generate reset link: ${resetError.message}`);
+        console.error('❌ [RECOVERY] Erro ao gerar link:', resetError);
+        throw new Error(`Falha ao gerar link: ${resetError.message}`);
       }
 
-      console.log('Reset link generated successfully');
+      console.log('✅ [RECOVERY] Link gerado com sucesso');
 
       // Extract token from the hashed_token
       const token = resetData.properties.hashed_token;
       const resetUrl = resetData.properties.action_link;
       
+      console.log('📧 [RECOVERY] Preparando HTML do email...');
       const html = getResetPasswordEmailHTML(token, resetUrl);
 
       // Send email using Resend API
+      console.log('📤 [RECOVERY] Enviando email via Resend para:', data.email);
+      console.log('📤 [RECOVERY] Remetente: Brighter <contato@brighter.com.br>');
+      
       const resendResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -132,13 +157,27 @@ serve(async (req) => {
       const resendData = await resendResponse.json();
 
       if (!resendResponse.ok) {
-        console.error('Resend error:', resendData);
-        throw new Error(`Resend API error: ${JSON.stringify(resendData)}`);
+        console.error('❌ [RECOVERY] Erro do Resend:', resendData);
+        
+        // Mensagens de erro específicas
+        if (resendData.message?.includes('domain')) {
+          throw new Error('Domínio brighter.com.br não verificado no Resend. Verifique em https://resend.com/domains');
+        }
+        if (resendData.message?.includes('API key')) {
+          throw new Error('API Key do Resend inválida. Verifique em https://resend.com/api-keys');
+        }
+        
+        throw new Error(`Erro do Resend: ${resendData.message || JSON.stringify(resendData)}`);
       }
 
-      console.log('Password reset email sent successfully:', resendData);
+      console.log('✅ [RECOVERY] Email enviado com sucesso!');
+      console.log('📧 [RECOVERY] ID do email:', resendData.id);
 
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Email enviado com sucesso',
+        emailId: resendData.id 
+      }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

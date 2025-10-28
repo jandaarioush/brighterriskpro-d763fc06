@@ -60,7 +60,9 @@ export default function RecuperarSenha() {
       }
 
       // Send password reset email via edge function
-      const { error } = await supabase.functions.invoke('send-auth-email', {
+      console.log('🔄 Chamando edge function para:', trimmedEmail);
+      
+      const { data: responseData, error } = await supabase.functions.invoke('send-auth-email', {
         body: {
           email: trimmedEmail,
           type: 'recovery',
@@ -68,13 +70,30 @@ export default function RecuperarSenha() {
         },
       });
 
+      console.log('📬 Resposta da edge function:', { responseData, error });
+
       if (error) {
-        toast.error('Erro ao enviar email. Tente novamente.');
+        console.error('❌ Erro na edge function:', error);
+        
+        // Mensagens específicas baseadas no erro
+        const errorMessage = error.message || 'Erro desconhecido';
+        
+        if (errorMessage.includes('domain')) {
+          toast.error('❌ Erro de configuração: Domínio não verificado. Contate o suporte.');
+        } else if (errorMessage.includes('API key') || errorMessage.includes('RESEND_API_KEY')) {
+          toast.error('❌ Erro de configuração: API Key inválida. Contate o suporte.');
+        } else if (errorMessage.includes('User with this email not found')) {
+          toast.error('Email não encontrado no sistema de autenticação.');
+        } else {
+          toast.error(`Erro ao enviar email: ${errorMessage}`);
+        }
+        
         setLoading(false);
         return;
       }
 
-      toast.success('Email enviado! Verifique sua caixa de entrada e spam.');
+      console.log('✅ Email enviado com sucesso!');
+      toast.success('✅ Email enviado! Verifique sua caixa de entrada e spam.');
       setEmail('');
     } catch (error) {
       toast.error('Erro ao processar solicitação. Tente novamente.');
