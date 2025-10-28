@@ -59,9 +59,13 @@ export default function RecuperarSenha() {
         return;
       }
 
-      // Send password reset email
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-        redirectTo: `${window.location.origin}/redefinir-senha`,
+      // Send password reset email via edge function
+      const { error } = await supabase.functions.invoke('send-auth-email', {
+        body: {
+          email: trimmedEmail,
+          type: 'recovery',
+          redirectTo: `${window.location.origin}/redefinir-senha`,
+        },
       });
 
       if (error) {

@@ -1,7 +1,10 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
 
 const resendApiKey = Deno.env.get('RESEND_API_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -81,6 +84,67 @@ serve(async (req) => {
 
   try {
     const data = await req.json();
+    
+    // Check if this is a direct call from frontend (has email and type)
+    if (data.email && data.type === 'recovery') {
+      console.log('Direct recovery request for:', data.email);
+      
+      // Create admin client
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+      
+      // Generate password reset link
+      const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: data.email,
+        options: {
+          redirectTo: `${data.redirectTo || window.location.origin}/redefinir-senha`,
+        },
+      });
+
+      if (resetError) {
+        console.error('Error generating reset link:', resetError);
+        throw new Error(`Failed to generate reset link: ${resetError.message}`);
+      }
+
+      console.log('Reset link generated successfully');
+
+      // Extract token from the hashed_token
+      const token = resetData.properties.hashed_token;
+      const resetUrl = resetData.properties.action_link;
+      
+      const html = getResetPasswordEmailHTML(token, resetUrl);
+
+      // Send email using Resend API
+      const resendResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Brighter <contato@brighter.com.br>',
+          to: [data.email],
+          subject: 'Redefinir sua senha',
+          html,
+        }),
+      });
+
+      const resendData = await resendResponse.json();
+
+      if (!resendResponse.ok) {
+        console.error('Resend error:', resendData);
+        throw new Error(`Resend API error: ${JSON.stringify(resendData)}`);
+      }
+
+      console.log('Password reset email sent successfully:', resendData);
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Handle webhook calls (legacy support)
     console.log('Received auth webhook:', data.email_data?.email_action_type);
 
     const {
@@ -109,7 +173,6 @@ serve(async (req) => {
 
     console.log('Sending password reset email to:', user.email);
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const resetUrl = `${supabaseUrl}/auth/v1/verify?token=${token_hash}&type=${email_action_type}&redirect_to=${redirect_to}`;
     
     const html = getResetPasswordEmailHTML(token, resetUrl);
