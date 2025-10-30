@@ -128,59 +128,89 @@ serve(async (req) => {
       }
 
       console.log('✅ [RECOVERY] Link gerado com sucesso');
+      console.log('🔗 [RECOVERY] redirectTo configurado:', data.redirectTo || `${supabaseUrl}/redefinir-senha`);
 
       // Extract token from the hashed_token
       const token = resetData.properties.hashed_token;
       const resetUrl = resetData.properties.action_link;
       
+      // Validate that action_link was generated
+      if (!resetUrl || !token) {
+        console.error('❌ [RECOVERY] Link ou token não gerados corretamente:', { resetUrl, token });
+        throw new Error('Falha ao gerar link de recuperação');
+      }
+      
+      console.log('✅ [RECOVERY] Token extraído com sucesso (comprimento:', token?.length || 0, 'caracteres)');
+      console.log('🔗 [RECOVERY] action_link gerado:', resetUrl.substring(0, 80) + '...');
+      
       console.log('📧 [RECOVERY] Preparando HTML do email...');
       const html = getResetPasswordEmailHTML(token, resetUrl);
 
-      // Send email using Resend API
+      // Send email using Resend API with timeout
       console.log('📤 [RECOVERY] Enviando email via Resend para:', data.email);
       console.log('📤 [RECOVERY] Remetente: Brighter <contato@brighter.com.br>');
       
-      const resendResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'Brighter <contato@brighter.com.br>',
-          to: [data.email],
-          subject: 'Redefinir sua senha',
-          html,
-        }),
-      });
-
-      const resendData = await resendResponse.json();
-
-      if (!resendResponse.ok) {
-        console.error('❌ [RECOVERY] Erro do Resend:', resendData);
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'Brighter <contato@brighter.com.br>',
+            to: [data.email],
+            subject: 'Redefinir sua senha',
+            html,
+          }),
+          signal: controller.signal,
+        });
         
-        // Mensagens de erro específicas
-        if (resendData.message?.includes('domain')) {
-          throw new Error('Domínio brighter.com.br não verificado no Resend. Verifique em https://resend.com/domains');
+        clearTimeout(timeoutId);
+
+        const resendData = await resendResponse.json();
+
+        if (!resendResponse.ok) {
+          console.error('❌ [RECOVERY] Erro do Resend:', resendData);
+          console.error('❌ [RECOVERY] Status HTTP:', resendResponse.status);
+          
+          // Mensagens de erro específicas
+          if (resendData.message?.includes('domain')) {
+            throw new Error('Domínio brighter.com.br não verificado no Resend. Verifique em https://resend.com/domains');
+          }
+          if (resendData.message?.includes('API key')) {
+            throw new Error('API Key do Resend inválida. Verifique em https://resend.com/api-keys');
+          }
+          
+          throw new Error(`Erro do Resend: ${resendData.message || JSON.stringify(resendData)}`);
         }
-        if (resendData.message?.includes('API key')) {
-          throw new Error('API Key do Resend inválida. Verifique em https://resend.com/api-keys');
+
+        console.log('✅ [RECOVERY] Email enviado com sucesso!');
+        console.log('📧 [RECOVERY] ID do email:', resendData.id);
+        console.log('📧 [RECOVERY] Status:', resendResponse.status);
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: 'Email enviado com sucesso',
+          emailId: resendData.id 
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.error('❌ [RECOVERY] Timeout ao enviar email (>10s)');
+          throw new Error('Timeout ao enviar email. Tente novamente.');
         }
         
-        throw new Error(`Erro do Resend: ${resendData.message || JSON.stringify(resendData)}`);
+        throw fetchError;
       }
-
-      console.log('✅ [RECOVERY] Email enviado com sucesso!');
-      console.log('📧 [RECOVERY] ID do email:', resendData.id);
-
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: 'Email enviado com sucesso',
-        emailId: resendData.id 
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
     }
 
     // Handle webhook calls (legacy support)

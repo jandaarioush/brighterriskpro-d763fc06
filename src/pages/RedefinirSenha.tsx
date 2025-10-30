@@ -21,17 +21,83 @@ export default function RedefinirSenha() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [validToken, setValidToken] = useState(false);
+  const [checkingToken, setCheckingToken] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('🔄 [RedefinirSenha] Página carregada');
+    
     // Check if user came from password reset email
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setValidToken(true);
-      } else {
-        toast.error('Link inválido ou expirado. Solicite um novo link de recuperação.');
+      try {
+        console.log('🔍 [RedefinirSenha] Verificando URL fragments...');
+        
+        // Check for tokens in URL hash (format: #access_token=...&type=recovery)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const tokenType = hashParams.get('type');
+        
+        console.log('🔑 [RedefinirSenha] URL params:', { 
+          hasAccessToken: !!accessToken, 
+          hasRefreshToken: !!refreshToken,
+          type: tokenType 
+        });
+        
+        // If tokens are in URL, set session with them
+        if (accessToken && tokenType === 'recovery') {
+          console.log('✅ [RedefinirSenha] Tokens encontrados na URL, trocando sessão...');
+          
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
+          });
+          
+          if (sessionError) {
+            console.error('❌ [RedefinirSenha] Erro ao definir sessão:', sessionError);
+            toast.error('Link inválido ou expirado. Solicite um novo link.');
+            setTimeout(() => navigate('/recuperar-senha'), 3000);
+            return;
+          }
+          
+          console.log('✅ [RedefinirSenha] Sessão criada com sucesso:', {
+            userId: sessionData.session?.user?.id,
+            email: sessionData.session?.user?.email,
+          });
+          
+          // Clean URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
+          setValidToken(true);
+          setCheckingToken(false);
+          return;
+        }
+        
+        // Check existing session
+        console.log('🔍 [RedefinirSenha] Verificando sessão existente...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        console.log('📊 [RedefinirSenha] Estado da sessão:', {
+          hasSession: !!session,
+          userId: session?.user?.id,
+          email: session?.user?.email,
+          error: sessionError?.message,
+        });
+        
+        if (session) {
+          console.log('✅ [RedefinirSenha] Sessão válida encontrada');
+          setValidToken(true);
+        } else {
+          console.log('❌ [RedefinirSenha] Nenhuma sessão válida encontrada');
+          toast.error('Link inválido ou expirado. Solicite um novo link de recuperação.');
+          setTimeout(() => navigate('/recuperar-senha'), 3000);
+        }
+      } catch (error) {
+        console.error('❌ [RedefinirSenha] Erro ao verificar sessão:', error);
+        toast.error('Erro ao validar link. Tente solicitar um novo.');
         setTimeout(() => navigate('/recuperar-senha'), 3000);
+      } finally {
+        setCheckingToken(false);
       }
     };
 
@@ -77,15 +143,26 @@ export default function RedefinirSenha() {
     }
   };
 
-  if (!validToken) {
+  if (checkingToken || !validToken) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <Card className="w-full max-w-md p-8">
-          <div className="flex flex-col items-center">
-            <img src={logoHorizontal} alt="Brighter" className="h-10 mb-4" />
-            <p className="text-muted-foreground text-center">
-              Verificando link...
-            </p>
+          <div className="flex flex-col items-center space-y-4">
+            <img src={logoHorizontal} alt="Brighter" className="h-10" />
+            {checkingToken ? (
+              <>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p className="text-muted-foreground text-center">
+                  Verificando link de recuperação...
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground text-center">
+                  Redirecionando...
+                </p>
+              </>
+            )}
           </div>
         </Card>
       </div>

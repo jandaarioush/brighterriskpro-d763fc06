@@ -15,6 +15,9 @@ const recuperarSenhaSchema = z.object({
 export default function RecuperarSenha() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [canResend, setCanResend] = useState(true);
+  const [resendTimer, setResendTimer] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,12 +97,35 @@ export default function RecuperarSenha() {
 
       console.log('✅ Email enviado com sucesso!');
       toast.success('✅ Email enviado! Verifique sua caixa de entrada e spam.');
-      setEmail('');
+      
+      // Set email sent state and start resend timer
+      setEmailSent(true);
+      setCanResend(false);
+      setResendTimer(60);
+      
+      // Start countdown timer
+      const timer = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
     } catch (error) {
+      console.error('❌ Erro ao processar:', error);
       toast.error('Erro ao processar solicitação. Tente novamente.');
     } finally {
       setLoading(false);
     }
+  };
+  
+  const handleResend = () => {
+    setEmailSent(false);
+    setEmail('');
   };
 
   return (
@@ -115,25 +141,50 @@ export default function RecuperarSenha() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
-            </label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="seu@email.com"
-            />
-          </div>
+        {!emailSent ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="seu@email.com"
+              />
+            </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Enviando...' : 'Enviar Link de Recuperação'}
-          </Button>
-        </form>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Enviando...' : 'Enviar Link de Recuperação'}
+            </Button>
+          </form>
+        ) : (
+          <div className="space-y-4">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <p className="text-green-800 dark:text-green-200 text-sm font-medium">
+                ✅ Email enviado com sucesso!
+              </p>
+              <p className="text-green-700 dark:text-green-300 text-sm mt-1">
+                Verifique sua caixa de entrada e pasta de spam.
+              </p>
+            </div>
+            
+            <Button 
+              onClick={handleResend} 
+              variant="outline" 
+              className="w-full"
+              disabled={!canResend}
+            >
+              {canResend 
+                ? 'Enviar para outro email' 
+                : `Reenviar disponível em ${resendTimer}s`
+              }
+            </Button>
+          </div>
+        )}
 
         <div className="mt-6 text-center space-y-3">
           <p className="text-sm text-muted-foreground">
