@@ -137,7 +137,7 @@ export default function RecuperarSenha() {
             Recuperar Senha
           </h1>
           <p className="text-muted-foreground mt-2 text-center">
-            Enviaremos um link para redefinir sua senha
+            Enviaremos um código para redefinir sua senha
           </p>
         </div>
 
@@ -158,17 +158,20 @@ export default function RecuperarSenha() {
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Enviando...' : 'Enviar Link de Recuperação'}
+              {loading ? 'Enviando...' : 'Enviar Código de Recuperação'}
             </Button>
           </form>
         ) : (
           <div className="space-y-4">
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
               <p className="text-green-800 dark:text-green-200 text-sm font-medium">
-                ✅ Email enviado com sucesso!
+                ✅ Código enviado com sucesso!
               </p>
               <p className="text-green-700 dark:text-green-300 text-sm mt-1">
-                Verifique sua caixa de entrada e pasta de spam.
+                Verifique sua caixa de entrada e pasta de spam. O código expira em 15 minutos.
+              </p>
+              <p className="text-green-700 dark:text-green-300 text-sm mt-2">
+                Acesse <a href="/redefinir-senha" className="font-bold underline">/redefinir-senha</a> para usar o código.
               </p>
             </div>
             

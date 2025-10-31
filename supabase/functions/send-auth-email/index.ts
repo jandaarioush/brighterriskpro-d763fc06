@@ -22,14 +22,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-function getResetPasswordEmailHTML(token: string, resetUrl: string): string {
+function getResetPasswordEmailHTML(code: string): string {
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Redefinir Senha</title>
+  <title>Código de Recuperação de Senha</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, sans-serif; background-color: #f6f9fc;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f6f9fc; padding: 20px 0;">
@@ -38,36 +38,48 @@ function getResetPasswordEmailHTML(token: string, resetUrl: string): string {
         <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden;">
           <tr>
             <td style="padding: 40px 48px;">
-              <h1 style="color: #333; font-size: 24px; font-weight: bold; margin: 0 0 24px 0;">Redefinir Senha</h1>
+              <h1 style="color: #333; font-size: 24px; font-weight: bold; margin: 0 0 24px 0;">Recuperação de Senha</h1>
               
               <p style="color: #333; font-size: 16px; line-height: 26px; margin: 0 0 24px 0;">
-                Você solicitou a redefinição de senha da sua conta. Clique no botão abaixo para criar uma nova senha:
+                Use o código abaixo para redefinir sua senha:
               </p>
               
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center" style="padding: 16px 0;">
-                    <a href="${resetUrl}" style="background-color: #2563eb; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: bold; text-decoration: none; padding: 12px 40px; display: inline-block;">
-                      Redefinir Senha
-                    </a>
+                    <div style="
+                      font-size: 32px; 
+                      font-weight: bold; 
+                      letter-spacing: 8px;
+                      padding: 20px;
+                      background: #f5f5f5;
+                      border-radius: 8px;
+                      color: #2563eb;
+                      font-family: 'Courier New', monospace;
+                    ">
+                      ${code}
+                    </div>
                   </td>
                 </tr>
               </table>
               
               <p style="color: #333; font-size: 16px; line-height: 26px; margin: 24px 0 16px 0;">
-                Ou copie e cole este código temporário:
+                <strong>Para redefinir sua senha:</strong>
               </p>
               
-              <div style="background-color: #f4f4f4; border: 1px solid #eee; border-radius: 5px; padding: 16px; margin: 0 0 24px 0;">
-                <code style="color: #333; font-family: monospace; font-size: 16px; word-break: break-all;">${token}</code>
-              </div>
+              <ol style="color: #333; font-size: 14px; line-height: 24px; margin: 0 0 24px 0; padding-left: 20px;">
+                <li>Acesse a página de redefinição de senha</li>
+                <li>Digite seu email</li>
+                <li>Digite o código acima</li>
+                <li>Crie sua nova senha</li>
+              </ol>
+              
+              <p style="color: #e53e3e; font-size: 14px; line-height: 24px; margin: 16px 0 8px 0; font-weight: bold;">
+                ⏰ Este código expira em 15 minutos
+              </p>
               
               <p style="color: #8898aa; font-size: 14px; line-height: 24px; margin: 16px 0 8px 0;">
                 Se você não solicitou a redefinição de senha, pode ignorar este email com segurança.
-              </p>
-              
-              <p style="color: #8898aa; font-size: 14px; line-height: 24px; margin: 8px 0 0 0;">
-                Este link expira em 1 hora.
               </p>
             </td>
           </tr>
@@ -98,7 +110,7 @@ serve(async (req) => {
     
     // Check if this is a direct call from frontend (has email and type)
     if (data.email && data.type === 'recovery') {
-      console.log('🔑 [RECOVERY] Requisição direta do frontend para:', data.email);
+      console.log('🔑 [RECOVERY] Requisição de recuperação para:', data.email);
       
       // Validate API key
       if (!resendApiKey) {
@@ -112,42 +124,52 @@ serve(async (req) => {
       const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
       console.log('✅ [RECOVERY] Cliente Supabase Admin criado');
       
-      // Generate password reset link
-      console.log('🔄 [RECOVERY] Gerando link de reset...');
-      const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email: data.email,
-        options: {
-          redirectTo: data.redirectTo || `${supabaseUrl}/redefinir-senha`,
-        },
-      });
-
-      if (resetError) {
-        console.error('❌ [RECOVERY] Erro ao gerar link:', resetError);
-        throw new Error(`Falha ao gerar link: ${resetError.message}`);
-      }
-
-      console.log('✅ [RECOVERY] Link gerado com sucesso');
-      console.log('🔗 [RECOVERY] redirectTo configurado:', data.redirectTo || `${supabaseUrl}/redefinir-senha`);
-
-      // Extract token from the hashed_token
-      const token = resetData.properties.hashed_token;
-      const resetUrl = resetData.properties.action_link;
+      const trimmedEmail = data.email.trim().toLowerCase();
       
-      // Validate that action_link was generated
-      if (!resetUrl || !token) {
-        console.error('❌ [RECOVERY] Link ou token não gerados corretamente:', { resetUrl, token });
-        throw new Error('Falha ao gerar link de recuperação');
+      // Verify user exists
+      const { data: profileData, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('id, email')
+        .eq('email', trimmedEmail)
+        .maybeSingle();
+      
+      if (profileError || !profileData) {
+        console.error('❌ [RECOVERY] Usuário não encontrado:', trimmedEmail);
+        throw new Error('Usuário não encontrado');
       }
       
-      console.log('✅ [RECOVERY] Token extraído com sucesso (comprimento:', token?.length || 0, 'caracteres)');
-      console.log('🔗 [RECOVERY] action_link gerado:', resetUrl.substring(0, 80) + '...');
+      console.log('✅ [RECOVERY] Usuário encontrado:', profileData.id);
       
+      // Generate 6-digit code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      console.log('✅ [RECOVERY] Código gerado (6 dígitos)');
+      
+      // Calculate expiration (15 minutes)
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      
+      // Save code to database
+      console.log('💾 [RECOVERY] Salvando código no banco...');
+      const { error: insertError } = await supabaseAdmin
+        .from('password_reset_codes')
+        .insert({
+          email: trimmedEmail,
+          code: code,
+          expires_at: expiresAt
+        });
+      
+      if (insertError) {
+        console.error('❌ [RECOVERY] Erro ao salvar código:', insertError);
+        throw new Error('Erro ao gerar código de recuperação');
+      }
+      
+      console.log('✅ [RECOVERY] Código salvo no banco (expira em 15min)');
+      
+      // Prepare email HTML
       console.log('📧 [RECOVERY] Preparando HTML do email...');
-      const html = getResetPasswordEmailHTML(token, resetUrl);
+      const html = getResetPasswordEmailHTML(code);
 
       // Send email using Resend API with timeout
-      console.log('📤 [RECOVERY] Enviando email via Resend para:', data.email);
+      console.log('📤 [RECOVERY] Enviando email via Resend para:', trimmedEmail);
       console.log('📤 [RECOVERY] Remetente: Brighter <contato@brighter.com.br>');
       
       // Create abort controller for timeout
@@ -163,8 +185,8 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             from: 'Brighter <contato@brighter.com.br>',
-            to: [data.email],
-            subject: 'Redefinir sua senha',
+            to: [trimmedEmail],
+            subject: 'Código de Recuperação de Senha - Brighter',
             html,
           }),
           signal: controller.signal,
@@ -191,11 +213,11 @@ serve(async (req) => {
 
         console.log('✅ [RECOVERY] Email enviado com sucesso!');
         console.log('📧 [RECOVERY] ID do email:', resendData.id);
-        console.log('📧 [RECOVERY] Status:', resendResponse.status);
+        console.log('🔢 [RECOVERY] Código válido por 15 minutos');
 
         return new Response(JSON.stringify({ 
           success: true, 
-          message: 'Email enviado com sucesso',
+          message: 'Código enviado com sucesso',
           emailId: resendData.id 
         }), {
           status: 200,
@@ -213,69 +235,15 @@ serve(async (req) => {
       }
     }
 
-    // Handle webhook calls (legacy support)
-    console.log('Received auth webhook:', data.email_data?.email_action_type);
-
-    const {
-      user,
-      email_data: { token, token_hash, redirect_to, email_action_type },
-    } = data as {
-      user: {
-        email: string
-      }
-      email_data: {
-        token: string
-        token_hash: string
-        redirect_to: string
-        email_action_type: string
-      }
-    };
-
-    // Only handle password recovery emails
-    if (email_action_type !== 'recovery') {
-      console.log('Not a recovery email, skipping');
-      return new Response(JSON.stringify({ message: 'Not a recovery email' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    console.log('Sending password reset email to:', user.email);
-
-    const resetUrl = `${supabaseUrl}/auth/v1/verify?token=${token_hash}&type=${email_action_type}&redirect_to=${redirect_to}`;
-    
-    const html = getResetPasswordEmailHTML(token, resetUrl);
-
-    // Send email using Resend API
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Brighter <contato@brighter.com.br>',
-        to: [user.email],
-        subject: 'Redefinir sua senha',
-        html,
-      }),
-    });
-
-    const resendData = await resendResponse.json();
-
-    if (!resendResponse.ok) {
-      console.error('Resend error:', resendData);
-      throw new Error(`Resend API error: ${JSON.stringify(resendData)}`);
-    }
-
-    console.log('Password reset email sent successfully:', resendData);
-
-    return new Response(JSON.stringify({ success: true }), {
+    // Handle webhook calls (legacy support) - não usado mais, mas mantido por compatibilidade
+    console.log('⚠️ Webhook legacy recebido (não processado)');
+    return new Response(JSON.stringify({ message: 'Webhook legacy não suportado' }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    console.error('❌ Error processing request:', error);
     return new Response(
       JSON.stringify({
         error: {
