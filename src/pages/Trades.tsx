@@ -71,6 +71,98 @@ const tradeImportSchema = z.object({
   nota_disciplina: z.number().int().min(0).max(10, "Discipline score must be between 0-10").optional().nullable(),
 });
 
+// Normalizar texto: remove acentos, lowercase, trim
+const normalizeText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+    .trim()
+    .replace(/\s+/g, " "); // Normaliza espaços múltiplos
+};
+
+// Mapear setup do CSV para valor do banco
+const mapSetupToValue = (setupStr: string): string | null => {
+  const normalized = normalizeText(setupStr);
+  
+  const setupMap: Record<string, string> = {
+    "rompimento": "rompimento",
+    "reversao": "reversao",
+    "tendencia": "tendencia",
+    "suporte/resistencia": "suporte-resistencia",
+    "suporteresistencia": "suporte-resistencia",
+    "suporte resistencia": "suporte-resistencia",
+    "medias moveis": "medias-moveis",
+    "mediasmoveis": "medias-moveis",
+    "divergencia": "divergencia",
+    "padrao candlestick": "padrao-candlestick",
+    "padraocandlestick": "padrao-candlestick",
+    "breakout": "breakout",
+    "pull back": "pull-back",
+    "pullback": "pull-back",
+    "scalping": "scalping",
+    "swing trade": "swing-trade",
+    "swingtrade": "swing-trade",
+    "outro": "outro"
+  };
+  
+  return setupMap[normalized] || null;
+};
+
+// Mapear tag do CSV para valor do banco
+const mapTagToValue = (tagStr: string): string | null => {
+  const normalized = normalizeText(tagStr);
+  
+  const tagMap: Record<string, string> = {
+    "disciplinado": "disciplinado",
+    "emocional": "emocional",
+    "fora de setup": "fora-setup",
+    "fora setup": "fora-setup",
+    "forasetup": "fora-setup",
+    "overtrading": "overtrading",
+    "fomo": "fomo",
+    "revenge trading": "revenge-trading",
+    "revengetrading": "revenge-trading",
+    "perfeito": "perfeito",
+    "experimental": "experimental",
+    "conservador": "conservador",
+    "agressivo": "agressivo"
+  };
+  
+  return tagMap[normalized] || null;
+};
+
+// Parse robusto de linha CSV
+const parseCsvLine = (line: string): string[] => {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        // Aspas duplas escapadas
+        current += '"';
+        i++; // Pula próxima aspa
+      } else {
+        // Abre/fecha aspas
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // Vírgula fora de aspas = separador
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current.trim());
+  return result;
+};
+
 export default function Trades() {
   const { user } = useAuth();
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -239,87 +331,120 @@ export default function Trades() {
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
-    // Validate file size (5MB max)
+    // Validar tamanho (5MB max)
     const MAX_FILE_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      toast.error("Arquivo muito grande. Tamanho máximo: 5MB");
+      toast.error("Arquivo muito grande", {
+        description: "Tamanho máximo: 5MB"
+      });
       return;
     }
 
     setImporting(true);
 
     try {
-      const text = await file.text();
-      const lines = text.split("\n").filter(line => line.trim());
+      // Ler arquivo com encoding correto
+      const arrayBuffer = await file.arrayBuffer();
+      const decoder = new TextDecoder('utf-8');
+      let text = decoder.decode(arrayBuffer);
+
+      // Remover BOM se existir
+      if (text.charCodeAt(0) === 0xFEFF) {
+        text = text.slice(1);
+      }
+
+      // Split em linhas e filtrar vazias
+      const lines = text
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
       
       if (lines.length < 2) {
-        toast.error("Arquivo CSV vazio ou inválido");
+        toast.error("Arquivo CSV vazio ou inválido", {
+          description: "O arquivo deve conter pelo menos o cabeçalho e uma linha de dados"
+        });
         return;
       }
 
-      // Skip header line
+      console.log(`📄 Processando ${lines.length - 1} linhas do CSV...`);
+
+      // Pular cabeçalho
       const dataLines = lines.slice(1);
       const tradesToImport = [];
       const errors: string[] = [];
 
       for (let i = 0; i < dataLines.length; i++) {
         const line = dataLines[i];
-        // Parse CSV line (handle quoted values)
-        const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
         
-        if (values.length < 7) {
-          errors.push(`Linha ${i + 2}: Formato inválido (colunas insuficientes)`);
-          continue;
-        }
-
-        const [dateStr, assetStr, setupStr, tagStr, disciplinaStr, pointsStr, resultStr] = values.map(v => v.replace(/^"|"$/g, ''));
-
         try {
-          // Parse date (dd/mm/yyyy)
-          const dateParts = dateStr.split("/");
+          // Parse da linha
+          const values = parseCsvLine(line);
+          
+          if (values.length < 7) {
+            errors.push(`Linha ${i + 2}: Formato inválido (esperado 7+ colunas, encontrado ${values.length})`);
+            continue;
+          }
+
+          const [dateStr, assetStr, setupStr, tagStr, disciplinaStr, pointsStr, resultStr, ...rest] = values;
+          const notesStr = rest.join(','); // Juntar observações se tiver vírgulas
+
+          console.log(`Linha ${i + 2}:`, { dateStr, assetStr, setupStr, tagStr, pointsStr, resultStr });
+
+          // Validar e parsear data (dd/mm/yyyy)
+          const dateParts = dateStr.trim().split("/");
           if (dateParts.length !== 3) {
+            throw new Error("Data inválida (use formato dd/mm/aaaa)");
+          }
+          
+          const [day, month, year] = dateParts.map(p => p.trim());
+          if (!day || !month || !year) {
+            throw new Error("Data incompleta");
+          }
+          
+          const tradeDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          
+          // Validar data é válida
+          const dateTest = new Date(tradeDate);
+          if (isNaN(dateTest.getTime())) {
             throw new Error("Data inválida");
           }
-          const [day, month, year] = dateParts;
-          const tradeDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 
-          // Parse numeric values
-          const points = parseFloat(pointsStr);
-          const result = parseFloat(resultStr);
-          const disciplina = disciplinaStr ? parseInt(disciplinaStr) : null;
+          // Parsear valores numéricos
+          const points = parseFloat(pointsStr.trim().replace(',', '.'));
+          if (isNaN(points)) {
+            throw new Error("Pontos inválidos (deve ser número)");
+          }
 
-          // Validate with zod schema
+          const result = parseFloat(resultStr.trim().replace(',', '.'));
+          if (isNaN(result)) {
+            throw new Error("Resultado inválido (deve ser número)");
+          }
+
+          const disciplina = disciplinaStr?.trim() 
+            ? parseInt(disciplinaStr.trim()) 
+            : null;
+          
+          if (disciplina !== null && (isNaN(disciplina) || disciplina < 0 || disciplina > 10)) {
+            throw new Error("Disciplina inválida (deve ser 0-10 ou vazio)");
+          }
+
+          // Mapear ativo (normalizado)
+          const normalizedAsset = normalizeText(assetStr);
+          const asset_type = normalizedAsset.includes("indice") ? "indice" : "dolar";
+
+          // Mapear setup e tag (com normalização)
+          const setup_utilizado = setupStr?.trim() ? mapSetupToValue(setupStr.trim()) : null;
+          const tag = tagStr?.trim() ? mapTagToValue(tagStr.trim()) : null;
+
+          // Validar com Zod
           const tradeData = tradeImportSchema.parse({
             trade_date: tradeDate,
-            asset_type: assetStr.toLowerCase().includes("índice") ? "indice" : "dolar",
+            asset_type,
             result_points: points,
             result_reais: result,
-            notes: values[7] ? values[7].replace(/^"|"$/g, '').replace(/""/g, '"') : null,
-            setup_utilizado: Object.keys({
-              "Rompimento": "rompimento",
-              "Reversão": "reversao",
-              "Tendência": "tendencia",
-              "Suporte/Resistência": "suporte-resistencia",
-              "Médias Móveis": "medias-moveis",
-              "Divergência": "divergencia",
-              "Padrão Candlestick": "padrao-candlestick",
-              "Breakout": "breakout",
-              "Pull Back": "pull-back",
-              "Scalping": "scalping",
-              "Swing Trade": "swing-trade"
-            }).find(key => key === setupStr) || null,
-            tag: Object.keys({
-              "Disciplinado": "disciplinado",
-              "Emocional": "emocional",
-              "Fora de Setup": "fora-setup",
-              "Overtrading": "overtrading",
-              "FOMO": "fomo",
-              "Revenge Trading": "revenge-trading",
-              "Perfeito": "perfeito",
-              "Experimental": "experimental",
-              "Conservador": "conservador",
-              "Agressivo": "agressivo"
-            }).find(key => key === tagStr) || null,
+            notes: notesStr?.trim() || null,
+            setup_utilizado,
+            tag,
             nota_disciplina: disciplina,
           });
 
@@ -327,39 +452,84 @@ export default function Trades() {
             user_id: user.id,
             ...tradeData
           });
+
+          console.log(`✅ Linha ${i + 2} válida`);
+
         } catch (validationError) {
+          console.error(`❌ Erro linha ${i + 2}:`, validationError);
+          
           if (validationError instanceof z.ZodError) {
-            errors.push(`Linha ${i + 2}: ${validationError.errors[0].message}`);
+            const fieldErrors = validationError.errors
+              .map(e => `${e.path.join('.')}: ${e.message}`)
+              .join(', ');
+            errors.push(`Linha ${i + 2}: ${fieldErrors}`);
+          } else if (validationError instanceof Error) {
+            errors.push(`Linha ${i + 2}: ${validationError.message}`);
           } else {
             errors.push(`Linha ${i + 2}: Dados inválidos`);
           }
         }
       }
 
+      console.log(`📊 Resultado: ${tradesToImport.length} válidos, ${errors.length} erros`);
+
+      // Verificar se tem trades válidos
       if (tradesToImport.length === 0) {
-        toast.error("Nenhum trade válido encontrado no arquivo", {
-          description: errors.length > 0 ? errors.slice(0, 3).join("; ") : undefined
+        toast.error("Nenhum trade válido encontrado", {
+          description: errors.length > 0 
+            ? `Erros: ${errors.slice(0, 2).join('; ')}` 
+            : "Verifique o formato do arquivo"
         });
         return;
       }
 
-      const { error } = await supabase
+      // Inserir no banco
+      console.log(`💾 Inserindo ${tradesToImport.length} trades no banco...`);
+      const { error: insertError } = await supabase
         .from("trades")
         .insert(tradesToImport);
 
-      if (error) throw error;
+      if (insertError) {
+        console.error("Erro ao inserir:", insertError);
+        throw new Error(`Erro ao salvar no banco: ${insertError.message}`);
+      }
 
-      const message = errors.length > 0 
-        ? `${tradesToImport.length} trades importados. ${errors.length} linhas com erro.`
-        : `${tradesToImport.length} trades importados com sucesso!`;
+      // Mensagem de sucesso
+      const successMessage = errors.length > 0 
+        ? `${tradesToImport.length} trades importados. ${errors.length} linha(s) com erro.`
+        : `${tradesToImport.length} trades importados com sucesso! 🎉`;
       
-      toast.success(message);
-      fetchTrades();
+      const errorDetails = errors.length > 0 && errors.length <= 5
+        ? errors.join('\n')
+        : errors.length > 5
+        ? `${errors.slice(0, 3).join('\n')}\n...e mais ${errors.length - 3} erros`
+        : undefined;
+      
+      toast.success(successMessage, {
+        description: errorDetails,
+        duration: 5000
+      });
+
+      // Recarregar trades
+      await fetchTrades();
+      
     } catch (error) {
-      toast.error("Erro ao importar trades");
+      console.error("Erro fatal na importação:", error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Erro desconhecido ao importar trades";
+      
+      toast.error("Erro ao importar trades", {
+        description: errorMessage,
+        duration: 5000
+      });
     } finally {
       setImporting(false);
-      event.target.value = "";
+      // Limpar input para permitir reimportar o mesmo arquivo
+      if (event.target) {
+        event.target.value = "";
+      }
     }
   };
 
@@ -712,23 +882,28 @@ export default function Trades() {
                 <div className="bg-muted p-4 rounded-md overflow-x-auto">
                   <pre className="text-xs">
 {`Data,Ativo,Setup,Tag,Disciplina,Pontos,Resultado (R$),Observações
-01/10/2024,Índice,Rompimento,Disciplinado,8,100,20.00,"Bom setup"
-02/10/2024,Dólar,Reversão,Emocional,5,-50,-500.00,"Entrei no FOMO"`}
+01/10/2024,Índice,Rompimento,Disciplinado,8,100,20.00,"Setup perfeito, entrada no rompimento"
+02/10/2024,Dólar,Reversão,Emocional,5,-50,-500.00,"Entrei no FOMO"
+03/10/2024,indice,pull-back,Perfeito,10,150,30.00,Seguiu o plano
+04/10/2024,DOLAR,Tendência,Conservador,7,80,800.00,"Saída antecipada, mas lucro garantido"`}
                   </pre>
                 </div>
 
                 <div className="space-y-2 text-sm">
-                  <p className="font-semibold">Instruções:</p>
+                  <p className="font-semibold">✅ Instruções:</p>
                   <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                    <li>Data: formato dd/mm/aaaa</li>
-                    <li>Ativo: "Índice" ou "Dólar"</li>
-                    <li>Setup: use os setups padrão ou personalizados</li>
-                    <li>Tag: use as tags padrão ou personalizadas</li>
-                    <li>Disciplina: número de 0 a 10 (opcional)</li>
-                    <li>Pontos: número positivo ou negativo</li>
-                    <li>Resultado (R$): valor em reais com até 2 decimais</li>
-                    <li>Observações: texto entre aspas (opcional)</li>
+                    <li><strong>Data:</strong> formato dd/mm/aaaa (ex: 01/10/2024)</li>
+                    <li><strong>Ativo:</strong> "Índice" ou "Dólar" (aceita variações)</li>
+                    <li><strong>Setup:</strong> Rompimento, Reversão, Tendência, etc.</li>
+                    <li><strong>Tag:</strong> Disciplinado, Emocional, FOMO, etc.</li>
+                    <li><strong>Disciplina:</strong> número de 0 a 10 (deixe vazio se não tiver)</li>
+                    <li><strong>Pontos:</strong> número positivo ou negativo (ex: 100 ou -50)</li>
+                    <li><strong>Resultado (R$):</strong> valor em reais (ex: 20.00 ou -500.00)</li>
+                    <li><strong>Observações:</strong> texto livre entre aspas (opcional)</li>
                   </ul>
+                  <p className="text-xs text-amber-600 mt-2">
+                    💡 Dica: O sistema aceita variações de escrita (maiúsculas, acentos, espaços)
+                  </p>
                 </div>
               </div>
             </AlertDialogDescription>
