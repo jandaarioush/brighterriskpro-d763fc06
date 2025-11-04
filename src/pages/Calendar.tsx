@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, TrendingUp, Target, DollarSign, Calendar as CalendarIcon } from 'lucide-react';
-import { format, addMonths, subMonths, startOfMonth, getDay } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -67,7 +67,7 @@ export default function Calendar() {
 
   const loadTrades = async () => {
     const startDate = format(currentMonth, 'yyyy-MM-01');
-    const endDate = format(currentMonth, 'yyyy-MM-31');
+    const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
     const { data, error } = await supabase
       .from('trades')
@@ -126,7 +126,7 @@ export default function Calendar() {
     trades
       .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
       .forEach(trade => {
-        const tradeDate = format(new Date(trade.trade_date), 'dd/MM/yyyy');
+        const tradeDate = trade.trade_date.split('-').reverse().join('/');
         const assetType = trade.asset_type === 'indice' ? 'Índice' : 'Dólar';
         const notes = (trade.notes || '').replace(/,/g, ';').replace(/\n/g, ' ');
         

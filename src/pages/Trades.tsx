@@ -766,7 +766,7 @@ export default function Trades() {
                 {filteredTrades.map((trade) => (
                   <TableRow key={trade.id}>
                     <TableCell className="font-medium">
-                      {new Date(trade.trade_date).toLocaleDateString("pt-BR")}
+                      {trade.trade_date.split('-').reverse().join('/')}
                     </TableCell>
                     <TableCell>
                       {trade.asset_type === "indice" ? "Índice" : "Dólar"}
