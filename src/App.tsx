@@ -16,6 +16,7 @@ import Simulator from "./pages/Simulator";
 import Settings from "./pages/Settings";
 import AdminWebhooks from "./pages/AdminWebhooks";
 import AdminUsers from "./pages/AdminUsers";
+import AdminReports from "./pages/AdminReports";
 import NotFound from "./pages/NotFound";
 import Recursos from "./pages/Recursos";
 import Precos from "./pages/Precos";
@@ -138,6 +139,17 @@ const App = () => (
                   <AdminRoute>
                     <Navbar />
                     <AdminUsers />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/reports"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <Navbar />
+                    <AdminReports />
                   </AdminRoute>
                 </ProtectedRoute>
               }
