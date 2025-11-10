@@ -17,6 +17,7 @@ import Settings from "./pages/Settings";
 import AdminWebhooks from "./pages/AdminWebhooks";
 import AdminUsers from "./pages/AdminUsers";
 import AdminReports from "./pages/AdminReports";
+import AdminEngagement from "./pages/AdminEngagement";
 import NotFound from "./pages/NotFound";
 import Recursos from "./pages/Recursos";
 import Precos from "./pages/Precos";
@@ -150,6 +151,17 @@ const App = () => (
                   <AdminRoute>
                     <Navbar />
                     <AdminReports />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/engagement"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <Navbar />
+                    <AdminEngagement />
                   </AdminRoute>
                 </ProtectedRoute>
               }

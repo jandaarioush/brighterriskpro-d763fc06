@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Calendar, List, Settings, Activity, Shield, Users, Webhook, BarChart3 } from "lucide-react";
+import { Home, Calendar, List, Settings, Activity, Shield, Users, Webhook, BarChart3, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -116,6 +116,18 @@ export function Navbar() {
                 >
                   <BarChart3 className="w-4 h-4" />
                   <span className="font-medium hidden md:inline">Relatórios</span>
+                </Link>
+                
+                <Link
+                  to="/admin/engagement"
+                  className={`px-4 py-2 rounded-md flex items-center gap-2 transition-all ${
+                    isActive("/admin/engagement")
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  <span className="font-medium hidden md:inline">Engajamento</span>
                 </Link>
               </>
             )}
