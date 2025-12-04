@@ -24,6 +24,7 @@ import {
   Trade 
 } from "@/lib/riskCalculations";
 import { format } from "date-fns";
+import DashboardLayoutWrapper from "@/components/DashboardLayoutWrapper";
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
@@ -111,7 +112,7 @@ export default function Dashboard() {
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <DashboardLayoutWrapper>
       <div className="container mx-auto px-4 py-8">
         <GreetingBanner user={profile} />
         
@@ -195,6 +196,6 @@ export default function Dashboard() {
           <TradeForm />
         </div>
       </div>
-    </div>
+    </DashboardLayoutWrapper>
   );
 }

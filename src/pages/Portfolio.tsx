@@ -6,11 +6,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DashboardSidebar } from '@/components/DashboardSidebar';
+import DashboardLayoutWrapper from '@/components/DashboardLayoutWrapper';
 import { 
   Wallet, 
   Plus, 
-  ArrowLeft, 
   TrendingUp, 
   TrendingDown,
   DollarSign,
@@ -60,11 +59,9 @@ export default function PortfolioPage() {
     notes: '',
   });
   const [activeTab, setActiveTab] = useState('diario');
-  const [dashboard, setDashboard] = useState<{ type: string } | null>(null);
 
   useEffect(() => {
     if (user && dashboardId) {
-      loadDashboard();
       loadPortfolios();
     }
   }, [user, dashboardId]);
@@ -74,18 +71,6 @@ export default function PortfolioPage() {
       loadEntries();
     }
   }, [selectedPortfolio]);
-
-  const loadDashboard = async () => {
-    const { data } = await supabase
-      .from('dashboards')
-      .select('type')
-      .eq('id', dashboardId)
-      .single();
-    
-    if (data) {
-      setDashboard(data);
-    }
-  };
 
   const loadPortfolios = async () => {
     try {
@@ -192,7 +177,6 @@ export default function PortfolioPage() {
 
       if (error) throw error;
 
-      // Update portfolio capital
       const multiplier = newEntry.tipo === 'compra' ? -1 : 1;
       const newCapital = selectedPortfolio.capital_atual + (valorTotal * multiplier);
       
@@ -214,7 +198,6 @@ export default function PortfolioPage() {
     }
   };
 
-  // Filter entries based on period
   const filterEntriesByPeriod = (period: string) => {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
@@ -238,179 +221,164 @@ export default function PortfolioPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <DashboardLayoutWrapper>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayoutWrapper>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <DashboardSidebar dashboardId={dashboardId!} dashboardType={dashboard?.type || 'acoes'} />
-      
-      <div className="flex-1 overflow-auto">
-        <div className="container mx-auto px-4 py-8">
-          {/* Back Button */}
-          <Button 
-            variant="ghost" 
-            className="mb-4" 
-            onClick={() => navigate(`/dashboard/${dashboardId}`)}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar para Dashboard
-          </Button>
-
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-4xl font-bold mb-2 font-montserrat flex items-center gap-3">
-                <Wallet className="w-8 h-8" />
-                Carteira
-              </h1>
-              <p className="text-muted-foreground">
-                Acompanhe a evolução das suas carteiras
-              </p>
-            </div>
-            <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Nova Carteira
-            </Button>
+    <DashboardLayoutWrapper>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold mb-2 font-montserrat flex items-center gap-3">
+              <Wallet className="w-8 h-8" />
+              Carteira
+            </h1>
+            <p className="text-muted-foreground">
+              Acompanhe a evolução das suas carteiras
+            </p>
           </div>
+          <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Nova Carteira
+          </Button>
+        </div>
 
-          {/* Portfolio Selection */}
-          {portfolios.length > 0 && (
-            <div className="flex gap-2 mb-6 flex-wrap">
-              {portfolios.map((portfolio) => (
-                <Button
-                  key={portfolio.id}
-                  variant={selectedPortfolio?.id === portfolio.id ? 'default' : 'outline'}
-                  onClick={() => setSelectedPortfolio(portfolio)}
-                >
-                  {portfolio.name}
-                </Button>
-              ))}
+        {portfolios.length > 0 && (
+          <div className="flex gap-2 mb-6 flex-wrap">
+            {portfolios.map((portfolio) => (
+              <Button
+                key={portfolio.id}
+                variant={selectedPortfolio?.id === portfolio.id ? 'default' : 'outline'}
+                onClick={() => setSelectedPortfolio(portfolio)}
+              >
+                {portfolio.name}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {selectedPortfolio ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <Card className="p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <DollarSign className="w-5 h-5 text-primary" />
+                  <span className="text-sm text-muted-foreground">Capital Inicial</span>
+                </div>
+                <p className="text-2xl font-bold">
+                  R$ {selectedPortfolio.capital_inicial.toLocaleString()}
+                </p>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <DollarSign className="w-5 h-5 text-primary" />
+                  <span className="text-sm text-muted-foreground">Capital Atual</span>
+                </div>
+                <p className="text-2xl font-bold">
+                  R$ {selectedPortfolio.capital_atual.toLocaleString()}
+                </p>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  {selectedPortfolio.capital_atual >= selectedPortfolio.capital_inicial ? (
+                    <TrendingUp className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <TrendingDown className="w-5 h-5 text-red-500" />
+                  )}
+                  <span className="text-sm text-muted-foreground">Rentabilidade</span>
+                </div>
+                <p className={`text-2xl font-bold ${
+                  selectedPortfolio.capital_atual >= selectedPortfolio.capital_inicial 
+                    ? 'text-green-500' 
+                    : 'text-red-500'
+                }`}>
+                  {selectedPortfolio.capital_inicial > 0 
+                    ? (((selectedPortfolio.capital_atual - selectedPortfolio.capital_inicial) / selectedPortfolio.capital_inicial) * 100).toFixed(2)
+                    : 0
+                  }%
+                </p>
+              </Card>
             </div>
-          )}
 
-          {selectedPortfolio ? (
-            <>
-              {/* Portfolio Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <Card className="p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <DollarSign className="w-5 h-5 text-primary" />
-                    <span className="text-sm text-muted-foreground">Capital Inicial</span>
-                  </div>
-                  <p className="text-2xl font-bold">
-                    R$ {selectedPortfolio.capital_inicial.toLocaleString()}
-                  </p>
-                </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Movimentações</CardTitle>
+                <Button onClick={() => setShowEntryDialog(true)} size="sm" className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Nova Entrada
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="diario">Diário</TabsTrigger>
+                    <TabsTrigger value="semanal">Semanal</TabsTrigger>
+                    <TabsTrigger value="mensal">Mensal</TabsTrigger>
+                  </TabsList>
 
-                <Card className="p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <DollarSign className="w-5 h-5 text-primary" />
-                    <span className="text-sm text-muted-foreground">Capital Atual</span>
-                  </div>
-                  <p className="text-2xl font-bold">
-                    R$ {selectedPortfolio.capital_atual.toLocaleString()}
-                  </p>
-                </Card>
-
-                <Card className="p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    {selectedPortfolio.capital_atual >= selectedPortfolio.capital_inicial ? (
-                      <TrendingUp className="w-5 h-5 text-green-500" />
-                    ) : (
-                      <TrendingDown className="w-5 h-5 text-red-500" />
-                    )}
-                    <span className="text-sm text-muted-foreground">Rentabilidade</span>
-                  </div>
-                  <p className={`text-2xl font-bold ${
-                    selectedPortfolio.capital_atual >= selectedPortfolio.capital_inicial 
-                      ? 'text-green-500' 
-                      : 'text-red-500'
-                  }`}>
-                    {selectedPortfolio.capital_inicial > 0 
-                      ? (((selectedPortfolio.capital_atual - selectedPortfolio.capital_inicial) / selectedPortfolio.capital_inicial) * 100).toFixed(2)
-                      : 0
-                    }%
-                  </p>
-                </Card>
-              </div>
-
-              {/* Entries Tabs */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Movimentações</CardTitle>
-                  <Button onClick={() => setShowEntryDialog(true)} size="sm" className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Nova Entrada
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="mb-4">
-                      <TabsTrigger value="diario">Diário</TabsTrigger>
-                      <TabsTrigger value="semanal">Semanal</TabsTrigger>
-                      <TabsTrigger value="mensal">Mensal</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value={activeTab}>
-                      {filteredEntries.length > 0 ? (
-                        <div className="space-y-3">
-                          {filteredEntries.map((entry) => (
-                            <Card key={entry.id} className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                  <div className={`p-2 rounded ${entry.tipo === 'compra' ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
-                                    {entry.tipo === 'compra' ? (
-                                      <TrendingDown className="w-4 h-4 text-red-500" />
-                                    ) : (
-                                      <TrendingUp className="w-4 h-4 text-green-500" />
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium">{entry.ticker}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {entry.quantidade} x R$ {entry.preco.toFixed(2)}
-                                    </p>
-                                  </div>
+                  <TabsContent value={activeTab}>
+                    {filteredEntries.length > 0 ? (
+                      <div className="space-y-3">
+                        {filteredEntries.map((entry) => (
+                          <Card key={entry.id} className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className={`p-2 rounded ${entry.tipo === 'compra' ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
+                                  {entry.tipo === 'compra' ? (
+                                    <TrendingDown className="w-4 h-4 text-red-500" />
+                                  ) : (
+                                    <TrendingUp className="w-4 h-4 text-green-500" />
+                                  )}
                                 </div>
-                                <div className="text-right">
-                                  <p className={`font-medium ${entry.tipo === 'compra' ? 'text-red-500' : 'text-green-500'}`}>
-                                    {entry.tipo === 'compra' ? '-' : '+'}R$ {entry.valor_total.toFixed(2)}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {entry.entry_date.split('-').reverse().join('/')}
+                                <div>
+                                  <p className="font-medium">{entry.ticker}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {entry.quantidade} x R$ {entry.preco.toFixed(2)}
                                   </p>
                                 </div>
                               </div>
-                            </Card>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                          Nenhuma movimentação no período
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-              </Card>
-            </>
-          ) : (
-            <Card className="p-12 text-center">
-              <Wallet className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">Nenhuma carteira criada</h3>
-              <p className="text-muted-foreground mb-4">
-                Crie sua primeira carteira para começar a acompanhar seus investimentos
-              </p>
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Criar Carteira
-              </Button>
+                              <div className="text-right">
+                                <p className={`font-medium ${entry.tipo === 'compra' ? 'text-red-500' : 'text-green-500'}`}>
+                                  {entry.tipo === 'compra' ? '-' : '+'}R$ {entry.valor_total.toFixed(2)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {entry.entry_date.split('-').reverse().join('/')}
+                                </p>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Nenhuma movimentação no período
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
             </Card>
-          )}
-        </div>
+          </>
+        ) : (
+          <Card className="p-12 text-center">
+            <Wallet className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">Nenhuma carteira criada</h3>
+            <p className="text-muted-foreground mb-4">
+              Crie sua primeira carteira para começar a acompanhar seus investimentos
+            </p>
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Criar Carteira
+            </Button>
+          </Card>
+        )}
       </div>
 
       {/* Create Portfolio Dialog */}
@@ -485,19 +453,19 @@ export default function PortfolioPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="entry-ticker">Ticker</Label>
+              <Label htmlFor="ticker">Ticker</Label>
               <Input
-                id="entry-ticker"
+                id="ticker"
                 value={newEntry.ticker}
-                onChange={(e) => setNewEntry({ ...newEntry, ticker: e.target.value.toUpperCase() })}
+                onChange={(e) => setNewEntry({ ...newEntry, ticker: e.target.value })}
                 placeholder="PETR4"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="entry-quantidade">Quantidade</Label>
+                <Label htmlFor="quantidade">Quantidade</Label>
                 <Input
-                  id="entry-quantidade"
+                  id="quantidade"
                   type="number"
                   value={newEntry.quantidade}
                   onChange={(e) => setNewEntry({ ...newEntry, quantidade: e.target.value })}
@@ -505,9 +473,9 @@ export default function PortfolioPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="entry-preco">Preço</Label>
+                <Label htmlFor="preco">Preço</Label>
                 <Input
-                  id="entry-preco"
+                  id="preco"
                   type="number"
                   step="0.01"
                   value={newEntry.preco}
@@ -517,12 +485,12 @@ export default function PortfolioPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="entry-notes">Observações</Label>
+              <Label htmlFor="notes">Observações (opcional)</Label>
               <Input
-                id="entry-notes"
+                id="notes"
                 value={newEntry.notes}
                 onChange={(e) => setNewEntry({ ...newEntry, notes: e.target.value })}
-                placeholder="Anotações..."
+                placeholder="Anotações sobre a operação"
               />
             </div>
           </div>
@@ -537,6 +505,6 @@ export default function PortfolioPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardLayoutWrapper>
   );
 }
