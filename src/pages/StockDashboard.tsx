@@ -27,6 +27,7 @@ import {
 } from '@/lib/stockRiskCalculations';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
+import DashboardTabs from '@/components/DashboardTabs';
 
 interface Dashboard {
   id: string;
@@ -138,6 +139,10 @@ export default function StockDashboard() {
     <DashboardLayoutWrapper>
       <div className="container mx-auto px-4 py-8">
         <GreetingBanner user={profile} />
+        <DashboardTabs 
+          dashboardId={dashboardId!} 
+          dashboardType={dashboard.type as 'acoes' | 'internacional'} 
+        />
         
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">{dashboard.name}</h1>

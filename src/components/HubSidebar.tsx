@@ -216,44 +216,44 @@ export default function HubSidebar() {
             })}
           </div>
         </div>
+
+        {/* Configurações e Sair - próximo aos dashboards */}
+        <div className="px-3 mt-4 space-y-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                className={`w-full justify-start gap-3 ${
+                  isActive('/settings')
+                    ? 'bg-primary/10 text-primary border-l-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                } ${collapsed ? 'px-3' : ''}`}
+                onClick={() => navigate('/settings')}
+              >
+                <Settings className="h-4 w-4 flex-shrink-0" />
+                {!collapsed && <span>Configurações</span>}
+              </Button>
+            </TooltipTrigger>
+            {collapsed && <TooltipContent side="right">Configurações</TooltipContent>}
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                className={`w-full justify-start gap-3 text-muted-foreground hover:text-foreground ${
+                  collapsed ? 'px-3' : ''
+                }`}
+                onClick={signOut}
+              >
+                <LogOut className="h-4 w-4 flex-shrink-0" />
+                {!collapsed && <span>Sair</span>}
+              </Button>
+            </TooltipTrigger>
+            {collapsed && <TooltipContent side="right">Sair</TooltipContent>}
+          </Tooltip>
+        </div>
       </nav>
-
-      {/* Footer */}
-      <div className="p-3 border-t border-border space-y-1">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              className={`w-full justify-start gap-3 ${
-                isActive('/settings')
-                  ? 'bg-primary/10 text-primary border-l-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              } ${collapsed ? 'px-3' : ''}`}
-              onClick={() => navigate('/settings')}
-            >
-              <Settings className="h-4 w-4 flex-shrink-0" />
-              {!collapsed && <span>Configurações</span>}
-            </Button>
-          </TooltipTrigger>
-          {collapsed && <TooltipContent side="right">Configurações</TooltipContent>}
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              className={`w-full justify-start gap-3 text-muted-foreground hover:text-foreground ${
-                collapsed ? 'px-3' : ''
-              }`}
-              onClick={signOut}
-            >
-              <LogOut className="h-4 w-4 flex-shrink-0" />
-              {!collapsed && <span>Sair</span>}
-            </Button>
-          </TooltipTrigger>
-          {collapsed && <TooltipContent side="right">Sair</TooltipContent>}
-        </Tooltip>
-      </div>
     </aside>
   );
 }
