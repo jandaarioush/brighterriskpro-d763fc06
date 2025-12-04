@@ -7,18 +7,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { BarChart3, TrendingUp, Globe } from 'lucide-react';
 
 const settingsSchema = z.object({
   name: z.string().trim().max(100, 'Nome muito longo').optional(),
   phone: z.string().trim().max(20, 'Telefone inválido').optional(),
   city: z.string().trim().max(100, 'Cidade muito longa').optional(),
   state: z.string().trim().max(2, 'UF deve ter 2 caracteres').optional(),
-  monthlyRisk: z.string().optional().refine((val) => {
-    if (!val) return true;
-    const num = parseFloat(val);
-    return !isNaN(num) && num >= 0;
-  }, 'Risco mensal deve ser um número positivo'),
 });
+
+interface Dashboard {
+  id: string;
+  name: string;
+  type: 'futuros' | 'acoes' | 'internacional';
+  monthly_risk: number;
+}
 
 export default function Settings() {
   const { user } = useAuth();
@@ -26,17 +29,19 @@ export default function Settings() {
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
-  const [monthlyRisk, setMonthlyRisk] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dashboards, setDashboards] = useState<Dashboard[]>([]);
+  const [dashboardRisks, setDashboardRisks] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadProfile();
+    loadDashboards();
   }, [user]);
 
   const loadProfile = async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('name, phone, city, state, monthly_risk')
+      .select('name, phone, city, state')
       .eq('id', user?.id)
       .single();
 
@@ -45,7 +50,23 @@ export default function Settings() {
       setPhone(data.phone || '');
       setCity(data.city || '');
       setState(data.state || '');
-      setMonthlyRisk(data.monthly_risk?.toString() || '');
+    }
+  };
+
+  const loadDashboards = async () => {
+    const { data } = await supabase
+      .from('dashboards')
+      .select('id, name, type, monthly_risk')
+      .eq('user_id', user?.id)
+      .order('created_at', { ascending: true });
+
+    if (data) {
+      setDashboards(data as Dashboard[]);
+      const risks: Record<string, string> = {};
+      data.forEach(d => {
+        risks[d.id] = d.monthly_risk?.toString() || '';
+      });
+      setDashboardRisks(risks);
     }
   };
 
@@ -54,14 +75,7 @@ export default function Settings() {
     setLoading(true);
 
     try {
-      // Validate inputs
-      const validationResult = settingsSchema.safeParse({
-        name,
-        phone,
-        city,
-        state,
-        monthlyRisk,
-      });
+      const validationResult = settingsSchema.safeParse({ name, phone, city, state });
 
       if (!validationResult.success) {
         const firstError = validationResult.error.errors[0];
@@ -77,7 +91,6 @@ export default function Settings() {
           phone: phone.trim() || null,
           city: city.trim() || null,
           state: state.trim() || null,
-          monthly_risk: monthlyRisk ? parseFloat(monthlyRisk) : null
         })
         .eq('id', user?.id);
 
@@ -90,97 +103,79 @@ export default function Settings() {
     }
   };
 
+  const handleSaveDashboardRisk = async (dashboardId: string) => {
+    const riskValue = dashboardRisks[dashboardId];
+    const numValue = parseFloat(riskValue);
+
+    if (isNaN(numValue) || numValue < 0) {
+      toast.error('Valor inválido');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('dashboards')
+        .update({ monthly_risk: numValue })
+        .eq('id', dashboardId);
+
+      if (error) throw error;
+      toast.success('Risco atualizado!');
+    } catch (error) {
+      toast.error('Erro ao salvar');
+    }
+  };
+
+  const getDashboardIcon = (type: string) => {
+    switch (type) {
+      case 'futuros': return BarChart3;
+      case 'acoes': return TrendingUp;
+      case 'internacional': return Globe;
+      default: return BarChart3;
+    }
+  };
+
+  const getDashboardColor = (type: string) => {
+    switch (type) {
+      case 'futuros': return 'border-blue-500/30 bg-blue-500/5';
+      case 'acoes': return 'border-green-500/30 bg-green-500/5';
+      case 'internacional': return 'border-orange-500/30 bg-orange-500/5';
+      default: return 'border-border';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <h1 className="text-4xl font-bold mb-8 font-montserrat">Configurações</h1>
 
         <form onSubmit={handleSave} className="space-y-6">
-          {/* Configurações da Conta */}
           <Card className="p-6">
             <h2 className="text-2xl font-semibold mb-6">Configurações da Conta</h2>
             
             <div className="space-y-4">
               <div>
                 <Label htmlFor="name">Nome</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Seu nome completo"
-                />
+                <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome completo" />
               </div>
-
               <div>
                 <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={user?.email || ''}
-                  disabled
-                  className="bg-muted"
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  O email não pode ser alterado
-                </p>
+                <Input id="email" type="email" value={user?.email || ''} disabled className="bg-muted" />
+                <p className="text-sm text-muted-foreground mt-1">O email não pode ser alterado</p>
               </div>
-
               <div>
                 <Label htmlFor="phone">Telefone</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="(00) 00000-0000"
-                />
+                <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(00) 00000-0000" />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="city">Cidade</Label>
-                  <Input
-                    id="city"
-                    type="text"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="Sua cidade"
-                  />
+                  <Input id="city" type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Sua cidade" />
                 </div>
-
                 <div>
                   <Label htmlFor="state">Estado</Label>
-                  <Input
-                    id="state"
-                    type="text"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    placeholder="UF"
-                    maxLength={2}
-                  />
+                  <Input id="state" type="text" value={state} onChange={(e) => setState(e.target.value)} placeholder="UF" maxLength={2} />
                 </div>
               </div>
-            </div>
-          </Card>
-
-          {/* Gestão de Risco */}
-          <Card className="p-6">
-            <h2 className="text-2xl font-semibold mb-6">Gestão de Risco</h2>
-            
-            <div>
-              <Label htmlFor="monthlyRisk">Risco Mensal (R$)</Label>
-              <Input
-                id="monthlyRisk"
-                type="number"
-                step="0.01"
-                value={monthlyRisk}
-                onChange={(e) => setMonthlyRisk(e.target.value)}
-                placeholder="5000.00"
-              />
-              <p className="text-sm text-muted-foreground mt-2">
-                Valor máximo que você pode perder no mês
-              </p>
             </div>
           </Card>
 
@@ -188,6 +183,50 @@ export default function Settings() {
             {loading ? 'Salvando...' : 'Salvar Configurações'}
           </Button>
         </form>
+
+        {/* Risk Management per Dashboard */}
+        <div className="mt-8 space-y-4">
+          <h2 className="text-2xl font-semibold">Gestão de Risco por Dashboard</h2>
+          
+          {dashboards.map((dashboard) => {
+            const Icon = getDashboardIcon(dashboard.type);
+            const colorClass = getDashboardColor(dashboard.type);
+            const isFuturos = dashboard.type === 'futuros';
+            
+            return (
+              <Card key={dashboard.id} className={`p-6 ${colorClass}`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <Icon className="h-5 w-5" />
+                  <h3 className="text-lg font-semibold">{dashboard.name}</h3>
+                </div>
+                
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <Label htmlFor={`risk-${dashboard.id}`}>
+                      {isFuturos ? 'Risco Mensal (R$)' : 'Capital Total (R$)'}
+                    </Label>
+                    <Input
+                      id={`risk-${dashboard.id}`}
+                      type="number"
+                      step="0.01"
+                      value={dashboardRisks[dashboard.id] || ''}
+                      onChange={(e) => setDashboardRisks(prev => ({ ...prev, [dashboard.id]: e.target.value }))}
+                      placeholder={isFuturos ? '5000.00' : '100000.00'}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {isFuturos 
+                        ? 'Valor máximo que você pode perder no mês' 
+                        : 'Capital total para cálculo de % de risco'}
+                    </p>
+                  </div>
+                  <Button onClick={() => handleSaveDashboardRisk(dashboard.id)} variant="outline">
+                    Salvar
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
