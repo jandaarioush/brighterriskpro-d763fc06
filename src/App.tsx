@@ -9,11 +9,14 @@ import FirstAccess from "./pages/FirstAccess";
 import RecuperarSenha from "./pages/RecuperarSenha";
 import RedefinirSenha from "./pages/RedefinirSenha";
 import Demo from "./pages/Demo";
+import Hub from "./pages/Hub";
 import Dashboard from "./pages/Dashboard";
+import StockDashboard from "./pages/StockDashboard";
 import Calendar from "./pages/Calendar";
 import Trades from "./pages/Trades";
 import Simulator from "./pages/Simulator";
 import Settings from "./pages/Settings";
+import Portfolio from "./pages/Portfolio";
 import AdminWebhooks from "./pages/AdminWebhooks";
 import AdminUsers from "./pages/AdminUsers";
 import AdminReports from "./pages/AdminReports";
@@ -78,11 +81,35 @@ const App = () => (
             <Route path="/upload-videos" element={<UploadVideos />} />
             <Route path="/upload-admin" element={<UploadAdmin />} />
             <Route
+              path="/hub"
+              element={
+                <ProtectedRoute>
+                  <Hub />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/dashboard"
               element={
                 <ProtectedRoute>
                   <Navbar />
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/:dashboardId"
+              element={
+                <ProtectedRoute>
+                  <StockDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/portfolio/:dashboardId"
+              element={
+                <ProtectedRoute>
+                  <Portfolio />
                 </ProtectedRoute>
               }
             />
