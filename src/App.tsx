@@ -37,6 +37,7 @@ import UploadAdmin from "./pages/UploadAdmin";
 import { Navbar } from "./components/Navbar";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { AdminRoute } from "./components/AdminRoute";
+import DashboardLayoutWrapper from "./components/DashboardLayoutWrapper";
 
 const queryClient = new QueryClient();
 
@@ -92,7 +93,6 @@ const App = () => (
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Navbar />
                   <Dashboard />
                 </ProtectedRoute>
               }
@@ -117,8 +117,9 @@ const App = () => (
               path="/calendar"
               element={
                 <ProtectedRoute>
-                  <Navbar />
-                  <Calendar />
+                  <DashboardLayoutWrapper>
+                    <Calendar />
+                  </DashboardLayoutWrapper>
                 </ProtectedRoute>
               }
             />
@@ -126,8 +127,9 @@ const App = () => (
               path="/trades"
               element={
                 <ProtectedRoute>
-                  <Navbar />
-                  <Trades />
+                  <DashboardLayoutWrapper>
+                    <Trades />
+                  </DashboardLayoutWrapper>
                 </ProtectedRoute>
               }
             />
@@ -135,8 +137,9 @@ const App = () => (
               path="/simulator"
               element={
                 <ProtectedRoute>
-                  <Navbar />
-                  <Simulator />
+                  <DashboardLayoutWrapper>
+                    <Simulator />
+                  </DashboardLayoutWrapper>
                 </ProtectedRoute>
               }
             />
@@ -144,8 +147,9 @@ const App = () => (
               path="/settings"
               element={
                 <ProtectedRoute>
-                  <Navbar />
-                  <Settings />
+                  <DashboardLayoutWrapper>
+                    <Settings />
+                  </DashboardLayoutWrapper>
                 </ProtectedRoute>
               }
             />
@@ -154,8 +158,9 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AdminRoute>
-                    <Navbar />
-                    <AdminWebhooks />
+                    <DashboardLayoutWrapper>
+                      <AdminWebhooks />
+                    </DashboardLayoutWrapper>
                   </AdminRoute>
                 </ProtectedRoute>
               }
@@ -165,8 +170,9 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AdminRoute>
-                    <Navbar />
-                    <AdminUsers />
+                    <DashboardLayoutWrapper>
+                      <AdminUsers />
+                    </DashboardLayoutWrapper>
                   </AdminRoute>
                 </ProtectedRoute>
               }
@@ -176,8 +182,9 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AdminRoute>
-                    <Navbar />
-                    <AdminReports />
+                    <DashboardLayoutWrapper>
+                      <AdminReports />
+                    </DashboardLayoutWrapper>
                   </AdminRoute>
                 </ProtectedRoute>
               }
@@ -187,8 +194,9 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AdminRoute>
-                    <Navbar />
-                    <AdminEngagement />
+                    <DashboardLayoutWrapper>
+                      <AdminEngagement />
+                    </DashboardLayoutWrapper>
                   </AdminRoute>
                 </ProtectedRoute>
               }
