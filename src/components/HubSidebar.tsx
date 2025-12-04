@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { BarChart3, TrendingUp, Globe, LayoutDashboard, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
+import { BarChart3, TrendingUp, Globe, LayoutDashboard, ChevronLeft, ChevronRight, LogOut, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
@@ -219,7 +219,25 @@ export default function HubSidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border space-y-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              className={`w-full justify-start gap-3 ${
+                isActive('/settings')
+                  ? 'bg-primary/10 text-primary border-l-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              } ${collapsed ? 'px-3' : ''}`}
+              onClick={() => navigate('/settings')}
+            >
+              <Settings className="h-4 w-4 flex-shrink-0" />
+              {!collapsed && <span>Configurações</span>}
+            </Button>
+          </TooltipTrigger>
+          {collapsed && <TooltipContent side="right">Configurações</TooltipContent>}
+        </Tooltip>
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
