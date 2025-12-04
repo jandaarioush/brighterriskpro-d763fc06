@@ -183,7 +183,7 @@ export default function MonthlyPortfolio() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Trades do Mês</h2>
-            <Button onClick={() => window.location.href = `/dashboard/${dashboardId}`}>
+            <Button onClick={() => window.location.href = `/stock-dashboard/${dashboardId}`}>
               <Plus className="h-4 w-4 mr-2" />
               Adicionar Trade
             </Button>
