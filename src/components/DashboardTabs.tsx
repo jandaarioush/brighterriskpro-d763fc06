@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, FileText, Calculator, Settings, Wallet, ChevronDown } from 'lucide-react';
+import { Calendar, FileText, Calculator, Wallet, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,7 +23,6 @@ export default function DashboardTabs({ dashboardId, dashboardType }: DashboardT
   const getCalendarPath = () => isFuturos ? '/calendar' : `/calendar/${dashboardId}`;
   const getTradesPath = () => isFuturos ? '/trades' : `/trades/${dashboardId}`;
   const getSimulatorPath = () => isFuturos ? '/simulator' : `/simulator/${dashboardId}`;
-  const getSettingsPath = () => '/settings';
 
   const isActive = (path: string) => location.pathname === path;
   const isCarteiraActive = () => 
@@ -95,19 +94,6 @@ export default function DashboardTabs({ dashboardId, dashboardType }: DashboardT
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-
-          <Button
-            variant="ghost"
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              isActive(getSettingsPath())
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-            }`}
-            onClick={() => navigate(getSettingsPath())}
-          >
-            <Settings className="h-4 w-4" />
-            <span>Configurações</span>
-          </Button>
         </div>
       </div>
     </div>

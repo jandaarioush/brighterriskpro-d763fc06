@@ -25,6 +25,7 @@ import {
 } from "@/lib/riskCalculations";
 import { format } from "date-fns";
 import DashboardLayoutWrapper from "@/components/DashboardLayoutWrapper";
+import DashboardTabs from "@/components/DashboardTabs";
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
@@ -115,6 +116,7 @@ export default function Dashboard() {
     <DashboardLayoutWrapper>
       <div className="container mx-auto px-4 py-8">
         <GreetingBanner user={profile} />
+        <DashboardTabs dashboardType="futuros" />
         
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
