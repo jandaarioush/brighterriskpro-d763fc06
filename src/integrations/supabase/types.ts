@@ -38,6 +38,50 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboards: {
+        Row: {
+          config: Json | null
+          created_at: string
+          icon: string | null
+          id: string
+          monthly_risk: number | null
+          name: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          monthly_risk?: number | null
+          name: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          monthly_risk?: number | null
+          name?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demo_leads: {
         Row: {
           created_at: string
@@ -110,6 +154,111 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_entries: {
+        Row: {
+          created_at: string
+          entry_date: string
+          id: string
+          notes: string | null
+          portfolio_id: string
+          preco: number
+          quantidade: number
+          ticker: string
+          tipo: string
+          user_id: string
+          valor_total: number
+        }
+        Insert: {
+          created_at?: string
+          entry_date: string
+          id?: string
+          notes?: string | null
+          portfolio_id: string
+          preco: number
+          quantidade: number
+          ticker: string
+          tipo: string
+          user_id: string
+          valor_total: number
+        }
+        Update: {
+          created_at?: string
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          portfolio_id?: string
+          preco?: number
+          quantidade?: number
+          ticker?: string
+          tipo?: string
+          user_id?: string
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_entries_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portfolio_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolios: {
+        Row: {
+          capital_atual: number
+          capital_inicial: number
+          created_at: string
+          dashboard_id: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          capital_atual?: number
+          capital_inicial?: number
+          created_at?: string
+          dashboard_id: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          capital_atual?: number
+          capital_inicial?: number
+          created_at?: string
+          dashboard_id?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolios_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portfolios_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           city: string | null
@@ -160,6 +309,96 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      stock_trades: {
+        Row: {
+          alavancagem: number
+          capital_utilizado: number
+          corretagem: number | null
+          created_at: string
+          dashboard_id: string
+          id: string
+          modalidade: string
+          nota_disciplina: number | null
+          notes: string | null
+          preco_entrada: number
+          preco_saida: number
+          quantidade: number
+          resultado_percentual: number
+          resultado_reais: number
+          risco_percentual: number
+          screenshot_url: string | null
+          setup_utilizado: string | null
+          tag: string | null
+          ticker: string
+          trade_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alavancagem?: number
+          capital_utilizado: number
+          corretagem?: number | null
+          created_at?: string
+          dashboard_id: string
+          id?: string
+          modalidade: string
+          nota_disciplina?: number | null
+          notes?: string | null
+          preco_entrada: number
+          preco_saida: number
+          quantidade: number
+          resultado_percentual: number
+          resultado_reais: number
+          risco_percentual: number
+          screenshot_url?: string | null
+          setup_utilizado?: string | null
+          tag?: string | null
+          ticker: string
+          trade_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alavancagem?: number
+          capital_utilizado?: number
+          corretagem?: number | null
+          created_at?: string
+          dashboard_id?: string
+          id?: string
+          modalidade?: string
+          nota_disciplina?: number | null
+          notes?: string | null
+          preco_entrada?: number
+          preco_saida?: number
+          quantidade?: number
+          resultado_percentual?: number
+          resultado_reais?: number
+          risco_percentual?: number
+          screenshot_url?: string | null
+          setup_utilizado?: string | null
+          tag?: string | null
+          ticker?: string
+          trade_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_trades_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_trades_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trades: {
         Row: {
