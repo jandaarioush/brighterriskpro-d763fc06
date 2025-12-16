@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import logoHorizontal from '@/assets/logo-brighter.png';
+import { ThemeLogo } from '@/components/ThemeLogo';
 import { z } from 'zod';
 
 const authSchema = z.object({
@@ -59,7 +59,7 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md p-8">
         <div className="flex flex-col items-center mb-8">
-          <img src={logoHorizontal} alt="Brighter" className="h-10 mb-4" />
+          <ThemeLogo className="h-10 mb-4" />
           <h1 className="font-montserrat text-3xl font-bold">
             {isLogin ? 'Entrar' : 'Criar Conta'}
           </h1>

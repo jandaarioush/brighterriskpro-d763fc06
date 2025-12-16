@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import logoHorizontal from "@/assets/logo-brighter.png";
+import { ThemeLogo } from '@/components/ThemeLogo';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface Dashboard {
   id: string;
@@ -130,7 +131,7 @@ export default function HubSidebar() {
       <div className="p-4 border-b border-border flex items-center justify-between">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <img src={logoHorizontal} alt="Brighter" className="h-6" />
+            <ThemeLogo className="h-6" />
             <span className="font-montserrat font-bold text-sm">Risk Pro</span>
           </div>
         )}
@@ -217,8 +218,18 @@ export default function HubSidebar() {
           </div>
         </div>
 
-        {/* Configurações e Sair - próximo aos dashboards */}
+        {/* Theme Toggle, Configurações e Sair */}
         <div className="px-3 mt-4 space-y-1">
+          {/* Theme Toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className={`${collapsed ? 'flex justify-center' : 'px-2'}`}>
+                <ThemeToggle />
+              </div>
+            </TooltipTrigger>
+            {collapsed && <TooltipContent side="right">Alternar tema</TooltipContent>}
+          </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
