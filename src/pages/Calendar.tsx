@@ -10,6 +10,7 @@ import { calculateMonthData, calculateMonthlyStats, Trade } from '@/lib/riskCalc
 import { MonthlyRiskDialog } from '@/components/MonthlyRiskDialog';
 import { QuickTradeDialog } from '@/components/QuickTradeDialog';
 import { DailyWeeklyCharts } from '@/components/DailyWeeklyCharts';
+import DashboardTabs from '@/components/DashboardTabs';
 import { toast } from 'sonner';
 
 export default function Calendar() {
@@ -156,6 +157,7 @@ export default function Calendar() {
 
   return (
     <div className="min-h-screen bg-background">
+      <DashboardTabs dashboardType="futuros" />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2 font-montserrat">Gestão de Risco</h1>
