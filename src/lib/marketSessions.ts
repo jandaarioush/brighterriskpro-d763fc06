@@ -1,0 +1,163 @@
+export interface MarketSession {
+  id: string;
+  name: string;
+  abbreviation: string;
+  openTime: string;  // "HH:MM" em BRT
+  closeTime: string; // "HH:MM" em BRT
+  color: string;
+  crossesMidnight?: boolean;
+}
+
+export const MARKET_SESSIONS: MarketSession[] = [
+  {
+    id: 'b3-futuro',
+    name: 'B3 Futuro',
+    abbreviation: 'B3F',
+    openTime: '09:00',
+    closeTime: '18:30',
+    color: 'hsl(142, 76%, 36%)', // green
+  },
+  {
+    id: 'b3-vista',
+    name: 'B3 À Vista',
+    abbreviation: 'B3V',
+    openTime: '10:00',
+    closeTime: '17:55',
+    color: 'hsl(142, 69%, 58%)', // light green
+  },
+  {
+    id: 'nyse',
+    name: 'Nova York',
+    abbreviation: 'NYSE',
+    openTime: '10:30',
+    closeTime: '17:00',
+    color: 'hsl(217, 91%, 60%)', // blue
+  },
+  {
+    id: 'lse',
+    name: 'Londres',
+    abbreviation: 'LSE',
+    openTime: '04:00',
+    closeTime: '12:30',
+    color: 'hsl(45, 93%, 47%)', // yellow
+  },
+  {
+    id: 'tse',
+    name: 'Tóquio',
+    abbreviation: 'TSE',
+    openTime: '21:00',
+    closeTime: '03:00',
+    color: 'hsl(330, 81%, 60%)', // pink
+    crossesMidnight: true,
+  },
+  {
+    id: 'xetra',
+    name: 'Frankfurt',
+    abbreviation: 'XETRA',
+    openTime: '04:00',
+    closeTime: '13:30',
+    color: 'hsl(25, 95%, 53%)', // orange
+  },
+];
+
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function dateToMinutes(date: Date): number {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+export function isMarketOpen(session: MarketSession, currentTime: Date): boolean {
+  const currentMinutes = dateToMinutes(currentTime);
+  const openMinutes = timeToMinutes(session.openTime);
+  const closeMinutes = timeToMinutes(session.closeTime);
+  
+  // Check if it's a weekday (Monday = 1, Friday = 5)
+  const dayOfWeek = currentTime.getDay();
+  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+  
+  if (!isWeekday) return false;
+  
+  if (session.crossesMidnight) {
+    // Market crosses midnight (e.g., Tokyo: 21:00 - 03:00)
+    return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
+  }
+  
+  return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+}
+
+export function getTimeUntilChange(
+  session: MarketSession, 
+  currentTime: Date
+): { hours: number; minutes: number; isUntilOpen: boolean } {
+  const currentMinutes = dateToMinutes(currentTime);
+  const openMinutes = timeToMinutes(session.openTime);
+  const closeMinutes = timeToMinutes(session.closeTime);
+  const isOpen = isMarketOpen(session, currentTime);
+  
+  let targetMinutes: number;
+  
+  if (isOpen) {
+    // Calculate time until close
+    if (session.crossesMidnight && currentMinutes < closeMinutes) {
+      targetMinutes = closeMinutes;
+    } else if (session.crossesMidnight) {
+      targetMinutes = closeMinutes + 24 * 60;
+    } else {
+      targetMinutes = closeMinutes;
+    }
+  } else {
+    // Calculate time until open
+    if (currentMinutes < openMinutes) {
+      targetMinutes = openMinutes;
+    } else {
+      targetMinutes = openMinutes + 24 * 60; // Next day
+    }
+  }
+  
+  let diff = targetMinutes - currentMinutes;
+  if (diff < 0) diff += 24 * 60;
+  
+  return {
+    hours: Math.floor(diff / 60),
+    minutes: diff % 60,
+    isUntilOpen: !isOpen,
+  };
+}
+
+export function getOverlappingSessions(currentTime: Date): string[] {
+  const openSessions = MARKET_SESSIONS.filter(s => isMarketOpen(s, currentTime));
+  
+  if (openSessions.length < 2) return [];
+  
+  const overlaps: string[] = [];
+  
+  // Check for Brazilian market overlaps with international
+  const b3Open = openSessions.some(s => s.id.startsWith('b3'));
+  const nyseOpen = openSessions.some(s => s.id === 'nyse');
+  const lseOpen = openSessions.some(s => s.id === 'lse');
+  
+  if (b3Open && nyseOpen) {
+    overlaps.push('B3 e Nova York [10:30 - 17:00]');
+  }
+  if (b3Open && lseOpen) {
+    overlaps.push('B3 e Londres [09:00 - 12:30]');
+  }
+  if (nyseOpen && lseOpen) {
+    overlaps.push('Nova York e Londres [10:30 - 12:30]');
+  }
+  
+  return overlaps;
+}
+
+export function getTimelinePosition(time: string): number {
+  const minutes = timeToMinutes(time);
+  return (minutes / (24 * 60)) * 100;
+}
+
+export function getCurrentTimePosition(date: Date): number {
+  const minutes = dateToMinutes(date);
+  return (minutes / (24 * 60)) * 100;
+}
