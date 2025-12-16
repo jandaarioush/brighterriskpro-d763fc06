@@ -44,6 +44,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { EditTradeDialog } from "@/components/EditTradeDialog";
+import DashboardTabs from "@/components/DashboardTabs";
 import { z } from "zod";
 
 interface Trade {
@@ -605,6 +606,7 @@ export default function Trades() {
 
   return (
     <div className="min-h-screen bg-background">
+      <DashboardTabs dashboardType="futuros" />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Trades</h1>

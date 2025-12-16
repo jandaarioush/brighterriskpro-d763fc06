@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateMonthData, Trade } from '@/lib/riskCalculations';
 import { format } from 'date-fns';
+import DashboardTabs from '@/components/DashboardTabs';
 
 export default function Simulator() {
   const { user } = useAuth();
@@ -103,6 +104,7 @@ export default function Simulator() {
 
   return (
     <div className="min-h-screen bg-background">
+      <DashboardTabs dashboardType="futuros" />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2 font-montserrat">Simulador de Alavancagem</h1>
