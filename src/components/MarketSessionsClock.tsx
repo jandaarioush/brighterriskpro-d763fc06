@@ -9,6 +9,7 @@ import {
 import { Clock, Globe } from 'lucide-react';
 import { useLocalClock } from '@/hooks/useLocalClock';
 import { formatDigitalClock } from '@/lib/formatting';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import {
   MARKET_SESSIONS,
   isMarketOpen,
@@ -16,12 +17,14 @@ import {
   getOverlappingSessions,
   getTimelinePosition,
   getCurrentTimePosition,
+  getUpcomingEvents,
 } from '@/lib/marketSessions';
 
 export default function MarketSessionsClock() {
   const now = useLocalClock(1000);
   const currentTimePosition = getCurrentTimePosition(now);
   const overlaps = getOverlappingSessions(now);
+  const upcomingEvents = getUpcomingEvents(now, 4);
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -236,6 +239,55 @@ export default function MarketSessionsClock() {
 
             {/* Overlaps and Schedule */}
             <div className="space-y-4">
+              {/* Upcoming Events */}
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  Próximos Eventos
+                </h4>
+                <div className="space-y-1.5">
+                  {upcomingEvents.map((event, index) => (
+                    <div
+                      key={`${event.marketId}-${event.eventType}`}
+                      className={`flex items-center justify-between p-2 rounded-md text-xs ${
+                        index === 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: event.marketColor }}
+                        />
+                        <span className="font-medium">{event.marketAbbreviation}</span>
+                        <Badge
+                          variant="secondary"
+                          className={`text-[10px] px-1.5 py-0 h-4 gap-0.5 ${
+                            event.eventType === 'open'
+                              ? 'bg-green-500/20 text-green-500'
+                              : 'bg-red-500/20 text-red-500'
+                          }`}
+                        >
+                          {event.eventType === 'open' ? (
+                            <ArrowUp className="w-2.5 h-2.5" />
+                          ) : (
+                            <ArrowDown className="w-2.5 h-2.5" />
+                          )}
+                          {event.eventType === 'open' ? 'Abre' : 'Fecha'}
+                        </Badge>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-muted-foreground">
+                          {Math.floor(event.minutesUntil / 60)}h {event.minutesUntil % 60}min
+                        </span>
+                        <span className="text-muted-foreground/60 ml-1.5">
+                          ({event.eventTime})
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Brazilian Markets Highlight */}
               <div>
                 <h4 className="text-sm font-semibold text-muted-foreground mb-2">Mercados Brasileiros</h4>
