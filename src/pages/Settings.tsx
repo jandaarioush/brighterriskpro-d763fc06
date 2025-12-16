@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { BarChart3, TrendingUp, Globe } from 'lucide-react';
+import { PhoneInputWithCountry } from '@/components/PhoneInputWithCountry';
 
 const settingsSchema = z.object({
   name: z.string().trim().max(100, 'Nome muito longo').optional(),
@@ -164,7 +165,7 @@ export default function Settings() {
               </div>
               <div>
                 <Label htmlFor="phone">Telefone</Label>
-                <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(00) 00000-0000" />
+                <PhoneInputWithCountry value={phone} onChange={setPhone} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
