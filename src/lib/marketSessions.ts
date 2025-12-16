@@ -161,3 +161,81 @@ export function getCurrentTimePosition(date: Date): number {
   const minutes = dateToMinutes(date);
   return (minutes / (24 * 60)) * 100;
 }
+
+export interface MarketEvent {
+  marketId: string;
+  marketName: string;
+  marketAbbreviation: string;
+  marketColor: string;
+  eventType: 'open' | 'close';
+  eventTime: string;
+  minutesUntil: number;
+}
+
+export function getUpcomingEvents(currentTime: Date, limit: number = 5): MarketEvent[] {
+  const events: MarketEvent[] = [];
+  const currentMinutes = dateToMinutes(currentTime);
+
+  MARKET_SESSIONS.forEach((session) => {
+    const openMinutes = timeToMinutes(session.openTime);
+    const closeMinutes = timeToMinutes(session.closeTime);
+    const isOpen = isMarketOpen(session, currentTime);
+
+    // Calculate minutes until open
+    let minutesUntilOpen: number;
+    if (currentMinutes < openMinutes) {
+      minutesUntilOpen = openMinutes - currentMinutes;
+    } else {
+      minutesUntilOpen = (24 * 60) - currentMinutes + openMinutes;
+    }
+
+    // Calculate minutes until close
+    let minutesUntilClose: number;
+    if (session.crossesMidnight) {
+      if (currentMinutes >= openMinutes) {
+        // After open, before midnight
+        minutesUntilClose = (24 * 60) - currentMinutes + closeMinutes;
+      } else if (currentMinutes < closeMinutes) {
+        // After midnight, before close
+        minutesUntilClose = closeMinutes - currentMinutes;
+      } else {
+        // Market is closed
+        minutesUntilClose = (24 * 60) - currentMinutes + closeMinutes;
+      }
+    } else {
+      if (currentMinutes < closeMinutes) {
+        minutesUntilClose = closeMinutes - currentMinutes;
+      } else {
+        minutesUntilClose = (24 * 60) - currentMinutes + closeMinutes;
+      }
+    }
+
+    // Add the next relevant event
+    if (isOpen) {
+      // Market is open, next event is close
+      events.push({
+        marketId: session.id,
+        marketName: session.name,
+        marketAbbreviation: session.abbreviation,
+        marketColor: session.color,
+        eventType: 'close',
+        eventTime: session.closeTime,
+        minutesUntil: minutesUntilClose,
+      });
+    } else {
+      // Market is closed, next event is open
+      events.push({
+        marketId: session.id,
+        marketName: session.name,
+        marketAbbreviation: session.abbreviation,
+        marketColor: session.color,
+        eventType: 'open',
+        eventTime: session.openTime,
+        minutesUntil: minutesUntilOpen,
+      });
+    }
+  });
+
+  // Sort by minutes until event and limit
+  return events.sort((a, b) => a.minutesUntil - b.minutesUntil).slice(0, limit);
+}
