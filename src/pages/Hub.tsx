@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { BarChart3, TrendingUp, Globe, ArrowRight, Loader2 } from 'lucide-react';
+import { BarChart3, TrendingUp, Globe, ArrowRight, Loader2, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import DashboardLayoutWrapper from '@/components/DashboardLayoutWrapper';
+import { useLocalClock } from '@/hooks/useLocalClock';
+import { getGreeting, formatDigitalClock, firstNameFrom } from '@/lib/formatting';
 
 interface Dashboard {
   id: string;
@@ -39,6 +41,31 @@ const dashboardTypeInfo = {
     iconColor: 'text-orange-500',
   },
 };
+
+// Welcome Section Component
+function WelcomeSection({ profile }: { profile: { name?: string | null } | null }) {
+  const now = useLocalClock(1000);
+  const greeting = getGreeting(now);
+  const firstName = firstNameFrom(profile) || 'Trader';
+  const clockTime = formatDigitalClock(now);
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-4xl font-bold font-montserrat">
+          {greeting}, {firstName}! 👋
+        </h1>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Clock className="w-5 h-5" />
+          <span className="text-xl font-mono tabular-nums">{clockTime}</span>
+        </div>
+      </div>
+      <p className="text-muted-foreground text-lg">
+        Escolha um dashboard para começar a gestão de risco
+      </p>
+    </div>
+  );
+}
 
 export default function Hub() {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
@@ -131,14 +158,7 @@ export default function Hub() {
     <DashboardLayoutWrapper>
       <div className="p-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 font-montserrat">
-            Olá, {profile?.name?.split(' ')[0] || 'Trader'}! 👋
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Escolha um dashboard para começar a gestão de risco
-          </p>
-        </div>
+        <WelcomeSection profile={profile} />
 
         {/* Dashboards Section */}
         <div className="mb-8">

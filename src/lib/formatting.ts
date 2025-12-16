@@ -9,14 +9,23 @@ export function getTimezone(): string {
 export function getGreeting(date: Date): "Bom dia" | "Boa tarde" | "Boa noite" {
   const h = date.getHours();
 
-  // Bom dia: 05:00–11:59
-  if (h >= 5 && h < 12) return "Bom dia";
+  // Bom dia: 00:00–11:59
+  if (h >= 0 && h < 12) return "Bom dia";
 
-  // Boa tarde: 12:00–17:59
-  if (h >= 12 && h < 18) return "Boa tarde";
+  // Boa tarde: 12:00–18:59
+  if (h >= 12 && h < 19) return "Boa tarde";
 
-  // Boa noite: 18:00–04:59
+  // Boa noite: 19:00–23:59
   return "Boa noite";
+}
+
+export function formatDigitalClock(date: Date): string {
+  return date.toLocaleTimeString("pt-BR", { 
+    hour: "2-digit", 
+    minute: "2-digit", 
+    second: "2-digit",
+    hour12: false 
+  });
 }
 
 export function firstNameFrom(user?: { name?: string; email?: string } | null): string | null {
