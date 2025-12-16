@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import DashboardLayoutWrapper from '@/components/DashboardLayoutWrapper';
 import { useLocalClock } from '@/hooks/useLocalClock';
 import { getGreeting, formatDigitalClock, firstNameFrom } from '@/lib/formatting';
-
+import MarketSessionsClock from '@/components/MarketSessionsClock';
 interface Dashboard {
   id: string;
   name: string;
@@ -192,6 +192,11 @@ export default function Hub() {
               );
             })}
           </div>
+        </div>
+
+        {/* Market Sessions Clock */}
+        <div className="mb-8">
+          <MarketSessionsClock />
         </div>
 
         {/* Quick Stats */}
