@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import FirstAccess from "./pages/FirstAccess";
@@ -61,54 +62,56 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/primeiro-acesso" element={<FirstAccess />} />
-            <Route path="/recuperar-senha" element={<RecuperarSenha />} />
-            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
-            <Route path="/demo" element={<Demo />} />
-            <Route path="/recursos" element={<Recursos />} />
-            <Route path="/precos" element={<Precos />} />
-            <Route path="/suporte" element={<Suporte />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/sobre-nos" element={<SobreNos />} />
-            <Route path="/contato" element={<Contato />} />
-            <Route path="/termos-de-uso" element={<TermosDeUso />} />
-            <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
-            <Route path="/cookies" element={<Cookies />} />
-            <Route path="/lgpd" element={<LGPD />} />
-            <Route path="/upload-videos" element={<UploadVideos />} />
-            <Route path="/upload-admin" element={<UploadAdmin />} />
-            <Route path="/hub" element={<ProtectedRoute><Hub /></ProtectedRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/dashboard/:dashboardId" element={<ProtectedRoute><StockDashboard /></ProtectedRoute>} />
-            <Route path="/calendar" element={<ProtectedRoute><DashboardLayoutWrapper><Calendar /></DashboardLayoutWrapper></ProtectedRoute>} />
-            <Route path="/calendar/:dashboardId" element={<ProtectedRoute><StockCalendar /></ProtectedRoute>} />
-            <Route path="/trades" element={<ProtectedRoute><DashboardLayoutWrapper><Trades /></DashboardLayoutWrapper></ProtectedRoute>} />
-            <Route path="/trades/:dashboardId" element={<ProtectedRoute><StockTrades /></ProtectedRoute>} />
-            <Route path="/simulator" element={<ProtectedRoute><DashboardLayoutWrapper><Simulator /></DashboardLayoutWrapper></ProtectedRoute>} />
-            <Route path="/simulator/:dashboardId" element={<ProtectedRoute><StockSimulator /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><DashboardLayoutWrapper><Settings /></DashboardLayoutWrapper></ProtectedRoute>} />
-            <Route path="/portfolio/:dashboardId" element={<ProtectedRoute><Portfolio /></ProtectedRoute>} />
-            <Route path="/portfolio-weekly/:dashboardId" element={<ProtectedRoute><WeeklyPortfolio /></ProtectedRoute>} />
-            <Route path="/portfolio-monthly/:dashboardId" element={<ProtectedRoute><MonthlyPortfolio /></ProtectedRoute>} />
-            <Route path="/admin/webhooks" element={<ProtectedRoute><AdminRoute><DashboardLayoutWrapper><AdminWebhooks /></DashboardLayoutWrapper></AdminRoute></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute><AdminRoute><DashboardLayoutWrapper><AdminUsers /></DashboardLayoutWrapper></AdminRoute></ProtectedRoute>} />
-            <Route path="/admin/reports" element={<ProtectedRoute><AdminRoute><DashboardLayoutWrapper><AdminReports /></DashboardLayoutWrapper></AdminRoute></ProtectedRoute>} />
-            <Route path="/admin/engagement" element={<ProtectedRoute><AdminRoute><DashboardLayoutWrapper><AdminEngagement /></DashboardLayoutWrapper></AdminRoute></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/primeiro-acesso" element={<FirstAccess />} />
+              <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+              <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+              <Route path="/demo" element={<Demo />} />
+              <Route path="/recursos" element={<Recursos />} />
+              <Route path="/precos" element={<Precos />} />
+              <Route path="/suporte" element={<Suporte />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/sobre-nos" element={<SobreNos />} />
+              <Route path="/contato" element={<Contato />} />
+              <Route path="/termos-de-uso" element={<TermosDeUso />} />
+              <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
+              <Route path="/cookies" element={<Cookies />} />
+              <Route path="/lgpd" element={<LGPD />} />
+              <Route path="/upload-videos" element={<UploadVideos />} />
+              <Route path="/upload-admin" element={<UploadAdmin />} />
+              <Route path="/hub" element={<ProtectedRoute><Hub /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard/:dashboardId" element={<ProtectedRoute><StockDashboard /></ProtectedRoute>} />
+              <Route path="/calendar" element={<ProtectedRoute><DashboardLayoutWrapper><Calendar /></DashboardLayoutWrapper></ProtectedRoute>} />
+              <Route path="/calendar/:dashboardId" element={<ProtectedRoute><StockCalendar /></ProtectedRoute>} />
+              <Route path="/trades" element={<ProtectedRoute><DashboardLayoutWrapper><Trades /></DashboardLayoutWrapper></ProtectedRoute>} />
+              <Route path="/trades/:dashboardId" element={<ProtectedRoute><StockTrades /></ProtectedRoute>} />
+              <Route path="/simulator" element={<ProtectedRoute><DashboardLayoutWrapper><Simulator /></DashboardLayoutWrapper></ProtectedRoute>} />
+              <Route path="/simulator/:dashboardId" element={<ProtectedRoute><StockSimulator /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><DashboardLayoutWrapper><Settings /></DashboardLayoutWrapper></ProtectedRoute>} />
+              <Route path="/portfolio/:dashboardId" element={<ProtectedRoute><Portfolio /></ProtectedRoute>} />
+              <Route path="/portfolio-weekly/:dashboardId" element={<ProtectedRoute><WeeklyPortfolio /></ProtectedRoute>} />
+              <Route path="/portfolio-monthly/:dashboardId" element={<ProtectedRoute><MonthlyPortfolio /></ProtectedRoute>} />
+              <Route path="/admin/webhooks" element={<ProtectedRoute><AdminRoute><DashboardLayoutWrapper><AdminWebhooks /></DashboardLayoutWrapper></AdminRoute></ProtectedRoute>} />
+              <Route path="/admin/users" element={<ProtectedRoute><AdminRoute><DashboardLayoutWrapper><AdminUsers /></DashboardLayoutWrapper></AdminRoute></ProtectedRoute>} />
+              <Route path="/admin/reports" element={<ProtectedRoute><AdminRoute><DashboardLayoutWrapper><AdminReports /></DashboardLayoutWrapper></AdminRoute></ProtectedRoute>} />
+              <Route path="/admin/engagement" element={<ProtectedRoute><AdminRoute><DashboardLayoutWrapper><AdminEngagement /></DashboardLayoutWrapper></AdminRoute></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

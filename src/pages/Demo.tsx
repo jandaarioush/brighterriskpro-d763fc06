@@ -14,6 +14,7 @@ import { usePhoneMask } from "@/hooks/usePhoneMask";
 import { Calculator, Shield, TrendingUp, Bell, FileText, Headphones, Target, Upload, Activity, Lock, CheckCircle, MessageCircle, Star, ArrowRight, Settings, LayoutDashboard, Calendar, BarChart3, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ThemeLogo } from "@/components/ThemeLogo";
 const formSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
   email: z.string().email("E-mail inválido"),
@@ -225,7 +226,7 @@ export default function Demo() {
         <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
           <div className="container mx-auto px-4 h-16 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/src/assets/logo-brighter.png" alt="Brighter Risk Pro" className="h-8" />
+              <ThemeLogo className="h-8" />
               <span className="font-bold text-lg hidden sm:inline">Brighter Risk Pro</span>
             </Link>
             

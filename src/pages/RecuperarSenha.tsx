@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import logoHorizontal from '@/assets/logo-brighter.png';
+import { ThemeLogo } from '@/components/ThemeLogo';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -132,7 +132,7 @@ export default function RecuperarSenha() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md p-8">
         <div className="flex flex-col items-center mb-8">
-          <img src={logoHorizontal} alt="Brighter" className="h-10 mb-4" />
+          <ThemeLogo className="h-10 mb-4" />
           <h1 className="font-montserrat text-3xl font-bold">
             Recuperar Senha
           </h1>

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowRight, Shield, BarChart3, FileText, Star, TrendingUp, Target, Zap, Check } from "lucide-react";
 import { Link } from "react-router-dom";
-import logoHorizontal from "@/assets/logo-brighter.png";
+import { ThemeLogo } from "@/components/ThemeLogo";
 
 const Index = () => {
   return (
@@ -12,7 +12,7 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center">
-              <img src={logoHorizontal} alt="Brighter" className="h-8" />
+              <ThemeLogo className="h-8" />
               <span className="ml-3 font-montserrat font-bold text-xl">Risk Pro</span>
             </Link>
             
