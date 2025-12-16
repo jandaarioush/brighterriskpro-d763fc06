@@ -40,9 +40,13 @@ export default function MarketSessionsClock() {
         {/* Timeline Visual */}
         <div className="relative">
           {/* Hour markers */}
-          <div className="flex justify-between text-xs text-muted-foreground mb-2 px-1">
+          <div className="relative h-4 text-xs text-muted-foreground mb-2">
             {hours.filter((_, i) => i % 3 === 0).map((hour) => (
-              <span key={hour} className="w-6 text-center">
+              <span 
+                key={hour} 
+                className="absolute transform -translate-x-1/2"
+                style={{ left: `${(hour / 24) * 100}%` }}
+              >
                 {hour.toString().padStart(2, '0')}
               </span>
             ))}
@@ -51,12 +55,12 @@ export default function MarketSessionsClock() {
           {/* Timeline container */}
           <div className="relative h-40 bg-muted/30 rounded-lg overflow-hidden">
             {/* Grid lines */}
-            <div className="absolute inset-0 flex">
+            <div className="absolute inset-0">
               {hours.filter((_, i) => i % 3 === 0).map((hour) => (
                 <div
                   key={hour}
-                  className="border-l border-border/30 h-full"
-                  style={{ marginLeft: `${(hour / 24) * 100}%`, position: 'absolute' }}
+                  className="absolute border-l border-border/30 h-full"
+                  style={{ left: `${(hour / 24) * 100}%` }}
                 />
               ))}
             </div>
