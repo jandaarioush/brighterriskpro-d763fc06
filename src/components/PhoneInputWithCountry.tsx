@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { Check, ChevronsUpDown } from 'lucide-react';
 
 interface Country {
   code: string;
@@ -116,12 +124,14 @@ export const PhoneInputWithCountry = ({
 }: PhoneInputWithCountryProps) => {
   const [selectedCountry, setSelectedCountry] = useState<Country>(countries[0]);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [open, setOpen] = useState(false);
 
   // Parse initial value to extract country and number
   useEffect(() => {
     if (value) {
-      // Try to find country by DDI
-      const matchedCountry = countries.find(c => value.startsWith(c.ddi));
+      // Try to find country by DDI (sort by longest DDI first to match correctly)
+      const sortedCountries = [...countries].sort((a, b) => b.ddi.length - a.ddi.length);
+      const matchedCountry = sortedCountries.find(c => value.startsWith(c.ddi));
       if (matchedCountry) {
         setSelectedCountry(matchedCountry);
         setPhoneNumber(value.replace(matchedCountry.ddi, '').replace(/\D/g, ''));
@@ -137,6 +147,7 @@ export const PhoneInputWithCountry = ({
     if (country) {
       setSelectedCountry(country);
       onChange(`${country.ddi}${phoneNumber}`);
+      setOpen(false);
     }
   };
 
@@ -148,31 +159,51 @@ export const PhoneInputWithCountry = ({
 
   return (
     <div className={cn('flex gap-2', className)}>
-      <Select
-        value={selectedCountry.code}
-        onValueChange={handleCountryChange}
-        disabled={disabled}
-      >
-        <SelectTrigger className="w-[120px] shrink-0">
-          <SelectValue>
-            <span className="flex items-center gap-2">
-              <span className="text-lg">{selectedCountry.flag}</span>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-[130px] shrink-0 justify-between px-3"
+            disabled={disabled}
+          >
+            <span className="flex items-center gap-1.5">
+              <span className="text-base">{selectedCountry.flag}</span>
               <span className="text-sm">{selectedCountry.ddi}</span>
             </span>
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent className="bg-background border border-border z-50 max-h-[300px]">
-          {countries.map((country) => (
-            <SelectItem key={country.code} value={country.code}>
-              <span className="flex items-center gap-2">
-                <span className="text-lg">{country.flag}</span>
-                <span className="text-sm font-medium">{country.ddi}</span>
-                <span className="text-sm text-muted-foreground">{country.name}</span>
-              </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+            <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[280px] p-0 bg-background border border-border z-50" align="start">
+          <Command>
+            <CommandInput placeholder="Buscar país..." />
+            <CommandList className="max-h-[300px]">
+              <CommandEmpty>Nenhum país encontrado.</CommandEmpty>
+              <CommandGroup>
+                {countries.map((country) => (
+                  <CommandItem
+                    key={country.code}
+                    value={`${country.name} ${country.ddi}`}
+                    onSelect={() => handleCountryChange(country.code)}
+                    className="cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedCountry.code === country.code ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span className="text-base mr-2">{country.flag}</span>
+                    <span className="text-sm font-medium mr-2">{country.ddi}</span>
+                    <span className="text-sm text-muted-foreground">{country.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
       <Input
         type="tel"
         value={phoneNumber}
