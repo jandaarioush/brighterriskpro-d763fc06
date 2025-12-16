@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -6,12 +7,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Clock, Globe } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Clock, Globe, ArrowUp, ArrowDown } from 'lucide-react';
 import { useLocalClock } from '@/hooks/useLocalClock';
 import { formatDigitalClock } from '@/lib/formatting';
-import { ArrowUp, ArrowDown } from 'lucide-react';
 import {
   MARKET_SESSIONS,
+  MARKET_REGIONS,
+  MarketRegion,
+  MarketSession,
   isMarketOpen,
   getTimeUntilChange,
   getOverlappingSessions,
@@ -22,13 +26,21 @@ import {
 
 export default function MarketSessionsClock() {
   const now = useLocalClock(1000);
+  const [selectedRegions, setSelectedRegions] = useState<MarketRegion[]>([
+    'brazil', 'north-america', 'europe', 'asia'
+  ]);
+
+  const filteredSessions = MARKET_SESSIONS.filter(
+    session => selectedRegions.includes(session.region)
+  );
+
   const currentTimePosition = getCurrentTimePosition(now);
   const overlaps = getOverlappingSessions(now);
-  const upcomingEvents = getUpcomingEvents(now, 4);
+  const upcomingEvents = getUpcomingEvents(now, 4, filteredSessions);
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
-  const renderTooltipContent = (session: typeof MARKET_SESSIONS[0], isOpen: boolean) => {
+  const renderTooltipContent = (session: MarketSession, isOpen: boolean) => {
     const timeInfo = getTimeUntilChange(session, now);
     
     return (
@@ -63,7 +75,7 @@ export default function MarketSessionsClock() {
   return (
     <TooltipProvider delayDuration={200}>
       <Card className="w-full">
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Globe className="w-5 h-5" />
@@ -75,6 +87,28 @@ export default function MarketSessionsClock() {
                 {formatDigitalClock(now)}
               </span>
             </div>
+          </div>
+          {/* Region Filter */}
+          <div className="pt-3">
+            <ToggleGroup
+              type="multiple"
+              value={selectedRegions}
+              onValueChange={(value) => setSelectedRegions(value as MarketRegion[])}
+              className="flex flex-wrap gap-1 justify-start"
+            >
+              {(Object.entries(MARKET_REGIONS) as [MarketRegion, { label: string; emoji: string }][]).map(
+                ([key, { label, emoji }]) => (
+                  <ToggleGroupItem
+                    key={key}
+                    value={key}
+                    size="sm"
+                    className="text-xs px-2 py-1 h-7 data-[state=on]:bg-primary/20 data-[state=on]:text-primary"
+                  >
+                    {emoji} {label}
+                  </ToggleGroupItem>
+                )
+              )}
+            </ToggleGroup>
           </div>
         </CardHeader>
 
@@ -108,7 +142,7 @@ export default function MarketSessionsClock() {
               </div>
 
               {/* Market session bars */}
-              {MARKET_SESSIONS.map((session, index) => {
+              {filteredSessions.map((session, index) => {
                 const startPos = getTimelinePosition(session.openTime);
                 const endPos = getTimelinePosition(session.closeTime);
                 const isOpen = isMarketOpen(session, now);
@@ -202,7 +236,7 @@ export default function MarketSessionsClock() {
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-muted-foreground mb-3">Status dos Mercados</h4>
               <div className="grid grid-cols-2 gap-2">
-                {MARKET_SESSIONS.map((session) => {
+                {filteredSessions.map((session) => {
                   const isOpen = isMarketOpen(session, now);
                   const timeInfo = getTimeUntilChange(session, now);
 
