@@ -1,3 +1,5 @@
+export type MarketRegion = 'brazil' | 'north-america' | 'europe' | 'asia';
+
 export interface MarketSession {
   id: string;
   name: string;
@@ -6,7 +8,15 @@ export interface MarketSession {
   closeTime: string; // "HH:MM" em BRT
   color: string;
   crossesMidnight?: boolean;
+  region: MarketRegion;
 }
+
+export const MARKET_REGIONS: Record<MarketRegion, { label: string; emoji: string }> = {
+  brazil: { label: 'Brasil', emoji: '🇧🇷' },
+  'north-america': { label: 'EUA', emoji: '🇺🇸' },
+  europe: { label: 'Europa', emoji: '🇪🇺' },
+  asia: { label: 'Ásia', emoji: '🇯🇵' },
+};
 
 export const MARKET_SESSIONS: MarketSession[] = [
   {
@@ -15,7 +25,8 @@ export const MARKET_SESSIONS: MarketSession[] = [
     abbreviation: 'B3F',
     openTime: '09:00',
     closeTime: '18:30',
-    color: 'hsl(142, 76%, 36%)', // green
+    color: 'hsl(142, 76%, 36%)',
+    region: 'brazil',
   },
   {
     id: 'b3-vista',
@@ -23,7 +34,8 @@ export const MARKET_SESSIONS: MarketSession[] = [
     abbreviation: 'B3V',
     openTime: '10:00',
     closeTime: '17:55',
-    color: 'hsl(142, 69%, 58%)', // light green
+    color: 'hsl(142, 69%, 58%)',
+    region: 'brazil',
   },
   {
     id: 'nyse',
@@ -31,7 +43,8 @@ export const MARKET_SESSIONS: MarketSession[] = [
     abbreviation: 'NYSE',
     openTime: '10:30',
     closeTime: '17:00',
-    color: 'hsl(217, 91%, 60%)', // blue
+    color: 'hsl(217, 91%, 60%)',
+    region: 'north-america',
   },
   {
     id: 'lse',
@@ -39,7 +52,8 @@ export const MARKET_SESSIONS: MarketSession[] = [
     abbreviation: 'LSE',
     openTime: '04:00',
     closeTime: '12:30',
-    color: 'hsl(45, 93%, 47%)', // yellow
+    color: 'hsl(45, 93%, 47%)',
+    region: 'europe',
   },
   {
     id: 'tse',
@@ -47,8 +61,9 @@ export const MARKET_SESSIONS: MarketSession[] = [
     abbreviation: 'TSE',
     openTime: '21:00',
     closeTime: '03:00',
-    color: 'hsl(330, 81%, 60%)', // pink
+    color: 'hsl(330, 81%, 60%)',
     crossesMidnight: true,
+    region: 'asia',
   },
   {
     id: 'xetra',
@@ -56,7 +71,8 @@ export const MARKET_SESSIONS: MarketSession[] = [
     abbreviation: 'XETRA',
     openTime: '04:00',
     closeTime: '13:30',
-    color: 'hsl(25, 95%, 53%)', // orange
+    color: 'hsl(25, 95%, 53%)',
+    region: 'europe',
   },
 ];
 
@@ -172,11 +188,16 @@ export interface MarketEvent {
   minutesUntil: number;
 }
 
-export function getUpcomingEvents(currentTime: Date, limit: number = 5): MarketEvent[] {
+export function getUpcomingEvents(
+  currentTime: Date, 
+  limit: number = 5,
+  filteredMarkets?: MarketSession[]
+): MarketEvent[] {
   const events: MarketEvent[] = [];
   const currentMinutes = dateToMinutes(currentTime);
+  const sessions = filteredMarkets || MARKET_SESSIONS;
 
-  MARKET_SESSIONS.forEach((session) => {
+  sessions.forEach((session) => {
     const openMinutes = timeToMinutes(session.openTime);
     const closeMinutes = timeToMinutes(session.closeTime);
     const isOpen = isMarketOpen(session, currentTime);
