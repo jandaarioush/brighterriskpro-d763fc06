@@ -4,23 +4,20 @@ export const usePhoneMask = (initialValue: string = '') => {
   const [value, setValue] = useState(initialValue);
 
   const applyMask = (input: string): string => {
-    // Remove o prefixo +55 se existir, depois extrai números
-    let cleanInput = input.replace(/^\+55\s?/, '');
-    const numbers = cleanInput.replace(/\D/g, '');
+    // Remove tudo que não for número
+    const numbers = input.replace(/\D/g, '');
     
-    // Limita a 11 dígitos (DDD + número)
-    const limited = numbers.slice(0, 11);
-    
-    // Aplica a máscara +55 (XX) XXXXX-XXXX
-    if (limited.length === 0) {
-      return '+55 ';
-    } else if (limited.length <= 2) {
-      return `+55 (${limited}`;
-    } else if (limited.length <= 7) {
-      return `+55 (${limited.slice(0, 2)}) ${limited.slice(2)}`;
-    } else {
-      return `+55 (${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
+    // Se não tiver números, retorna vazio com prefixo +
+    if (numbers.length === 0) {
+      return '+';
     }
+    
+    // Limita a 15 dígitos (padrão E.164 para números internacionais)
+    const limited = numbers.slice(0, 15);
+    
+    // Retorna apenas com o + na frente, sem formatação específica
+    // Isso permite DDIs de qualquer país (1-3 dígitos) + número local
+    return `+${limited}`;
   };
 
   const handleChange = (input: string) => {
