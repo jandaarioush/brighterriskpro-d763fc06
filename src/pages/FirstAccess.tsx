@@ -43,22 +43,20 @@ export default function FirstAccess() {
         return;
       }
 
-      const trimmedEmail = email.trim();
+      const trimmedEmail = email.trim().toLowerCase();
 
-      // Check if email exists in profiles table (created by webhook)
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .eq('email', trimmedEmail)
-        .maybeSingle();
+      // Check if email exists via secure edge function
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-email-exists', {
+        body: { email: trimmedEmail }
+      });
 
-      if (profileError) {
+      if (verifyError) {
         toast.error('Erro ao verificar email. Tente novamente.');
         setLoading(false);
         return;
       }
 
-      if (!profileData) {
+      if (!verifyData?.exists) {
         toast.error('Email não encontrado. Por favor, use o email que você forneceu na compra.');
         setLoading(false);
         return;
