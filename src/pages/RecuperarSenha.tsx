@@ -36,27 +36,25 @@ export default function RecuperarSenha() {
 
       const trimmedEmail = email.trim().toLowerCase();
 
-      // Check if email exists in profiles table
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, email, status_pagamento')
-        .eq('email', trimmedEmail)
-        .maybeSingle();
+      // Check if email exists via secure edge function
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-email-exists', {
+        body: { email: trimmedEmail, checkPaymentStatus: true }
+      });
 
-      if (profileError) {
+      if (verifyError) {
         toast.error('Erro ao verificar email. Tente novamente.');
         setLoading(false);
         return;
       }
 
-      if (!profile) {
+      if (!verifyData?.exists) {
         toast.error('Email não encontrado. Verifique se você já realizou a compra.');
         setLoading(false);
         return;
       }
 
       // Check payment status
-      if (profile.status_pagamento === 'revoked') {
+      if (verifyData?.paymentStatus === 'revoked') {
         toast.error('Sua assinatura foi cancelada. Entre em contato com o suporte.');
         setLoading(false);
         return;
