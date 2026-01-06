@@ -7,11 +7,12 @@ import { useNavigate } from 'react-router-dom';
 import { ThemeLogo } from '@/components/ThemeLogo';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { strongPasswordSchema, passwordRequirements } from '@/lib/passwordValidation';
 
 const redefinirSenhaSchema = z.object({
   email: z.string().trim().email('Email inválido').max(255, 'Email muito longo'),
   code: z.string().trim().length(6, 'Código deve ter 6 dígitos').regex(/^\d+$/, 'Código deve conter apenas números'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').max(100, 'Senha muito longa'),
+  password: strongPasswordSchema,
   confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "As senhas não coincidem",
@@ -144,8 +145,12 @@ export default function RedefinirSenha() {
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="••••••••"
-              minLength={6}
             />
+            <ul className="text-xs text-muted-foreground mt-1 space-y-0.5">
+              {passwordRequirements.map((req, i) => (
+                <li key={i}>• {req}</li>
+              ))}
+            </ul>
           </div>
 
           <div>
