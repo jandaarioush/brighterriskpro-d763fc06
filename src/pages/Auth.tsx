@@ -7,10 +7,18 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { ThemeLogo } from '@/components/ThemeLogo';
 import { z } from 'zod';
+import { strongPasswordSchema, passwordRequirements } from '@/lib/passwordValidation';
 
-const authSchema = z.object({
+// Login uses simpler validation (existing passwords may not meet new requirements)
+const loginSchema = z.object({
   email: z.string().trim().email('Email inválido').max(255, 'Email muito longo'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').max(100, 'Senha muito longa'),
+  password: z.string().min(1, 'Senha é obrigatória').max(100, 'Senha muito longa'),
+});
+
+// Signup uses strong password validation
+const signupSchema = z.object({
+  email: z.string().trim().email('Email inválido').max(255, 'Email muito longo'),
+  password: strongPasswordSchema,
 });
 
 export default function Auth() {
@@ -25,8 +33,9 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      // Validate inputs
-      const validationResult = authSchema.safeParse({
+      // Use different validation for login vs signup
+      const schema = isLogin ? loginSchema : signupSchema;
+      const validationResult = schema.safeParse({
         email,
         password,
       });
