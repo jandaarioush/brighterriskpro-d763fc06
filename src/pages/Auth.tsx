@@ -131,16 +131,16 @@ export default function Auth() {
           <div className="border-t pt-4">
             <p className="text-sm text-muted-foreground mb-3">Não tem uma conta?</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <a href="https://pay.kiwify.com.br/mRJhvxj" target="_blank" rel="noopener noreferrer">
+              <Link to="/checkout?plano=mensal">
                 <Button variant="outline" size="sm" className="w-full sm:w-auto">
                   Criar Conta Mensal
                 </Button>
-              </a>
-              <a href="https://loja.infinitepay.io/brighterinc/tyo8170-brighter-risk-pro---anual" target="_blank" rel="noopener noreferrer">
+              </Link>
+              <Link to="/checkout?plano=anual">
                 <Button variant="outline" size="sm" className="w-full sm:w-auto">
                   Criar Conta Anual
                 </Button>
-              </a>
+              </Link>
             </div>
           </div>
         </div>
