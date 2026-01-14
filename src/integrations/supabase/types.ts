@@ -154,6 +154,51 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_orders: {
+        Row: {
+          amount: number
+          checkout_url: string | null
+          created_at: string
+          email: string
+          expires_at: string | null
+          id: string
+          name: string
+          order_nsu: string
+          paid_at: string | null
+          phone: string | null
+          plano: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          checkout_url?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string | null
+          id?: string
+          name: string
+          order_nsu: string
+          paid_at?: string | null
+          phone?: string | null
+          plano: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          checkout_url?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          name?: string
+          order_nsu?: string
+          paid_at?: string | null
+          phone?: string | null
+          plano?: string
+          status?: string
+        }
+        Relationships: []
+      }
       portfolio_entries: {
         Row: {
           created_at: string
@@ -396,6 +441,59 @@ export type Database = {
           },
           {
             foreignKeyName: "stock_trades_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          amount: number
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          order_nsu: string
+          plano: string
+          started_at: string
+          status: string
+          transaction_nsu: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          order_nsu: string
+          plano: string
+          started_at?: string
+          status?: string
+          transaction_nsu?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          order_nsu?: string
+          plano?: string
+          started_at?: string
+          status?: string
+          transaction_nsu?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
