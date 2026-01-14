@@ -265,6 +265,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          infinitepay_order_nsu: string | null
           kiwify_customer_id: string | null
           kiwify_order_id: string | null
           last_paid_at: string | null
@@ -281,6 +282,7 @@ export type Database = {
           created_at?: string
           email: string
           id: string
+          infinitepay_order_nsu?: string | null
           kiwify_customer_id?: string | null
           kiwify_order_id?: string | null
           last_paid_at?: string | null
@@ -297,6 +299,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          infinitepay_order_nsu?: string | null
           kiwify_customer_id?: string | null
           kiwify_order_id?: string | null
           last_paid_at?: string | null

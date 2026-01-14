@@ -14,3 +14,9 @@ verify_jwt = true
 
 [functions.verify-email-exists]
 verify_jwt = false
+
+[functions.create-infinitepay-link]
+verify_jwt = false
+
+[functions.infinitepay-webhook]
+verify_jwt = false
