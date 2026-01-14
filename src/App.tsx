@@ -30,6 +30,8 @@ import AdminEngagement from "./pages/AdminEngagement";
 import NotFound from "./pages/NotFound";
 import Recursos from "./pages/Recursos";
 import Precos from "./pages/Precos";
+import Checkout from "./pages/Checkout";
+import PagamentoSucesso from "./pages/PagamentoSucesso";
 import Suporte from "./pages/Suporte";
 import Blog from "./pages/Blog";
 import SobreNos from "./pages/SobreNos";
@@ -78,6 +80,8 @@ const App = () => (
               <Route path="/demo" element={<Demo />} />
               <Route path="/recursos" element={<Recursos />} />
               <Route path="/precos" element={<Precos />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/pagamento-sucesso" element={<PagamentoSucesso />} />
               <Route path="/suporte" element={<Suporte />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/sobre-nos" element={<SobreNos />} />
