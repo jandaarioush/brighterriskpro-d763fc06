@@ -65,25 +65,112 @@ serve(async (req) => {
       console.error("Error logging webhook event:", webhookError);
     }
 
-    // Determine plan based on amount
-    // 9700 cents = R$ 97 = mensal
-    // 49700 cents = R$ 497 = anual
-    let plano = "mensal";
-    if (amount >= 49000) {
-      plano = "anual";
+    // Find pending order by order_nsu
+    const { data: pendingOrder, error: pendingError } = await supabase
+      .from("pending_orders")
+      .select("*")
+      .eq("order_nsu", order_nsu)
+      .maybeSingle();
+
+    if (pendingError) {
+      console.error("Error fetching pending order:", pendingError);
     }
 
-    // Extract email from items description or order_nsu
-    // Since we don't have email in webhook, we need to find profile by order_nsu
-    // First, let's update any profile that might have this order_nsu stored during creation
-    
-    // Actually, we need to find the profile. The order_nsu follows pattern BRP-{timestamp}-{random}
-    // We stored the email when creating the link, so we need to match by order_nsu
-    
-    // For now, we'll update webhook_events with the order_nsu and mark it processed
-    // The actual profile update will happen when user accesses the system
+    if (!pendingOrder) {
+      console.error("Pending order not found for order_nsu:", order_nsu);
+      // Still process the webhook but log the issue
+      await supabase.rpc("log_audit", {
+        p_actor: "infinitepay-webhook",
+        p_action: "payment_approved_no_pending_order",
+        p_meta: { order_nsu, amount, transaction_nsu },
+      });
+    } else {
+      console.log("Found pending order:", pendingOrder);
 
-    // Update webhook event status
+      // Update pending order status to paid
+      const { error: updatePendingError } = await supabase
+        .from("pending_orders")
+        .update({
+          status: "paid",
+          paid_at: new Date().toISOString(),
+        })
+        .eq("order_nsu", order_nsu);
+
+      if (updatePendingError) {
+        console.error("Error updating pending order:", updatePendingError);
+      }
+
+      // Calculate expiration date based on plan
+      const now = new Date();
+      let expiresAt: Date;
+      if (pendingOrder.plano === "anual") {
+        expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+      } else {
+        expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }
+
+      // Create subscription
+      const { error: subscriptionError } = await supabase
+        .from("subscriptions")
+        .insert({
+          email: pendingOrder.email,
+          plano: pendingOrder.plano,
+          order_nsu,
+          transaction_nsu,
+          amount: pendingOrder.amount,
+          started_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+          status: "active",
+        });
+
+      if (subscriptionError) {
+        console.error("Error creating subscription:", subscriptionError);
+      } else {
+        console.log("Subscription created for:", pendingOrder.email);
+      }
+
+      // Update webhook_events with email
+      await supabase
+        .from("webhook_events")
+        .update({ email: pendingOrder.email })
+        .eq("order_id", order_nsu)
+        .eq("provider", "infinitepay");
+
+      // Check if profile exists and update, or create new one
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", pendingOrder.email)
+        .maybeSingle();
+
+      if (existingProfile) {
+        // Update existing profile
+        const { error: profileUpdateError } = await supabase
+          .from("profiles")
+          .update({
+            status_pagamento: "paid",
+            plano: pendingOrder.plano,
+            infinitepay_order_nsu: order_nsu,
+            last_paid_at: now.toISOString(),
+            name: pendingOrder.name,
+            phone: pendingOrder.phone,
+            updated_at: now.toISOString(),
+          })
+          .eq("email", pendingOrder.email);
+
+        if (profileUpdateError) {
+          console.error("Error updating profile:", profileUpdateError);
+        } else {
+          console.log("Profile updated for:", pendingOrder.email);
+        }
+      } else {
+        // Profile will be created when user signs up
+        // Just log for now
+        console.log("No profile found for email, will be linked on signup:", pendingOrder.email);
+      }
+    }
+
+    // Update webhook event status to processed
     await supabase
       .from("webhook_events")
       .update({
@@ -101,7 +188,8 @@ serve(async (req) => {
         order_nsu,
         amount,
         paid_amount,
-        plano,
+        plano: pendingOrder?.plano || "unknown",
+        email: pendingOrder?.email || "unknown",
         capture_method,
         transaction_nsu,
         invoice_slug,

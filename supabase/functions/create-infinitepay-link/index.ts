@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +25,7 @@ serve(async (req) => {
     const handle = Deno.env.get("INFINITEPAY_HANDLE");
     const webhookToken = Deno.env.get("WEBHOOK_SHARED_TOKEN");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!handle) {
       throw new Error("INFINITEPAY_HANDLE não configurado");
@@ -32,6 +34,13 @@ serve(async (req) => {
     if (!webhookToken) {
       throw new Error("WEBHOOK_SHARED_TOKEN não configurado");
     }
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Supabase configuration missing");
+    }
+
+    // Initialize Supabase client with service role
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: CreateLinkRequest = await req.json();
 
@@ -73,6 +82,13 @@ serve(async (req) => {
     // Generate unique order NSU
     const orderNsu = `BRP-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
+    // Prepare customer data
+    const customerEmail = body.customer.email.trim().toLowerCase();
+    const customerName = body.customer.name.trim().substring(0, 100);
+    const customerPhone = body.customer.phone_number.startsWith("+") 
+      ? body.customer.phone_number 
+      : `+${phoneClean}`;
+
     // Build webhook URL with token
     const webhookUrl = `${supabaseUrl}/functions/v1/infinitepay-webhook?token=${webhookToken}`;
 
@@ -93,11 +109,9 @@ serve(async (req) => {
       redirect_url: redirectUrl,
       webhook_url: webhookUrl,
       customer: {
-        name: body.customer.name.trim().substring(0, 100),
-        email: body.customer.email.trim().toLowerCase(),
-        phone_number: body.customer.phone_number.startsWith("+") 
-          ? body.customer.phone_number 
-          : `+${phoneClean}`,
+        name: customerName,
+        email: customerEmail,
+        phone_number: customerPhone,
       },
     };
 
@@ -122,12 +136,36 @@ serve(async (req) => {
       throw new Error(responseData.message || "Erro ao criar link de pagamento");
     }
 
-    console.log("Infinite Pay link created successfully:", responseData);
+    const checkoutUrl = responseData.url || responseData.checkout_url;
+
+    console.log("Infinite Pay link created successfully:", { orderNsu, checkoutUrl });
+
+    // Save pending order to database
+    const { error: insertError } = await supabase
+      .from("pending_orders")
+      .insert({
+        order_nsu: orderNsu,
+        email: customerEmail,
+        name: customerName,
+        phone: customerPhone,
+        plano: body.plano,
+        amount: selectedPlan.price,
+        checkout_url: checkoutUrl,
+        status: "pending",
+      });
+
+    if (insertError) {
+      console.error("Error saving pending order:", insertError);
+      // Don't fail the request, just log the error
+      // The payment can still proceed
+    } else {
+      console.log("Pending order saved successfully:", orderNsu);
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        checkout_url: responseData.url || responseData.checkout_url,
+        checkout_url: checkoutUrl,
         order_nsu: orderNsu,
       }),
       {
