@@ -18,16 +18,16 @@ const Recursos = () => {
               Todas as ferramentas que você precisa para controlar e otimizar suas operações
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a href="https://pay.kiwify.com.br/mRJhvxj" target="_blank" rel="noopener noreferrer">
+              <Link to="/checkout?plano=mensal">
                 <Button size="lg" className="text-lg px-8 py-6">
                   Conta Mensal
                 </Button>
-              </a>
-              <a href="https://pay.kiwify.com.br/dPyrB1E" target="_blank" rel="noopener noreferrer">
+              </Link>
+              <Link to="/checkout?plano=anual">
                 <Button size="lg" className="text-lg px-8 py-6" variant="outline">
                   Conta Anual
                 </Button>
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -119,16 +119,16 @@ const Recursos = () => {
             Junte-se a centenas de traders que já estão operando com mais segurança
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="https://pay.kiwify.com.br/mRJhvxj" target="_blank" rel="noopener noreferrer">
+            <Link to="/checkout?plano=mensal">
               <Button size="lg" className="text-lg px-12 py-6">
                 Conta Mensal
               </Button>
-            </a>
-            <a href="https://pay.kiwify.com.br/dPyrB1E" target="_blank" rel="noopener noreferrer">
+            </Link>
+            <Link to="/checkout?plano=anual">
               <Button size="lg" className="text-lg px-12 py-6" variant="outline">
                 Conta Anual
               </Button>
-            </a>
+            </Link>
           </div>
         </div>
       </section>

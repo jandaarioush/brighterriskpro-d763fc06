@@ -202,9 +202,12 @@ export default function Demo() {
       toast.error("Erro ao enviar dados. Tente novamente.");
     }
   };
-  const handleCTAClick = (source: string, url: string) => {
+  const navigate = (path: string) => {
+    window.location.href = path;
+  };
+  const handleCTAClick = (source: string, path: string) => {
     trackEvent(`cta_test_${source}`);
-    window.open(url, '_blank');
+    navigate(path);
   };
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({
@@ -231,10 +234,10 @@ export default function Demo() {
             </Link>
             
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" onClick={() => handleCTAClick('navbar_monthly', 'https://pay.kiwify.com.br/mRJhvxj')} className="hidden sm:inline-flex">
+              <Button variant="outline" size="sm" onClick={() => handleCTAClick('navbar_monthly', '/checkout?plano=mensal')} className="hidden sm:inline-flex">
                 Conta Mensal
               </Button>
-              <Button size="sm" onClick={() => handleCTAClick('navbar_annual', 'https://pay.kiwify.com.br/dPyrB1E')}>
+              <Button size="sm" onClick={() => handleCTAClick('navbar_annual', '/checkout?plano=anual')}>
                 Conta Anual
               </Button>
             </div>
@@ -306,10 +309,10 @@ export default function Demo() {
               Gostou do que viu? Comece a usar agora mesmo!
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" onClick={() => handleCTAClick('tutorial_monthly', 'https://pay.kiwify.com.br/mRJhvxj')}>
+              <Button size="lg" onClick={() => handleCTAClick('tutorial_monthly', '/checkout?plano=mensal')}>
                 Criar Conta Mensal
               </Button>
-              <Button size="lg" variant="outline" onClick={() => handleCTAClick('tutorial_annual', 'https://pay.kiwify.com.br/dPyrB1E')}>
+              <Button size="lg" variant="outline" onClick={() => handleCTAClick('tutorial_annual', '/checkout?plano=anual')}>
                 Criar Conta Anual
               </Button>
             </div>
@@ -521,10 +524,10 @@ export default function Demo() {
             </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">Junte-se a mais de 500 traders que já transformaram sua gestão de risco</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="text-lg px-8 py-6" onClick={() => handleCTAClick('final_monthly', 'https://pay.kiwify.com.br/mRJhvxj')}>
+              <Button size="lg" className="text-lg px-8 py-6" onClick={() => handleCTAClick('final_monthly', '/checkout?plano=mensal')}>
                 Criar minha conta mensal agora!
               </Button>
-              <Button size="lg" variant="outline" className="text-lg px-8 py-6" onClick={() => handleCTAClick('final_annual', 'https://pay.kiwify.com.br/dPyrB1E')}>
+              <Button size="lg" variant="outline" className="text-lg px-8 py-6" onClick={() => handleCTAClick('final_annual', '/checkout?plano=anual')}>
                 Criar minha conta anual agora!
               </Button>
             </div>

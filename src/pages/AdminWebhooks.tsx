@@ -73,7 +73,7 @@ export default function AdminWebhooks() {
       const token = 'test-token'; // In production, get this from config
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kiwify-webhook?token=${token}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/infinitepay-webhook?token=${token}`,
         {
           method: 'POST',
           headers: {
@@ -133,7 +133,7 @@ export default function AdminWebhooks() {
           <Textarea
             value={testPayload}
             onChange={(e) => setTestPayload(e.target.value)}
-            placeholder='{"event": "purchase_approved", "data": {"order_id": "123", "email": "test@example.com", "name": "Test User", "product": "Premium"}}'
+            placeholder='{"event": "APPROVED", "order_nsu": "123456", "transaction_nsu": "789012", "order": {"items": [{"description": "Brighter Risk Pro - Mensal"}], "amount": 9700}}'
             rows={6}
             className="font-mono text-sm"
           />
