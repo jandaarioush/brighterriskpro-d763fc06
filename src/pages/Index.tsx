@@ -51,8 +51,8 @@ const Index = () => {
         <div className="container relative mx-auto max-w-6xl">
           <div className="text-center space-y-8 animate-fade-in">
             <h1 className="font-montserrat text-5xl md:text-7xl font-bold tracking-tight">
-              Domine seus Trades com
-              <span className="block text-primary mt-2">Gestão de Risco Inteligente</span>
+              <span className="text-shimmer">Domine seus Trades com</span>
+              <span className="block text-shimmer mt-2">Gestão de Risco Inteligente</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
               Controle total sobre suas operações de Índice e Dólar com cálculos automáticos de stop, risco diário e performance em tempo real
