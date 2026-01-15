@@ -149,6 +149,6 @@ All colors MUST be HSL.
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    animation: shimmer 3s ease-in-out infinite;
+    animation: shimmer 3s ease-in-out infinite alternate;
   }
 }
