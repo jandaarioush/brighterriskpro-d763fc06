@@ -6,6 +6,7 @@ import { StockPnLEvolutionChart } from '@/components/stock/StockPnLEvolutionChar
 import { StockRiskCalculator } from '@/components/stock/StockRiskCalculator';
 import { StockMonthHeatmap } from '@/components/stock/StockMonthHeatmap';
 import { StockTradeForm } from '@/components/stock/StockTradeForm';
+import { BrokerSelectionDialog, BrokerType } from '@/components/stock/BrokerSelectionDialog';
 import DashboardLayoutWrapper from '@/components/DashboardLayoutWrapper';
 import { 
   DollarSign, 
@@ -28,12 +29,19 @@ import {
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import DashboardTabs from '@/components/DashboardTabs';
+import { Json } from '@/integrations/supabase/types';
+
+interface DashboardConfig {
+  broker?: BrokerType;
+  capital_total?: number;
+}
 
 interface Dashboard {
   id: string;
   name: string;
   type: string;
   monthly_risk: number | null;
+  config: DashboardConfig | null;
 }
 
 export default function StockDashboard() {
@@ -52,6 +60,8 @@ export default function StockDashboard() {
   const [accumulatedDrawdown, setAccumulatedDrawdown] = useState(0);
   const [loading, setLoading] = useState(true);
   const [currentMonthTrades, setCurrentMonthTrades] = useState<StockTrade[]>([]);
+  const [showBrokerDialog, setShowBrokerDialog] = useState(false);
+  const [broker, setBroker] = useState<BrokerType | null>(null);
 
   useEffect(() => {
     if (!user || !dashboardId) return;
@@ -72,7 +82,65 @@ export default function StockDashboard() {
       return;
     }
 
-    setDashboard(data as Dashboard);
+    const dashboardData = data as Dashboard;
+    setDashboard(dashboardData);
+
+    // Check if broker is configured
+    const config = dashboardData.config as DashboardConfig | null;
+    if (config?.broker) {
+      setBroker(config.broker);
+    } else {
+      // First access - show broker selection dialog
+      setShowBrokerDialog(true);
+    }
+
+    // Load capital from config if available
+    if (config?.capital_total) {
+      setCapitalTotal(config.capital_total);
+    }
+  };
+
+  const handleBrokerSelect = async (selectedBroker: BrokerType) => {
+    setBroker(selectedBroker);
+    setShowBrokerDialog(false);
+
+    // Save broker to dashboard config
+    const currentConfig = (dashboard?.config || {}) as DashboardConfig;
+    const newConfig: DashboardConfig = {
+      ...currentConfig,
+      broker: selectedBroker,
+    };
+
+    await supabase
+      .from('dashboards')
+      .update({ config: newConfig as unknown as Json })
+      .eq('id', dashboardId);
+
+    // Update local state
+    if (dashboard) {
+      setDashboard({ ...dashboard, config: newConfig });
+    }
+  };
+
+  const handleCapitalChange = async (newCapital: number) => {
+    setCapitalTotal(newCapital);
+
+    // Save capital to dashboard config
+    const currentConfig = (dashboard?.config || {}) as DashboardConfig;
+    const newConfig: DashboardConfig = {
+      ...currentConfig,
+      capital_total: newCapital,
+    };
+
+    await supabase
+      .from('dashboards')
+      .update({ config: newConfig as unknown as Json })
+      .eq('id', dashboardId);
+
+    // Update local state
+    if (dashboard) {
+      setDashboard({ ...dashboard, config: newConfig });
+    }
   };
 
   const fetchData = async () => {
@@ -137,6 +205,12 @@ export default function StockDashboard() {
 
   return (
     <DashboardLayoutWrapper>
+      {/* Broker Selection Dialog */}
+      <BrokerSelectionDialog
+        open={showBrokerDialog}
+        onSelect={handleBrokerSelect}
+      />
+
       <div className="container mx-auto px-4 py-8">
         <GreetingBanner user={profile} />
         <DashboardTabs 
@@ -148,6 +222,14 @@ export default function StockDashboard() {
           <h1 className="text-4xl font-bold mb-2">{dashboard.name}</h1>
           <p className="text-muted-foreground">
             Gestão de risco para {dashboard.type === 'acoes' ? 'Ações' : 'Mercado Internacional'}
+            {broker && (
+              <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                {broker === 'btg' ? 'BTG Pactual' : 
+                 broker === 'xp' ? 'XP' : 
+                 broker === 'clear' ? 'Clear' : 
+                 broker === 'warren' ? 'Warren' : 'Outra'}
+              </span>
+            )}
           </p>
         </div>
 
@@ -220,7 +302,11 @@ export default function StockDashboard() {
             />
           </div>
           
-          <StockRiskCalculator capitalTotal={capitalTotal} onCapitalChange={setCapitalTotal} />
+          <StockRiskCalculator 
+            broker={broker || 'outra'} 
+            capitalTotal={capitalTotal} 
+            onCapitalChange={handleCapitalChange} 
+          />
         </div>
 
         {/* Heatmap and Trade Form */}
