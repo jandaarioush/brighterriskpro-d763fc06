@@ -408,10 +408,10 @@ export default function StockSimulator() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Card 1: Simulação de Operação */}
-          <Card className="p-6 bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
+          <Card className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-purple-500/20">
-                <Calculator className="h-6 w-6 text-purple-500" />
+              <div className="p-2 rounded-lg bg-primary/20">
+                <Calculator className="h-6 w-6 text-primary" />
               </div>
               <h2 className="text-xl font-bold">Simulação de Operação</h2>
             </div>
@@ -510,19 +510,19 @@ export default function StockSimulator() {
               <div className="p-3 rounded-lg bg-background/50 border border-border/50 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Stop Total Alocado:</span>
-                  <span className="font-medium text-blue-500">
+                  <span className="font-medium text-primary">
                     R$ {stopFinanceiroMax.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Perda Máx Total:</span>
-                  <span className={`font-medium ${totalPerdaUsada > stopFinanceiroMax ? 'text-destructive' : 'text-green-500'}`}>
+                  <span className={`font-medium ${totalPerdaUsada > stopFinanceiroMax ? 'text-destructive' : 'text-success'}`}>
                     R$ {totalPerdaUsada.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Ganho Potencial Total:</span>
-                  <span className="font-medium text-green-500">
+                  <span className="font-medium text-success">
                     R$ {totalGanhoObjetivo.toFixed(2)}
                   </span>
                 </div>
@@ -564,7 +564,7 @@ export default function StockSimulator() {
                             <span className="text-destructive">
                               Stop: {pos.stopPercentual.toFixed(1)}%
                             </span>
-                            <span className="text-green-500">
+                          <span className="text-success">
                               Objetivo: {pos.objetivoPercentual.toFixed(1)}%
                             </span>
                           </div>
@@ -595,8 +595,8 @@ export default function StockSimulator() {
                               </span>
                               <span className={`text-xs px-2 py-1 rounded ${
                                 pos.limiteFator === 'margem' 
-                                  ? 'bg-orange-500/20 text-orange-500' 
-                                  : 'bg-blue-500/20 text-blue-500'
+                                  ? 'bg-primary/20 text-primary' 
+                                  : 'bg-muted text-muted-foreground'
                               }`}>
                                 {pos.limiteFator === 'margem' ? 'Limite: Margem' : 'Limite: Stop'}
                               </span>
@@ -609,8 +609,8 @@ export default function StockSimulator() {
                                 </span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <Target className="h-3 w-3 text-green-500" />
-                                <span className="text-green-500">
+                                <Target className="h-3 w-3 text-success" />
+                                <span className="text-success">
                                   Ganho: R$ {pos.ganhoObjetivo.toFixed(2)}
                                 </span>
                               </div>
@@ -731,7 +731,7 @@ export default function StockSimulator() {
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <Label className="text-sm">Objetivo / Gain (%)</Label>
-                      <span className="text-sm font-bold text-green-500">{newObjetivoPercentual.toFixed(1)}%</span>
+                      <span className="text-sm font-bold text-success">{newObjetivoPercentual.toFixed(1)}%</span>
                     </div>
                     <Slider
                       value={[newObjetivoPercentual]}
@@ -763,13 +763,13 @@ export default function StockSimulator() {
                         </div>
                         <div>
                           <span className="text-muted-foreground">Qtd máx (margem):</span>{' '}
-                          <span className={`font-medium ${previewCalculo.limiteFator === 'margem' ? 'text-orange-500' : ''}`}>
+                          <span className={`font-medium ${previewCalculo.limiteFator === 'margem' ? 'text-primary' : ''}`}>
                             {previewCalculo.qtdMaxMargem}
                           </span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Qtd máx (stop):</span>{' '}
-                          <span className={`font-medium ${previewCalculo.limiteFator === 'stop' ? 'text-blue-500' : ''}`}>
+                          <span className={`font-medium ${previewCalculo.limiteFator === 'stop' ? 'text-muted-foreground' : ''}`}>
                             {previewCalculo.qtdMaxStop}
                           </span>
                         </div>
@@ -782,8 +782,8 @@ export default function StockSimulator() {
                           </span>
                           <span className={`text-xs px-2 py-1 rounded ${
                             previewCalculo.limiteFator === 'margem' 
-                              ? 'bg-orange-500/20 text-orange-500' 
-                              : 'bg-blue-500/20 text-blue-500'
+                              ? 'bg-primary/20 text-primary' 
+                              : 'bg-muted text-muted-foreground'
                           }`}>
                             Limite: {previewCalculo.limiteFator === 'margem' ? 'Margem' : 'Stop'}
                           </span>
@@ -792,7 +792,7 @@ export default function StockSimulator() {
                           <span className="text-destructive">
                             Perda: R$ {previewCalculo.perdaMaxima.toFixed(2)}
                           </span>
-                          <span className="text-green-500">
+                          <span className="text-success">
                             Ganho: R$ {previewCalculo.ganhoObjetivo.toFixed(2)}
                           </span>
                         </div>
@@ -840,10 +840,10 @@ export default function StockSimulator() {
           </Card>
 
           {/* Card 2: Análise de Risco */}
-          <Card className="p-6 bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
+          <Card className="p-6 bg-gradient-to-br from-muted to-muted/50 border-border">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-blue-500/20">
-                <AlertTriangle className="h-6 w-6 text-blue-500" />
+              <div className="p-2 rounded-lg bg-primary/20">
+                <AlertTriangle className="h-6 w-6 text-primary" />
               </div>
               <h2 className="text-xl font-bold">Análise de Risco</h2>
             </div>
@@ -870,8 +870,8 @@ export default function StockSimulator() {
                           </div>
                           <span className={`text-xs px-2 py-1 rounded ${
                             pos.limiteFator === 'margem' 
-                              ? 'bg-orange-500/20 text-orange-500' 
-                              : 'bg-blue-500/20 text-blue-500'
+                              ? 'bg-primary/20 text-primary' 
+                              : 'bg-muted text-muted-foreground'
                           }`}>
                             {pos.limiteFator === 'margem' ? 'Limitado por Margem' : 'Limitado por Stop'}
                           </span>
@@ -909,8 +909,8 @@ export default function StockSimulator() {
                             <span className="text-destructive">R$ {pos.perdaMaxima.toFixed(2)}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <Target className="h-3 w-3 text-green-500" />
-                            <span className="text-green-500">R$ {pos.ganhoObjetivo.toFixed(2)}</span>
+                            <Target className="h-3 w-3 text-success" />
+                            <span className="text-success">R$ {pos.ganhoObjetivo.toFixed(2)}</span>
                           </div>
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
@@ -940,7 +940,7 @@ export default function StockSimulator() {
                 </div>
                 <Progress 
                   value={Math.min(percentualMargemUsada, 100)} 
-                  className={`h-3 ${percentualMargemUsada > 100 ? '[&>div]:bg-destructive' : '[&>div]:bg-orange-500'}`}
+                  className={`h-3 ${percentualMargemUsada > 100 ? '[&>div]:bg-destructive' : '[&>div]:bg-primary'}`}
                 />
                 <p className="text-xs text-muted-foreground mt-1 text-right">
                   {percentualMargemUsada.toFixed(1)}% utilizado
@@ -974,18 +974,18 @@ export default function StockSimulator() {
                     <p className="text-xs text-muted-foreground">Perda Máx Total</p>
                     <p className="font-bold text-destructive">R$ {totalPerdaUsada.toFixed(2)}</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                  <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-center">
                     <p className="text-xs text-muted-foreground">Ganho Potencial</p>
-                    <p className="font-bold text-green-500">R$ {totalGanhoObjetivo.toFixed(2)}</p>
+                    <p className="font-bold text-success">R$ {totalGanhoObjetivo.toFixed(2)}</p>
                   </div>
                 </div>
               )}
 
               {/* Status */}
-              <div className={`p-4 rounded-lg ${isWithinLimit ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
+              <div className={`p-4 rounded-lg ${isWithinLimit ? 'bg-success/20 border border-success/30' : 'bg-destructive/20 border border-destructive/30'}`}>
                 <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 className={`h-5 w-5 ${isWithinLimit ? 'text-green-500' : 'text-red-500'}`} />
-                  <p className={`font-semibold ${isWithinLimit ? 'text-green-500' : 'text-red-500'}`}>
+                  <CheckCircle2 className={`h-5 w-5 ${isWithinLimit ? 'text-success' : 'text-destructive'}`} />
+                  <p className={`font-semibold ${isWithinLimit ? 'text-success' : 'text-destructive'}`}>
                     {isWithinLimit ? 'Dentro do Limite' : 'Acima do Limite'}
                   </p>
                 </div>
@@ -999,29 +999,29 @@ export default function StockSimulator() {
           </Card>
 
           {/* Card 3: Parâmetros Atuais */}
-          <Card className="p-6 bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
+          <Card className="p-6 bg-gradient-to-br from-success/10 to-success/5 border-success/20">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-green-500/20">
-                <CheckCircle2 className="h-6 w-6 text-green-500" />
+              <div className="p-2 rounded-lg bg-success/20">
+                <CheckCircle2 className="h-6 w-6 text-success" />
               </div>
               <h2 className="text-xl font-bold">Parâmetros Atuais</h2>
             </div>
 
             <div className="space-y-4">
               {/* Valores Alocados */}
-              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-purple-500">
+              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-primary">
                 <p className="text-xs text-muted-foreground mb-1">Valor Alocado</p>
                 <p className="font-bold text-lg">R$ {valorAlocado.toLocaleString('pt-BR')}</p>
               </div>
 
-              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-orange-500">
+              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-primary/70">
                 <p className="text-xs text-muted-foreground mb-1">Margem Total Utilizada</p>
-                <p className="font-bold text-lg text-orange-500">R$ {totalMargemUsada.toFixed(2)}</p>
+                <p className="font-bold text-lg text-primary">R$ {totalMargemUsada.toFixed(2)}</p>
               </div>
 
-              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-green-500">
+              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-success">
                 <p className="text-xs text-muted-foreground mb-1">Margem Disponível</p>
-                <p className={`font-bold text-lg ${margemDisponivel >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                <p className={`font-bold text-lg ${margemDisponivel >= 0 ? 'text-success' : 'text-destructive'}`}>
                   R$ {margemDisponivel.toFixed(2)}
                 </p>
               </div>
@@ -1034,26 +1034,26 @@ export default function StockSimulator() {
 
                 <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
                   <p className="text-sm text-muted-foreground">Risco Mensal Base</p>
-                  <p className="font-bold text-green-500">{riskPercentual}%</p>
+                  <p className="font-bold text-success">{riskPercentual}%</p>
                 </div>
 
                 <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
                   <p className="text-sm text-muted-foreground">Risco Diário (R$)</p>
-                  <p className="font-bold text-blue-500">R$ {dailyRiskValue.toFixed(2)}</p>
+                  <p className="font-bold text-primary">R$ {dailyRiskValue.toFixed(2)}</p>
                 </div>
 
                 <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
                   <p className="text-sm text-muted-foreground">Perda Acumulada (Mês)</p>
-                  <p className="font-bold text-red-500">{accumulatedLoss.toFixed(2)}%</p>
+                  <p className="font-bold text-destructive">{accumulatedLoss.toFixed(2)}%</p>
                 </div>
               </div>
 
-              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                <p className="text-xs font-semibold text-green-500 mb-2">Como funciona:</p>
+              <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+                <p className="text-xs font-semibold text-success mb-2">Como funciona:</p>
                 <p className="text-xs text-muted-foreground">
                   Distribua o risco entre múltiplas ações usando os sliders.
                   <br />• <strong>Arraste o slider</strong> para alocar mais/menos risco em cada ativo
-                  <br />• <strong className="text-green-500">Objetivo:</strong> Ganho potencial em R$
+                  <br />• <strong className="text-success">Objetivo:</strong> Ganho potencial em R$
                   <br />• <strong className="text-destructive">Stop:</strong> Perda máxima em R$
                 </p>
               </div>
