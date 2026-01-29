@@ -1,164 +1,222 @@
 
+## Plano: Melhorias de Layout, Cores e Navegacao
 
-## Plano: Manter a Estética 100% nas Cores da Brighter
+### Resumo das Solicitacoes
 
-### Resumo
-
-O simulador e outros componentes estão usando cores como `purple-500`, `blue-500`, `orange-500` que não fazem parte da identidade visual da Brighter. Vou substituir todas essas cores pela paleta oficial:
-
-| Uso | Cor Atual | Cor Brighter |
-|-----|-----------|--------------|
-| Destaque principal | `purple-500` | `primary` (gold HSL 43 96% 56%) |
-| Informação secundária | `blue-500` | `primary` ou `muted-foreground` |
-| Alertas/Margem | `orange-500` | `primary` (variação mais escura) |
-| Sucesso/Ganhos | `green-500` | `success` (HSL 142 76% 36%) |
-| Perda/Stop | `red-500` | `destructive` (HSL 0 84% 60%) |
+O usuario pediu 4 melhorias principais:
+1. **Transformar cards do Hub em horizontal:** Os cards de dashboards (Futuros, Acoes, Mercado Internacional) devem ser exibidos em linha horizontal
+2. **Padronizar cores da Brighter:** Substituir todas as cores hardcoded (blue-500, green-500, orange-500, red-500, yellow-500) pelas variaveis semanticas da paleta oficial
+3. **Melhorar o relogio digital:** Tornar o relogio mais destacado e visualmente atraente
+4. **Remover botao Voltar:** Remover o botao "Voltar" do menu de navegacao DashboardTabs
 
 ---
 
-### Mudanças no StockSimulator.tsx
+### Mudanca 1: Cards do Hub em Layout Horizontal
 
-#### Card 1: Simulação de Operação
-**Antes:**
-```tsx
-<Card className="... from-purple-500/10 to-purple-600/5 border-purple-500/20">
-  <div className="... bg-purple-500/20">
-    <Calculator className="... text-purple-500" />
-```
+#### Situacao Atual
+Os cards de dashboards no Hub estao usando `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`, o que ja e responsivo. Porem, baseado na imagem de referencia, o usuario quer um layout mais horizontal e compacto.
 
-**Depois:**
-```tsx
-<Card className="... from-primary/10 to-primary/5 border-primary/20">
-  <div className="... bg-primary/20">
-    <Calculator className="... text-primary" />
-```
+#### Proposta
+Ajustar o layout para garantir que os 3 cards aparecam sempre lado a lado em telas maiores, com um design mais horizontal (menos altura, mais largura).
 
-#### Card 2: Análise de Risco
-**Antes:**
-```tsx
-<Card className="... from-blue-500/10 to-blue-600/5 border-blue-500/20">
-  <div className="... bg-blue-500/20">
-    <AlertTriangle className="... text-blue-500" />
-```
+**Arquivo:** `src/pages/Hub.tsx`
 
-**Depois:**
 ```tsx
-<Card className="... from-muted to-muted/50 border-border">
-  <div className="... bg-muted">
-    <AlertTriangle className="... text-primary" />
-```
+// Antes
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-#### Card 3: Parâmetros Atuais
-**Antes:**
-```tsx
-<Card className="... from-green-500/10 to-green-600/5 border-green-500/20">
-  <div className="... bg-green-500/20">
-    <CheckCircle2 className="... text-green-500" />
-```
-
-**Depois:**
-```tsx
-<Card className="... from-success/10 to-success/5 border-success/20">
-  <div className="... bg-success/20">
-    <CheckCircle2 className="... text-success" />
-```
-
-#### Indicadores de Limite (margem/stop)
-**Antes:**
-```tsx
-pos.limiteFator === 'margem' 
-  ? 'bg-orange-500/20 text-orange-500' 
-  : 'bg-blue-500/20 text-blue-500'
-```
-
-**Depois:**
-```tsx
-pos.limiteFator === 'margem' 
-  ? 'bg-primary/20 text-primary' 
-  : 'bg-muted text-muted-foreground'
-```
-
-#### Cores de Ganho/Perda
-**Antes:**
-```tsx
-<span className="text-green-500">Ganho: R$ {value}</span>
-<span className="text-red-500">Perda: R$ {value}</span>
-```
-
-**Depois:**
-```tsx
-<span className="text-success">Ganho: R$ {value}</span>
-<span className="text-destructive">Perda: R$ {value}</span>
-```
-
-#### Bordas Laterais em Parâmetros
-**Antes:**
-```tsx
-<div className="... border-l-4 border-purple-500">
-<div className="... border-l-4 border-orange-500">
-<div className="... border-l-4 border-green-500">
-```
-
-**Depois:**
-```tsx
-<div className="... border-l-4 border-primary">
-<div className="... border-l-4 border-primary/70">
-<div className="... border-l-4 border-success">
+// Depois - forcar horizontal em telas medias+
+<div className="flex flex-col md:flex-row gap-4 md:gap-6">
+  {dashboards.map((dashboard) => (
+    <Card className="flex-1 min-w-0 p-5 ...">
 ```
 
 ---
 
-### Resumo de Todas as Substituições
+### Mudanca 2: Padronizar Cores da Brighter
 
-| Padrão Original | Substituição |
-|-----------------|--------------|
-| `purple-500` | `primary` |
-| `purple-600` | `primary` |
-| `blue-500` | `muted-foreground` ou `primary` |
-| `blue-600` | `muted` |
-| `orange-500` | `primary` (para margem) |
-| `green-500` | `success` |
-| `red-500` | `destructive` |
+#### Mapeamento de Cores
+
+| Cor Atual | Substituicao |
+|-----------|--------------|
+| `blue-500` | `primary` (dourado) |
+| `green-500` | `success` (verde semantico) |
+| `orange-500` | `primary` (dourado para destaque) |
+| `red-500` | `destructive` (vermelho semantico) |
+| `yellow-500` | `primary` (para warning usar primary) |
+
+#### Arquivos Afetados
+
+| Arquivo | Mudancas |
+|---------|----------|
+| `src/pages/Hub.tsx` | Cards de dashboard: substituir blue/green/orange por variacoes de primary/success |
+| `src/pages/WeeklyPortfolio.tsx` | Resultados: green-500 -> success, red-500 -> destructive |
+| `src/pages/StockTrades.tsx` | Resultados: green-500 -> success, red-500 -> destructive |
+| `src/pages/Portfolio.tsx` | Indicadores de alta/baixa |
+| `src/components/DailyWeeklyCharts.tsx` | Tooltips de resultado |
+| `src/components/PnLEvolutionChart.tsx` | Tooltips de resultado |
+| `src/components/stock/StockTradeForm.tsx` | Preview de resultado |
+| `src/components/stock/StockMonthHeatmap.tsx` | Cores de ganho/perda |
+| `src/components/MarketSessionsClock.tsx` | Badges de mercado aberto/fechado |
+| `src/components/StatCard.tsx` | Warning variant: yellow-500 -> primary |
+
+#### Exemplo de Substituicao
+
+```tsx
+// Antes
+className={result >= 0 ? 'text-green-500' : 'text-red-500'}
+
+// Depois
+className={result >= 0 ? 'text-success' : 'text-destructive'}
+```
+
+#### Cards do Hub - Nova Paleta
+
+```tsx
+// Antes - cores diferentes para cada tipo
+futuros: { color: 'from-blue-500/20 to-blue-600/10 border-blue-500/30', iconColor: 'text-blue-500' }
+acoes: { color: 'from-green-500/20 to-green-600/10 border-green-500/30', iconColor: 'text-green-500' }
+internacional: { color: 'from-orange-500/20 to-orange-600/10 border-orange-500/30', iconColor: 'text-orange-500' }
+
+// Depois - paleta Brighter unificada
+futuros: { color: 'from-muted to-muted/50 border-border', iconColor: 'text-primary' }
+acoes: { color: 'from-success/10 to-success/5 border-success/30', iconColor: 'text-success' }
+internacional: { color: 'from-primary/10 to-primary/5 border-primary/30', iconColor: 'text-primary' }
+```
 
 ---
 
-### Arquivos a Modificar
+### Mudanca 3: Melhorar Relogio Digital
 
-| Arquivo | Descrição |
-|---------|-----------|
-| `src/pages/StockSimulator.tsx` | Aplicar todas as substituições de cores nos 3 cards e elementos internos |
+#### Situacao Atual
+O relogio no Hub e pequeno e simples:
+```tsx
+<Clock className="w-5 h-5" />
+<span className="text-xl font-mono tabular-nums">{clockTime}</span>
+```
+
+#### Proposta
+Criar um relogio mais destacado com visual moderno:
+
+**Arquivo:** `src/pages/Hub.tsx` (WelcomeSection)
+
+```tsx
+// Novo design do relogio
+<div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-border">
+  <Clock className="w-5 h-5 text-primary" />
+  <span className="text-2xl font-mono font-bold tabular-nums tracking-wide text-foreground">
+    {clockTime}
+  </span>
+</div>
+```
+
+Melhorias:
+- Fundo semi-transparente com backdrop blur
+- Borda sutil
+- Tamanho maior (text-2xl)
+- Icone em cor primary (dourado)
+- Tracking mais espacado para melhor leitura
+- Peso bold para destaque
 
 ---
 
-### Seção Técnica
+### Mudanca 4: Remover Botao Voltar
 
-#### Paleta Oficial Brighter (index.css)
+#### Situacao Atual
+O componente `DashboardTabs` inclui um botao "Voltar" antes dos tabs:
+
+```tsx
+<Button variant="ghost" onClick={() => navigate(getBackPath())}>
+  <ArrowLeft className="h-4 w-4" />
+  <span>Voltar</span>
+</Button>
+<div className="h-6 w-px bg-border mx-2" /> {/* Separador */}
+```
+
+#### Proposta
+Remover o botao "Voltar" e o separador, mantendo apenas os tabs de navegacao.
+
+**Arquivo:** `src/components/DashboardTabs.tsx`
+
+```tsx
+// Remover estas linhas (44-54):
+<Button
+  variant="ghost"
+  className="flex items-center gap-2 px-4 py-2 rounded-lg..."
+  onClick={() => navigate(getBackPath())}
+>
+  <ArrowLeft className="h-4 w-4" />
+  <span>Voltar</span>
+</Button>
+<div className="h-6 w-px bg-border mx-2" />
+```
+
+---
+
+### Secao Tecnica
+
+#### Arquivos Modificados
+
+| Arquivo | Mudancas |
+|---------|----------|
+| `src/pages/Hub.tsx` | Layout horizontal dos cards + cores Brighter + relogio melhorado |
+| `src/components/DashboardTabs.tsx` | Remover botao Voltar |
+| `src/pages/WeeklyPortfolio.tsx` | Cores semanticas |
+| `src/pages/StockTrades.tsx` | Cores semanticas |
+| `src/pages/Portfolio.tsx` | Cores semanticas |
+| `src/components/DailyWeeklyCharts.tsx` | Cores semanticas |
+| `src/components/PnLEvolutionChart.tsx` | Cores semanticas |
+| `src/components/stock/StockTradeForm.tsx` | Cores semanticas |
+| `src/components/stock/StockMonthHeatmap.tsx` | Cores semanticas |
+| `src/components/MarketSessionsClock.tsx` | Cores semanticas |
+| `src/components/StatCard.tsx` | Warning variant com primary |
+
+#### Paleta Oficial Brighter
 
 ```css
-/* Dark Mode */
---primary: 43 96% 56%;     /* Gold/Dourado */
---success: 142 76% 36%;    /* Verde */
---destructive: 0 84% 60%;  /* Vermelho */
---muted: 220 13% 15%;      /* Cinza escuro */
---muted-foreground: 0 0% 65%; /* Texto secundário */
+/* index.css - variaveis disponiveis */
+--primary: 43 96% 56%;     /* Dourado - destaque principal */
+--success: 142 76% 36%;    /* Verde - ganhos e positivo */
+--destructive: 0 84% 60%;  /* Vermelho - perdas e negativo */
+--muted: 220 13% 15%;      /* Neutro escuro */
+--muted-foreground: 0 0% 65%; /* Texto secundario */
 ```
 
-#### Classes Tailwind Disponíveis
-- `text-primary`, `bg-primary`, `border-primary`
-- `text-success`, `bg-success`, `border-success`
-- `text-destructive`, `bg-destructive`, `border-destructive`
-- `text-muted-foreground`, `bg-muted`, `border-muted`
+#### Classes Tailwind a Usar
+
+- Ganhos/Positivo: `text-success`, `bg-success/10`, `border-success/30`
+- Perdas/Negativo: `text-destructive`, `bg-destructive/10`, `border-destructive/30`
+- Destaques/Alerta: `text-primary`, `bg-primary/10`, `border-primary/30`
+- Neutro: `text-muted-foreground`, `bg-muted`, `border-border`
 
 ---
 
-### Resultado Final
+### Resultado Visual Esperado
 
-Após as mudanças, o simulador terá uma aparência 100% consistente com a identidade visual da Brighter:
+#### Hub (Meus Dashboards)
+```
++-----------------------------------------------------------+
+|  Bom dia, Jan! 👋                    [🕐 18:44:58]        |
+|  Escolha um dashboard...                                   |
++-----------------------------------------------------------+
+|  +-----------------+ +-----------------+ +-----------------+
+|  | 📊 Futuros      | | 📈 Ações        | | 🌐 Internacional|
+|  | Mini Index...   | | Daytrade...     | | Forex, Cripto...|
+|  | Risco: R$ 2.500 | | Risco: R$ 2.500 | | Risco: R$ 2.500 |
+|  +-----------------+ +-----------------+ +-----------------+
++-----------------------------------------------------------+
+```
 
-- **Card Simulação:** Gradiente dourado (primary)
-- **Card Análise:** Tons neutros com acentos dourados
-- **Card Parâmetros:** Gradiente verde (success)
-- **Ganhos:** Sempre em verde (`text-success`)
-- **Perdas:** Sempre em vermelho (`text-destructive`)
-- **Destaques:** Dourado (`text-primary`)
+- Cards lado a lado (flexbox horizontal)
+- Relogio com fundo e borda
+- Cores consistentes da paleta Brighter
 
+#### DashboardTabs (sem Voltar)
+```
++-----------------------------------------------------------+
+| [Calendário] [Trades] [Simulador] [Carteira v]            |
++-----------------------------------------------------------+
+```
+
+- Apenas tabs de navegacao
+- Sem botao "Voltar" e sem separador
