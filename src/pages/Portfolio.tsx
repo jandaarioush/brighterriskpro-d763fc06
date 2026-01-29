@@ -288,16 +288,16 @@ export default function PortfolioPage() {
               <Card className="p-6">
                 <div className="flex items-center gap-3 mb-2">
                   {selectedPortfolio.capital_atual >= selectedPortfolio.capital_inicial ? (
-                    <TrendingUp className="w-5 h-5 text-green-500" />
+                    <TrendingUp className="w-5 h-5 text-success" />
                   ) : (
-                    <TrendingDown className="w-5 h-5 text-red-500" />
+                    <TrendingDown className="w-5 h-5 text-destructive" />
                   )}
                   <span className="text-sm text-muted-foreground">Rentabilidade</span>
                 </div>
                 <p className={`text-2xl font-bold ${
                   selectedPortfolio.capital_atual >= selectedPortfolio.capital_inicial 
-                    ? 'text-green-500' 
-                    : 'text-red-500'
+                    ? 'text-success' 
+                    : 'text-destructive'
                 }`}>
                   {selectedPortfolio.capital_inicial > 0 
                     ? (((selectedPortfolio.capital_atual - selectedPortfolio.capital_inicial) / selectedPortfolio.capital_inicial) * 100).toFixed(2)
@@ -326,15 +326,15 @@ export default function PortfolioPage() {
                   <TabsContent value={activeTab}>
                     {filteredEntries.length > 0 ? (
                       <div className="space-y-3">
-                        {filteredEntries.map((entry) => (
+                          {filteredEntries.map((entry) => (
                           <Card key={entry.id} className="p-4">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-4">
-                                <div className={`p-2 rounded ${entry.tipo === 'compra' ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
+                                <div className={`p-2 rounded ${entry.tipo === 'compra' ? 'bg-destructive/10' : 'bg-success/10'}`}>
                                   {entry.tipo === 'compra' ? (
-                                    <TrendingDown className="w-4 h-4 text-red-500" />
+                                    <TrendingDown className="w-4 h-4 text-destructive" />
                                   ) : (
-                                    <TrendingUp className="w-4 h-4 text-green-500" />
+                                    <TrendingUp className="w-4 h-4 text-success" />
                                   )}
                                 </div>
                                 <div>
@@ -345,7 +345,7 @@ export default function PortfolioPage() {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className={`font-medium ${entry.tipo === 'compra' ? 'text-red-500' : 'text-green-500'}`}>
+                                <p className={`font-medium ${entry.tipo === 'compra' ? 'text-destructive' : 'text-success'}`}>
                                   {entry.tipo === 'compra' ? '-' : '+'}R$ {entry.valor_total.toFixed(2)}
                                 </p>
                                 <p className="text-xs text-muted-foreground">

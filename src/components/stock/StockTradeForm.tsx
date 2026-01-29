@@ -386,9 +386,9 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
 
           {/* Preview */}
           {preview && (
-            <Card className={`p-4 ${preview.resultadoReais >= 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+            <Card className={`p-4 ${preview.resultadoReais >= 0 ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'}`}>
               <p className="text-sm text-muted-foreground mb-1">Resultado Estimado</p>
-              <p className={`text-2xl font-bold ${preview.resultadoReais >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              <p className={`text-2xl font-bold ${preview.resultadoReais >= 0 ? 'text-success' : 'text-destructive'}`}>
                 R$ {preview.resultadoReais.toFixed(2)} ({preview.resultadoPercentual.toFixed(2)}%)
               </p>
             </Card>

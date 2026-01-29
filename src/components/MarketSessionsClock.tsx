@@ -59,7 +59,7 @@ export default function MarketSessionsClock() {
           <Badge
             variant={isOpen ? 'default' : 'secondary'}
             className={`text-[10px] px-1.5 py-0 h-4 ${
-              isOpen ? 'bg-green-500/20 text-green-500' : ''
+              isOpen ? 'bg-success/20 text-success' : ''
             }`}
           >
             {isOpen ? 'Aberto' : 'Fechado'}
@@ -255,7 +255,7 @@ export default function MarketSessionsClock() {
                           <Badge
                             variant={isOpen ? 'default' : 'secondary'}
                             className={`text-[10px] px-1.5 py-0 h-4 ${
-                              isOpen ? 'bg-green-500/20 text-green-500 hover:bg-green-500/30' : ''
+                              isOpen ? 'bg-success/20 text-success hover:bg-success/30' : ''
                             }`}
                           >
                             {isOpen ? 'Aberto' : 'Fechado'}
@@ -293,12 +293,12 @@ export default function MarketSessionsClock() {
                           style={{ backgroundColor: event.marketColor }}
                         />
                         <span className="font-medium">{event.marketAbbreviation}</span>
-                        <Badge
+                          <Badge
                           variant="secondary"
                           className={`text-[10px] px-1.5 py-0 h-4 gap-0.5 ${
                             event.eventType === 'open'
-                              ? 'bg-green-500/20 text-green-500'
-                              : 'bg-red-500/20 text-red-500'
+                              ? 'bg-success/20 text-success'
+                              : 'bg-destructive/20 text-destructive'
                           }`}
                         >
                           {event.eventType === 'open' ? (
@@ -326,11 +326,11 @@ export default function MarketSessionsClock() {
               <div>
                 <h4 className="text-sm font-semibold text-muted-foreground mb-2">Mercados Brasileiros</h4>
                 <div className="space-y-1.5 text-xs">
-                  <div className="flex justify-between items-center p-2 rounded-md bg-green-500/10">
+                  <div className="flex justify-between items-center p-2 rounded-md bg-success/10">
                     <span className="font-medium">B3 Futuro</span>
                     <span className="text-muted-foreground">09:00 - 18:30</span>
                   </div>
-                  <div className="flex justify-between items-center p-2 rounded-md bg-green-500/10">
+                  <div className="flex justify-between items-center p-2 rounded-md bg-success/10">
                     <span className="font-medium">B3 À Vista</span>
                     <span className="text-muted-foreground">10:00 - 17:55</span>
                   </div>

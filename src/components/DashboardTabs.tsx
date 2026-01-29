@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, FileText, Calculator, Wallet, ChevronDown, ArrowLeft } from 'lucide-react';
+import { Calendar, FileText, Calculator, Wallet, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,7 +23,6 @@ export default function DashboardTabs({ dashboardId, dashboardType }: DashboardT
   const getCalendarPath = () => isFuturos ? '/calendar' : `/calendar/${dashboardId}`;
   const getTradesPath = () => isFuturos ? '/trades' : `/trades/${dashboardId}`;
   const getSimulatorPath = () => isFuturos ? '/simulator' : `/simulator/${dashboardId}`;
-  const getBackPath = () => isFuturos ? '/dashboard' : `/stock-dashboard/${dashboardId}`;
 
   const isActive = (path: string) => location.pathname === path;
   const isCarteiraActive = () => 
@@ -40,19 +39,6 @@ export default function DashboardTabs({ dashboardId, dashboardType }: DashboardT
     <div className="bg-card border-b border-border mb-6">
       <div className="container mx-auto px-4">
         <div className="flex items-center gap-1 overflow-x-auto py-2">
-          {/* Botão Voltar */}
-          <Button
-            variant="ghost"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
-            onClick={() => navigate(getBackPath())}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Voltar</span>
-          </Button>
-
-          {/* Separador */}
-          <div className="h-6 w-px bg-border mx-2" />
-
           {tabs.map((tab) => (
             <Button
               key={tab.path}

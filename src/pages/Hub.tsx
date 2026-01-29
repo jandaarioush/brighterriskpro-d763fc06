@@ -23,22 +23,22 @@ const dashboardTypeInfo = {
     label: 'Futuros',
     description: 'Mini Índice e Mini Dólar',
     icon: BarChart3,
-    color: 'from-blue-500/20 to-blue-600/10 border-blue-500/30',
-    iconColor: 'text-blue-500',
+    color: 'from-muted to-muted/50 border-border',
+    iconColor: 'text-primary',
   },
   acoes: {
     label: 'Ações',
     description: 'Daytrade e Swing Trade de Ações',
     icon: TrendingUp,
-    color: 'from-green-500/20 to-green-600/10 border-green-500/30',
-    iconColor: 'text-green-500',
+    color: 'from-success/10 to-success/5 border-success/30',
+    iconColor: 'text-success',
   },
   internacional: {
     label: 'Mercado Internacional',
     description: 'Forex, Cripto e outros ativos',
     icon: Globe,
-    color: 'from-orange-500/20 to-orange-600/10 border-orange-500/30',
-    iconColor: 'text-orange-500',
+    color: 'from-primary/10 to-primary/5 border-primary/30',
+    iconColor: 'text-primary',
   },
 };
 
@@ -55,9 +55,11 @@ function WelcomeSection({ profile }: { profile: { name?: string | null } | null 
         <h1 className="text-4xl font-bold font-montserrat">
           {greeting}, {firstName}! 👋
         </h1>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Clock className="w-5 h-5" />
-          <span className="text-xl font-mono tabular-nums">{clockTime}</span>
+        <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-border">
+          <Clock className="w-5 h-5 text-primary" />
+          <span className="text-2xl font-mono font-bold tabular-nums tracking-wide text-foreground">
+            {clockTime}
+          </span>
         </div>
       </div>
       <p className="text-muted-foreground text-lg">
@@ -164,7 +166,7 @@ export default function Hub() {
         <div className="mb-8">
           <h2 className="text-2xl font-semibold font-montserrat mb-6">Meus Dashboards</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
             {dashboards.map((dashboard) => {
               const typeInfo = dashboardTypeInfo[dashboard.type];
               const IconComponent = typeInfo.icon;
@@ -172,7 +174,7 @@ export default function Hub() {
               return (
                 <Card
                   key={dashboard.id}
-                  className={`p-6 bg-gradient-to-br ${typeInfo.color} hover:shadow-lg transition-all cursor-pointer group`}
+                  className={`flex-1 min-w-0 p-5 bg-gradient-to-br ${typeInfo.color} hover:shadow-lg transition-all cursor-pointer group`}
                   onClick={() => handleDashboardClick(dashboard)}
                 >
                   <div className="flex items-start justify-between mb-4">

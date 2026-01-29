@@ -23,8 +23,8 @@ export function StockMonthHeatmap({ trades, capitalTotal, baseRiskPercentual }: 
   const getDayColor = (dayTrades: StockTrade[]) => {
     if (!dayTrades.length) return 'bg-card hover:bg-accent';
     const totalResult = dayTrades.reduce((sum, t) => sum + t.resultado_reais, 0);
-    if (totalResult > 0) return 'bg-green-500/20 border-green-500/50';
-    if (totalResult < 0) return 'bg-red-500/20 border-red-500/50';
+    if (totalResult > 0) return 'bg-success/20 border-success/50';
+    if (totalResult < 0) return 'bg-destructive/20 border-destructive/50';
     return 'bg-card';
   };
 
@@ -67,7 +67,7 @@ export function StockMonthHeatmap({ trades, capitalTotal, baseRiskPercentual }: 
                   <span className="text-xs font-medium">{dayData.day}</span>
                   {dayData.trades.length > 0 && (
                     <div className="flex-1 flex flex-col justify-end">
-                      <span className={`text-[10px] font-medium ${totalResult >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      <span className={`text-[10px] font-medium ${totalResult >= 0 ? 'text-success' : 'text-destructive'}`}>
                         {totalResult >= 0 ? '+' : ''}{totalPercent.toFixed(1)}%
                       </span>
                     </div>
@@ -88,11 +88,11 @@ export function StockMonthHeatmap({ trades, capitalTotal, baseRiskPercentual }: 
         {/* Legend */}
         <div className="flex items-center justify-center gap-4 mt-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-green-500/20 border border-green-500/50" />
+            <div className="w-3 h-3 rounded bg-success/20 border border-success/50" />
             <span>Ganho</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-red-500/20 border border-red-500/50" />
+            <div className="w-3 h-3 rounded bg-destructive/20 border border-destructive/50" />
             <span>Perda</span>
           </div>
           <div className="flex items-center gap-1">
