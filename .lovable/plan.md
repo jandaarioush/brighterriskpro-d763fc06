@@ -1,330 +1,267 @@
 
 
-## Plano: Criar Pagina Principal /admin
+## Plano: Dashboard Admin Completo com Gestao de Usuarios
 
-### Situacao Atual
+### Analise da Situacao Atual
 
-O projeto ja possui:
-- Sistema completo de autenticacao (`useAuth`, `signIn`, `signUp`)
-- Verificacao de role admin via `has_role` no banco de dados
-- Componente `AdminRoute` que protege rotas admin
-- Paginas admin existentes: `/admin/users`, `/admin/webhooks`, `/admin/reports`, `/admin/engagement`
+O sistema ja possui uma estrutura robusta de administracao:
 
-**Problema:** A rota `/admin` nao existe - apenas as sub-rotas. Quando o usuario acessa `/admin`, ve a pagina NotFound.
-
-### Solucao Proposta
-
-Criar uma pagina `/admin` que funciona como **portal central** para administradores, com dois cenarios:
-
-1. **Usuario nao autenticado:** Mostra formulario de login
-2. **Usuario autenticado como admin:** Mostra painel com links para as areas admin
-
----
-
-### Fluxo de Acesso
-
-```
-Usuario acessa /admin
-        |
-        v
-    Autenticado?
-     /        \
-   Nao        Sim
-    |          |
-    v          v
- Login      Admin?
-  Form      /    \
-           Nao    Sim
-            |      |
-            v      v
-       "Acesso    Painel
-        Negado"   Admin
-```
+| Funcionalidade | Status | Localizacao |
+|----------------|--------|-------------|
+| Portal admin com login | Implementado | `/admin` |
+| Listagem de usuarios | Implementado | `/admin/users` |
+| Criar usuario | Implementado | Via edge function |
+| Importar CSV | Implementado | Via edge function |
+| Ativar/Revogar status | Implementado | Update direto no `profiles` |
+| **Atualizar plano** | Faltando | - |
+| **Editar perfil completo** | Faltando | - |
+| **Deletar usuario** | Faltando | - |
+| Logs de webhooks | Implementado | `/admin/webhooks` |
 
 ---
 
-### Nova Pagina: src/pages/Admin.tsx
+### Mudancas Propostas
 
-```tsx
-// Estados
-const { user, loading, isAdmin, checkingRole, signIn } = useAuth();
-const [email, setEmail] = useState('');
-const [password, setPassword] = useState('');
-const [loginLoading, setLoginLoading] = useState(false);
+#### 1. Expandir Edge Function `admin-manage-users`
 
-// Cenario 1: Nao autenticado - Mostrar formulario de login
-// Cenario 2: Autenticado mas nao admin - Mostrar acesso negado
-// Cenario 3: Autenticado e admin - Mostrar painel
+A edge function atual so suporta criacao de usuarios. Precisamos adicionar:
+
+```text
++------------------------------------------+
+|  Operacoes Suportadas                     |
++------------------------------------------+
+|  CREATE - Criar usuario (ja existe)      |
+|  UPDATE - Atualizar nome, plano, status  |
+|  DELETE - Remover usuario do sistema     |
++------------------------------------------+
 ```
 
-#### Layout do Login Admin
-
-```
-+-----------------------------------------------+
-|           RISK PRO - AREA ADMIN               |
-|                   [Logo]                       |
-+-----------------------------------------------+
-|                                               |
-|   +---------------------------------------+   |
-|   |  Email                                |   |
-|   |  [admin@exemplo.com               ]   |   |
-|   |                                       |   |
-|   |  Senha                                |   |
-|   |  [**********                      ]   |   |
-|   |                                       |   |
-|   |  [       Acessar Painel Admin     ]   |   |
-|   +---------------------------------------+   |
-|                                               |
-|   Acesso restrito a administradores           |
-+-----------------------------------------------+
-```
-
-#### Layout do Painel Admin
-
-```
-+-----------------------------------------------+
-|           PAINEL ADMINISTRATIVO               |
-|   Bem-vindo, admin@exemplo.com                |
-+-----------------------------------------------+
-|                                               |
-|  +----------+  +----------+  +------------+   |
-|  | USUARIOS |  | WEBHOOKS |  | RELATORIOS |   |
-|  |   👥     |  |   ⚡     |  |     📊     |   |
-|  +----------+  +----------+  +------------+   |
-|                                               |
-|  +------------+                               |
-|  | ENGAJAMENTO|                               |
-|  |    📈      |                               |
-|  +------------+                               |
-|                                               |
-|  [Voltar ao Dashboard]   [Sair]               |
-+-----------------------------------------------+
-```
-
----
-
-### Codigo da Pagina Admin
-
-```tsx
-// src/pages/Admin.tsx
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ThemeLogo } from '@/components/ThemeLogo';
-import { toast } from 'sonner';
-import { Users, Webhook, BarChart3, TrendingUp, Shield, ArrowLeft, LogOut } from 'lucide-react';
-
-export default function Admin() {
-  const { user, loading, isAdmin, checkingRole, signIn, signOut } = useAuth();
-  const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loginLoading, setLoginLoading] = useState(false);
-
-  // Estado de carregamento
-  if (loading || checkingRole) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-lg">Verificando credenciais...</p>
-      </div>
-    );
-  }
-
-  // Formulario de login para usuarios nao autenticados
-  if (!user) {
-    const handleLogin = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setLoginLoading(true);
-      
-      const { error } = await signIn(email, password);
-      
-      if (error) {
-        toast.error(error.message);
-      }
-      // Se login OK, o estado sera atualizado e a pagina re-renderiza
-      
-      setLoginLoading(false);
-    };
-
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <ThemeLogo className="h-10 mx-auto mb-4" />
-            <CardTitle className="flex items-center justify-center gap-2">
-              <Shield className="h-5 w-5" />
-              Area Administrativa
-            </CardTitle>
-            <CardDescription>
-              Acesso restrito a administradores do sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@exemplo.com"
-                  required
-                />
-              </div>
-              <div>
-                <Label>Senha</Label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="********"
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loginLoading}>
-                {loginLoading ? 'Entrando...' : 'Acessar Painel Admin'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Usuario autenticado mas nao e admin
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="max-w-md text-center p-8">
-          <h1 className="text-2xl font-bold text-destructive mb-4">
-            Acesso Negado
-          </h1>
-          <p className="text-muted-foreground mb-6">
-            Voce nao tem permissao para acessar a area administrativa.
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Button variant="outline" onClick={() => navigate('/dashboard')}>
-              Ir para Dashboard
-            </Button>
-            <Button variant="ghost" onClick={signOut}>
-              Sair
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  // Painel admin - usuario autenticado E e admin
-  const adminLinks = [
-    { to: '/admin/users', icon: Users, title: 'Usuarios', description: 'Gerenciar contas e permissoes' },
-    { to: '/admin/webhooks', icon: Webhook, title: 'Webhooks', description: 'Monitorar eventos de pagamento' },
-    { to: '/admin/reports', icon: BarChart3, title: 'Relatorios', description: 'Visualizar metricas do sistema' },
-    { to: '/admin/engagement', icon: TrendingUp, title: 'Engajamento', description: 'Analisar uso da plataforma' },
-  ];
-
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-6 space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Shield className="h-8 w-8 text-primary" />
-              Painel Administrativo
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Bem-vindo, {user.email}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Dashboard
-            </Button>
-            <Button variant="ghost" onClick={signOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Sair
-            </Button>
-          </div>
-        </div>
-
-        {/* Admin Links Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {adminLinks.map(({ to, icon: Icon, title, description }) => (
-            <Link key={to} to={to}>
-              <Card className="h-full hover:border-primary/50 transition-colors cursor-pointer">
-                <CardHeader>
-                  <Icon className="h-10 w-10 text-primary mb-2" />
-                  <CardTitle>{title}</CardTitle>
-                  <CardDescription>{description}</CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+**Nova estrutura de request:**
+```typescript
+interface AdminRequest {
+  action: 'create' | 'update' | 'delete';
+  
+  // Para CREATE (existente)
+  users?: Array<{ email: string; name?: string; plano?: string }>;
+  
+  // Para UPDATE
+  userId?: string;
+  updates?: {
+    name?: string;
+    plano?: string;
+    status_pagamento?: 'pending' | 'approved' | 'revoked';
+    phone?: string;
+  };
+  
+  // Para DELETE
+  userIdToDelete?: string;
 }
 ```
 
+#### 2. Dialog de Edicao na Pagina AdminUsers
+
+Adicionar um dialog para editar usuario com campos:
+
+```text
++-----------------------------------------------+
+|           Editar Usuario                       |
++-----------------------------------------------+
+|  Email: usuario@exemplo.com (somente leitura) |
+|                                               |
+|  Nome:          [ Joao Silva           ]     |
+|  Telefone:      [ (11) 99999-9999      ]     |
+|  Plano:         [ Premium          v ]       |
+|  Status:        [ Aprovado         v ]       |
+|                                               |
+|  [Cancelar]           [Salvar Alteracoes]    |
+|                                               |
+|  ⚠️ Alterar manualmente pode conflitar com   |
+|     webhooks de pagamento.                    |
++-----------------------------------------------+
+```
+
+#### 3. Confirmacao de Exclusao
+
+```text
++-----------------------------------------------+
+|        Excluir Usuario                        |
++-----------------------------------------------+
+|  Tem certeza que deseja excluir?              |
+|                                               |
+|  Email: usuario@exemplo.com                   |
+|                                               |
+|  ⚠️ Esta acao e IRREVERSIVEL!                 |
+|                                               |
+|  Isso ira:                                    |
+|  • Remover acesso ao sistema                  |
+|  • Manter historico de webhooks               |
+|  • Manter registros de subscriptions          |
+|                                               |
+|  [Cancelar]           [Excluir Permanente]   |
++-----------------------------------------------+
+```
+
 ---
 
-### Mudancas Necessarias
+### Fluxo de Seguranca
+
+```text
+Admin clica "Editar" ou "Excluir"
+        |
+        v
+  Abre Dialog de confirmacao
+        |
+        v
+  Chama Edge Function
+        |
+        v
+  Edge Function verifica:
+  1. Token JWT valido?
+  2. Usuario tem role 'admin'?
+  3. Operacao permitida?
+        |
+        v
+  Executa com Service Role Key
+        |
+        v
+  Registra log de auditoria
+        |
+        v
+  Retorna resultado
+```
+
+---
+
+### Preservacao de Webhooks
+
+**Importante:** As alteracoes manuais de plano/status NAO afetam os webhooks existentes porque:
+
+1. Tabela `webhook_events` - Permanece inalterada (somente leitura pelo admin)
+2. Tabela `subscriptions` - Permanece inalterada (registro historico)
+3. Tabela `pending_orders` - Permanece inalterada
+4. Apenas `profiles` e `auth.users` sao modificados
+
+Quando um novo pagamento chegar via webhook, ele atualizara o perfil normalmente, sobrescrevendo qualquer alteracao manual.
+
+---
+
+### Arquivos a Modificar
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/pages/Admin.tsx` | **Criar** - Nova pagina portal admin |
-| `src/App.tsx` | Adicionar rota `/admin` |
-
----
-
-### Rota no App.tsx
-
-```tsx
-// Adicionar import
-import Admin from "./pages/Admin";
-
-// Adicionar rota (antes das rotas admin/*)
-<Route path="/admin" element={<Admin />} />
-```
-
-**Nota:** A rota `/admin` NAO precisa de `ProtectedRoute` ou `AdminRoute` porque a propria pagina gerencia os 3 cenarios internamente (nao logado, logado sem permissao, admin).
+| `supabase/functions/admin-manage-users/index.ts` | Adicionar acoes UPDATE e DELETE |
+| `src/pages/AdminUsers.tsx` | Adicionar dialog de edicao e botao de exclusao |
 
 ---
 
 ### Secao Tecnica
 
-#### Seguranca
+#### Edge Function - Nova Estrutura
 
-- Login usa o mesmo `signIn` do hook `useAuth`
-- Verificacao de admin e feita via `has_role` no banco (server-side)
-- Nenhum dado sensivel armazenado no localStorage
-- Compativel com o sistema de autenticacao existente
+```typescript
+// Verificar acao
+const { action, users, userId, updates, userIdToDelete } = await req.json();
 
-#### Responsividade
+switch (action) {
+  case 'create':
+    // Logica existente de criacao
+    break;
+    
+  case 'update':
+    // Atualizar profile com os campos fornecidos
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        name: updates.name,
+        plano: updates.plano,
+        status_pagamento: updates.status_pagamento,
+        phone: updates.phone,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+    
+    // Log de auditoria
+    await supabase.rpc('log_audit', {
+      p_actor: adminEmail,
+      p_action: 'admin_update_user',
+      p_meta: { userId, changes: updates },
+    });
+    break;
+    
+  case 'delete':
+    // Deletar usuario do auth (cascade remove profile)
+    await supabase.auth.admin.deleteUser(userIdToDelete);
+    
+    // Log de auditoria
+    await supabase.rpc('log_audit', {
+      p_actor: adminEmail,
+      p_action: 'admin_delete_user',
+      p_meta: { userId: userIdToDelete },
+    });
+    break;
+}
+```
 
-- Grid de cards: 1 coluna mobile, 2 tablet, 4 desktop
-- Formulario de login centralizado e responsivo
-- Botoes adaptados para mobile
+#### Componente EditDialog
+
+```tsx
+interface EditUserData {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  plano: string | null;
+  status_pagamento: string;
+}
+
+// State para edicao
+const [editingUser, setEditingUser] = useState<EditUserData | null>(null);
+const [showEditDialog, setShowEditDialog] = useState(false);
+
+// Funcao de update
+const handleUpdateUser = async () => {
+  const { error } = await supabase.functions.invoke('admin-manage-users', {
+    body: {
+      action: 'update',
+      userId: editingUser.id,
+      updates: {
+        name: editingUser.name,
+        plano: editingUser.plano,
+        phone: editingUser.phone,
+        status_pagamento: editingUser.status_pagamento,
+      },
+    },
+  });
+  // ...
+};
+```
+
+---
+
+### Opcoes de Plano no Select
+
+```tsx
+const planoOptions = [
+  { value: '', label: 'Sem Plano' },
+  { value: 'mensal', label: 'Mensal' },
+  { value: 'trimestral', label: 'Trimestral' },
+  { value: 'semestral', label: 'Semestral' },
+  { value: 'anual', label: 'Anual' },
+];
+```
 
 ---
 
 ### Resultado Final
 
-1. **Usuario nao logado** acessando `/admin`:
-   - Ve formulario de login estilizado
-   - Apos login, automaticamente ve o painel (se admin) ou "Acesso Negado"
+Apos implementacao, o admin podera:
 
-2. **Usuario comum** acessando `/admin`:
-   - Ve mensagem "Acesso Negado" com opcao de ir ao Dashboard
+1. **Visualizar** todos os usuarios em tabela
+2. **Buscar** por email
+3. **Criar** usuario individual ou via CSV
+4. **Editar** nome, telefone, plano e status de qualquer usuario
+5. **Excluir** usuarios permanentemente (com confirmacao)
+6. **Revogar** em massa (funcionalidade existente)
 
-3. **Admin** acessando `/admin`:
-   - Ve painel com 4 cards para cada area administrativa
-   - Pode navegar para qualquer sub-pagina
+Tudo isso **sem afetar** os registros de webhooks, subscriptions e pending_orders, que sao apenas para auditoria e historico.
 
