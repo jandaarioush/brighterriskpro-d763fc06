@@ -1,210 +1,236 @@
 
-## Plano: Calculadora de Posicao com Selecao de Corretora e Multi-Ativos
 
-### Resumo
-Quando o usuario acessar o dashboard de Acoes pela primeira vez (sem corretora configurada), sera exibido um dialog perguntando qual corretora ele usa. Se escolher BTG, a calculadora usara a lista de ativos com alavancagem da BTG. A calculadora permitira adicionar multiplos ativos e calcular automaticamente a quantidade de acoes baseada no stop financeiro maximo.
+## Plano: Reestruturar Simulador de Acoes com Modalidade Day Trade/Swing e Multi-Ativos
 
----
-
-### Parte 1: Selecao de Corretora (Primeiro Acesso)
-
-#### 1.1 Criar Dialog de Selecao de Corretora
-**Novo arquivo:** `src/components/stock/BrokerSelectionDialog.tsx`
-
-Componente com:
-- Radio buttons para BTG, XP, Clear, Warren, Outra
-- Botao "Confirmar" para salvar a escolha
-- Design consistente com o resto do app
-
-#### 1.2 Detectar Primeiro Acesso
-**Modificar:** `src/pages/StockDashboard.tsx`
-
-- Verificar se o campo `config.broker` do dashboard esta vazio
-- Se vazio, exibir o `BrokerSelectionDialog`
-- Apos selecao, salvar no campo `config` do dashboard: `{ broker: 'btg' | 'xp' | 'clear' | 'warren' | 'outra' }`
+### Objetivo
+Transformar o Simulador de Acoes para seguir o novo fluxo:
+1. Perguntar se eh Day Trade ou Swing Trade
+2. Se Day Trade: mostrar seletor com ativos BTG e suas alavancagens
+3. Se Swing Trade: usar alavancagem fixa de 5x
+4. Permitir adicionar multiplos ativos com calculos independentes
+5. Mostrar quantidade de acoes permitida baseada no stop financeiro maximo
 
 ---
 
-### Parte 2: Lista de Ativos BTG com Alavancagem
+### Mudancas na Interface
 
-#### 2.1 Criar Arquivo de Dados
-**Novo arquivo:** `src/lib/btgAssets.ts`
+#### Layout Atual vs Novo
 
-Array com ~120 ativos extraidos da pagina do BTG:
-```typescript
-export interface BTGAsset {
-  ticker: string;
-  marginPerShare: number; // Margem em R$ por acao
-  leverage: number; // Alavancagem (ex: 105, 98, 20, 5, 1)
-}
-
-export const btgAssets: BTGAsset[] = [
-  { ticker: 'CPLE3', marginPerShare: 0.13, leverage: 105 },
-  { ticker: 'PETR4', marginPerShare: 0.37, leverage: 98 },
-  { ticker: 'VALE3', marginPerShare: 0.87, leverage: 98 },
-  // ... todos os ativos
-];
+**ANTES:**
+```
++------------------+------------------+------------------+
+|   Simulacao de   |   Analise de     |   Parametros     |
+|    Operacao      |     Risco        |    Atuais        |
+|  (inputs gerais) | (risco calculado)|  (capital, etc)  |
++------------------+------------------+------------------+
 ```
 
----
-
-### Parte 3: Nova Calculadora de Posicao Multi-Ativos
-
-#### 3.1 Substituir StockRiskCalculator
-**Reescrever:** `src/components/stock/StockRiskCalculator.tsx`
-
-Novo fluxo da calculadora:
-
-```text
-+----------------------------------------------------------+
-|   Calculadora de Posicao                                  |
-+----------------------------------------------------------+
-|  Stop Financeiro Maximo: [R$ ____________]                |
-+----------------------------------------------------------+
-|  Ativo 1:                                                 |
-|  [Ticker: PETR4 v]  Stop %: [====O========] 2.5%         |
-|  Qtd: 150 acoes  |  Perda Max: R$ 250.00                 |
-+----------------------------------------------------------+
-|  Ativo 2:                                                 |
-|  [Ticker: VALE3 v]  Stop %: [====O========] 3.0%         |
-|  Qtd: 80 acoes   |  Perda Max: R$ 300.00                 |
-+----------------------------------------------------------+
-|  [+ Adicionar Ativo]                                      |
-+----------------------------------------------------------+
-|  RESUMO                                                   |
-|  Perda Total Possivel: R$ 550.00 / R$ 1000.00            |
-|  [====================--------] 55% do stop usado        |
-+----------------------------------------------------------+
+**DEPOIS:**
 ```
-
-#### 3.2 Logica de Calculo
-
-Para cada ativo adicionado:
-
-1. Usuario seleciona o ticker (autocomplete com lista BTG se corretora = BTG)
-2. Usuario move slider de Stop % (0.1% ate 10%)
-3. Sistema calcula automaticamente:
-   - Se BTG: `alavancagem = btgAssets[ticker].leverage`
-   - Se outra corretora: `alavancagem = 1` (sem alavancagem)
-   - `quantidade = stopFinanceiroMax / (precoAtivo * stopPercentual / 100 * alavancagem)`
-   - `perdaMaxima = quantidade * precoAtivo * stopPercentual / 100`
-
-#### 3.3 Interface do Componente
-
-```typescript
-interface StockPosition {
-  id: string;
-  ticker: string;
-  stopPercentual: number;
-  quantidade: number;
-  perdaMaxima: number;
-}
-
-interface StockRiskCalculatorProps {
-  broker: 'btg' | 'xp' | 'clear' | 'warren' | 'outra';
-  capitalTotal: number;
-}
++------------------------+------------------+------------------+
+|   Simulacao de         |   Analise de     |   Parametros     |
+|    Operacao            |     Risco        |    Atuais        |
+| - Modalidade (DT/SW)   | - Lista ativos   |  (capital, etc)  |
+| - Stop Financeiro Max  |   adicionados    |                  |
+| - Seletor de Ativos    | - Quantidade     |                  |
+| - [+ Adicionar Ativo]  | - Perda por ativo|                  |
+|                        | - Resumo total   |                  |
++------------------------+------------------+------------------+
 ```
-
----
-
-### Parte 4: Integracao com Precos de Mercado (Futuro)
-
-Para calculos precisos, seria ideal ter precos em tempo real. Por enquanto, o usuario podera:
-- Informar o preco manualmente do ativo
-- Ou usar um preco estimado
-
----
-
-### Arquivos a Criar/Modificar
-
-| Arquivo | Acao | Descricao |
-|---------|------|-----------|
-| `src/lib/btgAssets.ts` | Criar | Lista de ~120 ativos BTG com alavancagem |
-| `src/components/stock/BrokerSelectionDialog.tsx` | Criar | Dialog de selecao de corretora |
-| `src/components/stock/StockRiskCalculator.tsx` | Reescrever | Nova calculadora com multi-ativos e slider |
-| `src/pages/StockDashboard.tsx` | Modificar | Adicionar logica de primeiro acesso e passar broker |
 
 ---
 
 ### Fluxo do Usuario
 
-```text
-1. Usuario acessa "Acoes" pela primeira vez
-          |
-          v
-2. Dialog aparece: "Qual corretora voce usa?"
-   [ ] BTG Pactual
-   [ ] XP Investimentos
-   [ ] Clear
-   [ ] Warren
-   [ ] Outra
-          |
-          v
-3. Usuario seleciona (ex: BTG) e clica "Confirmar"
-          |
-          v
-4. Salvamos config.broker = 'btg' no dashboard
-          |
-          v
-5. Na calculadora, usuario informa Stop Financeiro Max (ex: R$ 500)
-          |
-          v
-6. Usuario adiciona ativo (ex: PETR4)
-   - Autocomplete mostra ativos BTG
-   - Sistema busca alavancagem (98x para PETR4)
-          |
-          v
-7. Usuario ajusta slider de Stop % (ex: 2%)
-          |
-          v
-8. Sistema calcula:
-   - Com preco PETR4 = R$ 35.00
-   - Stop 2% = R$ 0.70 por acao
-   - Quantidade = R$ 500 / R$ 0.70 = 714 acoes
-   - Perda Max = 714 * R$ 0.70 = R$ 500
-          |
-          v
-9. Usuario pode adicionar mais ativos e ver o resumo
 ```
+1. Seleciona Modalidade
+   |
+   +---> Day Trade: Lista de ativos BTG com alavancagem automatica
+   |
+   +---> Swing Trade: Alavancagem fixa de 5x para todos os ativos
+   |
+   v
+2. Define Stop Financeiro Maximo (R$)
+   (ex: R$ 500)
+   |
+   v
+3. Clica em "+ Adicionar Ativo"
+   |
+   v
+4. Para cada ativo:
+   - Seleciona Ticker (autocomplete com BTG se Day Trade)
+   - Informa Preco da Acao (R$)
+   - Sistema calcula automaticamente:
+     - Alavancagem (BTG se DT, 5x se Swing)
+     - Quantidade maxima de acoes
+     - Perda maxima daquele ativo
+   |
+   v
+5. Pode adicionar mais ativos
+   |
+   v
+6. Ve resumo com:
+   - Total de risco distribuido
+   - Barra de progresso do stop usado
+   - Clareza de quantas acoes entrar em cada trade
+```
+
+---
+
+### Logica de Calculo
+
+#### Day Trade (com BTG)
+```
+alavancagem = btgAssets[ticker].leverage  // Ex: 98x para PETR4
+stopPorAcao = precoAcao * (stopPercentual / 100)
+quantidade = stopFinanceiroMax / stopPorAcao
+perdaMaxima = quantidade * stopPorAcao
+```
+
+#### Swing Trade
+```
+alavancagem = 5  // Fixo
+stopPorAcao = precoAcao * (stopPercentual / 100)
+quantidade = stopFinanceiroMax / stopPorAcao
+perdaMaxima = quantidade * stopPorAcao
+```
+
+**Nota:** A alavancagem BTG eh usada para calcular a margem necessaria, nao o risco. O risco eh baseado no preco real da acao e no stop percentual.
+
+---
+
+### Estrutura dos Dados
+
+```typescript
+interface StockSimulatorPosition {
+  id: string;
+  ticker: string;
+  precoAtivo: number;
+  stopPercentual: number;
+  alavancagem: number;      // BTG ou 5x
+  quantidade: number;       // Calculado
+  perdaMaxima: number;      // Calculado
+  margemNecessaria: number; // Se BTG
+}
+
+type Modalidade = 'daytrade' | 'swing';
+```
+
+---
+
+### Alteracoes no Arquivo
+
+**Arquivo:** `src/pages/StockSimulator.tsx`
+
+#### 1. Novos States
+```typescript
+// Adicionar
+const [modalidadeAtiva, setModalidadeAtiva] = useState<'daytrade' | 'swing'>('daytrade');
+const [stopFinanceiroMax, setStopFinanceiroMax] = useState(500);
+const [positions, setPositions] = useState<StockSimulatorPosition[]>([]);
+
+// Remover/simplificar
+// - capitalOperacao (sera calculado por ativo)
+// - alavancagem (sera automatico por modalidade)
+// - stopLoss (sera por ativo)
+// - autoStop
+```
+
+#### 2. Novo Card "Simulacao de Operacao"
+
+Substituir o card atual por:
+
+1. **Selector de Modalidade**
+   - Radio ou Select com "Day Trade" e "Swing Trade"
+   - Ao mudar, limpar as posicoes
+
+2. **Input de Stop Financeiro Maximo**
+   - Valor em R$ que o usuario aceita perder no total
+   - Distribui entre os ativos adicionados
+
+3. **Lista de Ativos Adicionados**
+   - Cada ativo mostra: ticker, preco, alavancagem, quantidade, perda
+   - Botao de remover para cada
+
+4. **Botao "+ Adicionar Ativo"**
+   - Abre seletor com:
+     - Ticker (autocomplete se Day Trade com lista BTG)
+     - Preco da acao (R$)
+   - Slider de Stop % (0.1% a 10%)
+
+#### 3. Novo Card "Analise de Risco"
+
+Mostrar:
+- Lista resumida de cada ativo com sua quantidade e perda
+- Barra de progresso do stop usado vs maximo
+- Status: "Dentro do Limite" ou "Acima do Limite"
+
+#### 4. Card "Parametros Atuais"
+
+Manter como esta, mostrando:
+- Capital Total
+- Risco Mensal Base
+- Risco Diario Atual
+- Perda Acumulada
+
+---
+
+### Componentes Reutilizados
+
+Vou reaproveitar a logica do `StockRiskCalculator.tsx`:
+- Interface `StockPosition`
+- Funcao `PositionCard` (com adaptacoes)
+- Logica de calculo de quantidade
+- Progress bar de uso do stop
 
 ---
 
 ### Secao Tecnica
 
-#### Estrutura de Dados no Dashboard
-```json
-{
-  "config": {
-    "broker": "btg",
-    "capital_total": 100000
-  }
-}
+#### Arquivos Modificados
+| Arquivo | Acao |
+|---------|------|
+| `src/pages/StockSimulator.tsx` | Reescrever logica e UI |
+
+#### Dependencias Usadas
+- `@/lib/btgAssets` - Lista de ativos BTG com alavancagem
+- `@/components/ui/select` - Seletor de modalidade
+- `@/components/ui/slider` - Stop percentual
+- `@/components/ui/progress` - Barra de uso do stop
+- `@/components/ui/command` - Autocomplete de tickers
+
+#### Formula Principal
+
+Para Day Trade (BTG):
+```
+Se ticker na lista BTG:
+  alavancagem = btgAsset.leverage
+  margemPorAcao = btgAsset.marginPerShare
+Senao:
+  alavancagem = 1
+  margemPorAcao = precoAtivo
 ```
 
-#### Formula de Calculo
+Para Swing Trade:
 ```
-quantidade = stopFinanceiroMax / (precoAcao * stopPercentual/100)
-perdaMaxima = quantidade * precoAcao * stopPercentual/100
-```
-
-Se corretora BTG e ativo na lista:
-```
-quantidadeAjustada = quantidade (alavancagem ja inclusa na margem BTG)
+alavancagem = 5 (fixo)
+margemPorAcao = precoAtivo / 5
 ```
 
-#### Componentes UI Utilizados
-- `Dialog` - para selecao de corretora
-- `RadioGroup` / `RadioGroupItem` - para opcoes de corretora
-- `Slider` - para stop percentual
-- `Select` / `Combobox` - para selecao de ticker com autocomplete
-- `Input` - para stop financeiro maximo e preco do ativo
-- `Card` - para cada posicao adicionada
+Calculo da quantidade:
+```
+stopPorAcao = precoAtivo * (stopPercentual / 100)
+quantidade = Math.floor(stopFinanceiroDisponivelParaEsteAtivo / stopPorAcao)
+perdaMaxima = quantidade * stopPorAcao
+```
 
 ---
 
-### Proximos Passos Apos Implementacao
+### Resultado Final
 
-1. Adicionar busca de precos em tempo real (API ou input manual)
-2. Permitir salvar posicoes como templates
-3. Exportar calculo como imagem/PDF
+O usuario tera CLAREZA total sobre:
+1. Quantas acoes pode comprar de cada ativo
+2. Qual o loss maximo de cada posicao
+3. Se esta dentro ou fora do limite de risco definido
+4. Como distribuir o risco entre multiplos ativos
+
