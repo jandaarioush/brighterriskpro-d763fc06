@@ -1,222 +1,65 @@
 
-## Plano: Melhorias de Layout, Cores e Navegacao
 
-### Resumo das Solicitacoes
+## Plano: Verificar Layout Horizontal do Simulador de Acoes
 
-O usuario pediu 4 melhorias principais:
-1. **Transformar cards do Hub em horizontal:** Os cards de dashboards (Futuros, Acoes, Mercado Internacional) devem ser exibidos em linha horizontal
-2. **Padronizar cores da Brighter:** Substituir todas as cores hardcoded (blue-500, green-500, orange-500, red-500, yellow-500) pelas variaveis semanticas da paleta oficial
-3. **Melhorar o relogio digital:** Tornar o relogio mais destacado e visualmente atraente
-4. **Remover botao Voltar:** Remover o botao "Voltar" do menu de navegacao DashboardTabs
+### Analise da Situacao Atual
 
----
+Ao analisar o codigo do `StockSimulator.tsx` e comparar com a imagem de referencia enviada, identifiquei que:
 
-### Mudanca 1: Cards do Hub em Layout Horizontal
+**O layout JA ESTA HORIZONTAL!**
 
-#### Situacao Atual
-Os cards de dashboards no Hub estao usando `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`, o que ja e responsivo. Porem, baseado na imagem de referencia, o usuario quer um layout mais horizontal e compacto.
-
-#### Proposta
-Ajustar o layout para garantir que os 3 cards aparecam sempre lado a lado em telas maiores, com um design mais horizontal (menos altura, mais largura).
-
-**Arquivo:** `src/pages/Hub.tsx`
-
+O codigo atual na linha 409 usa:
 ```tsx
-// Antes
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-// Depois - forcar horizontal em telas medias+
-<div className="flex flex-col md:flex-row gap-4 md:gap-6">
-  {dashboards.map((dashboard) => (
-    <Card className="flex-1 min-w-0 p-5 ...">
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 ```
 
----
+Isso faz com que:
+- Em telas pequenas (mobile): Cards empilhados verticalmente (`grid-cols-1`)
+- Em telas grandes (desktop): Cards lado a lado horizontalmente (`lg:grid-cols-3`)
 
-### Mudanca 2: Padronizar Cores da Brighter
+### Comparacao com a Imagem de Referencia
 
-#### Mapeamento de Cores
+A imagem enviada mostra exatamente o comportamento atual:
+- Card 1: **Simulacao de Operacao** (esquerda)
+- Card 2: **Analise de Risco** (centro)
+- Card 3: **Parametros Atuais** (direita)
 
-| Cor Atual | Substituicao |
-|-----------|--------------|
-| `blue-500` | `primary` (dourado) |
-| `green-500` | `success` (verde semantico) |
-| `orange-500` | `primary` (dourado para destaque) |
-| `red-500` | `destructive` (vermelho semantico) |
-| `yellow-500` | `primary` (para warning usar primary) |
+Todos os 3 cards estao alinhados horizontalmente, que e exatamente como o codigo esta implementado.
 
-#### Arquivos Afetados
+### Possivel Causa da Confusao
 
-| Arquivo | Mudancas |
-|---------|----------|
-| `src/pages/Hub.tsx` | Cards de dashboard: substituir blue/green/orange por variacoes de primary/success |
-| `src/pages/WeeklyPortfolio.tsx` | Resultados: green-500 -> success, red-500 -> destructive |
-| `src/pages/StockTrades.tsx` | Resultados: green-500 -> success, red-500 -> destructive |
-| `src/pages/Portfolio.tsx` | Indicadores de alta/baixa |
-| `src/components/DailyWeeklyCharts.tsx` | Tooltips de resultado |
-| `src/components/PnLEvolutionChart.tsx` | Tooltips de resultado |
-| `src/components/stock/StockTradeForm.tsx` | Preview de resultado |
-| `src/components/stock/StockMonthHeatmap.tsx` | Cores de ganho/perda |
-| `src/components/MarketSessionsClock.tsx` | Badges de mercado aberto/fechado |
-| `src/components/StatCard.tsx` | Warning variant: yellow-500 -> primary |
+Se voce esta vendo os cards empilhados verticalmente, pode ser por um destes motivos:
 
-#### Exemplo de Substituicao
+1. **Tamanho da tela**: Em telas menores que 1024px (breakpoint `lg`), os cards ficam empilhados por design responsivo
+2. **Zoom do navegador**: Se o zoom estiver muito alto, a tela pode ser interpretada como "pequena"
+3. **Janela de preview pequena**: A janela de preview do Lovable pode estar estreita
 
-```tsx
-// Antes
-className={result >= 0 ? 'text-green-500' : 'text-red-500'}
+### Opcoes de Ajuste
 
-// Depois
-className={result >= 0 ? 'text-success' : 'text-destructive'}
-```
+Se deseja que os cards fiquem horizontais em telas MENORES, posso ajustar o breakpoint:
 
-#### Cards do Hub - Nova Paleta
+| Opcao | Codigo | Tamanho Minimo |
+|-------|--------|----------------|
+| Atual | `lg:grid-cols-3` | 1024px |
+| Alternativa 1 | `md:grid-cols-3` | 768px |
+| Alternativa 2 | `sm:grid-cols-3` | 640px |
 
-```tsx
-// Antes - cores diferentes para cada tipo
-futuros: { color: 'from-blue-500/20 to-blue-600/10 border-blue-500/30', iconColor: 'text-blue-500' }
-acoes: { color: 'from-green-500/20 to-green-600/10 border-green-500/30', iconColor: 'text-green-500' }
-internacional: { color: 'from-orange-500/20 to-orange-600/10 border-orange-500/30', iconColor: 'text-orange-500' }
+### Proximos Passos
 
-// Depois - paleta Brighter unificada
-futuros: { color: 'from-muted to-muted/50 border-border', iconColor: 'text-primary' }
-acoes: { color: 'from-success/10 to-success/5 border-success/30', iconColor: 'text-success' }
-internacional: { color: 'from-primary/10 to-primary/5 border-primary/30', iconColor: 'text-primary' }
-```
+1. **Se o layout ja esta correto**: Nenhuma acao necessaria - o codigo ja implementa exatamente o que a imagem mostra
 
----
+2. **Se quer horizontal em telas menores**: Posso alterar `lg:grid-cols-3` para `md:grid-cols-3`
 
-### Mudanca 3: Melhorar Relogio Digital
-
-#### Situacao Atual
-O relogio no Hub e pequeno e simples:
-```tsx
-<Clock className="w-5 h-5" />
-<span className="text-xl font-mono tabular-nums">{clockTime}</span>
-```
-
-#### Proposta
-Criar um relogio mais destacado com visual moderno:
-
-**Arquivo:** `src/pages/Hub.tsx` (WelcomeSection)
-
-```tsx
-// Novo design do relogio
-<div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-border">
-  <Clock className="w-5 h-5 text-primary" />
-  <span className="text-2xl font-mono font-bold tabular-nums tracking-wide text-foreground">
-    {clockTime}
-  </span>
-</div>
-```
-
-Melhorias:
-- Fundo semi-transparente com backdrop blur
-- Borda sutil
-- Tamanho maior (text-2xl)
-- Icone em cor primary (dourado)
-- Tracking mais espacado para melhor leitura
-- Peso bold para destaque
-
----
-
-### Mudanca 4: Remover Botao Voltar
-
-#### Situacao Atual
-O componente `DashboardTabs` inclui um botao "Voltar" antes dos tabs:
-
-```tsx
-<Button variant="ghost" onClick={() => navigate(getBackPath())}>
-  <ArrowLeft className="h-4 w-4" />
-  <span>Voltar</span>
-</Button>
-<div className="h-6 w-px bg-border mx-2" /> {/* Separador */}
-```
-
-#### Proposta
-Remover o botao "Voltar" e o separador, mantendo apenas os tabs de navegacao.
-
-**Arquivo:** `src/components/DashboardTabs.tsx`
-
-```tsx
-// Remover estas linhas (44-54):
-<Button
-  variant="ghost"
-  className="flex items-center gap-2 px-4 py-2 rounded-lg..."
-  onClick={() => navigate(getBackPath())}
->
-  <ArrowLeft className="h-4 w-4" />
-  <span>Voltar</span>
-</Button>
-<div className="h-6 w-px bg-border mx-2" />
-```
-
----
+3. **Se ha outro elemento que deveria ser horizontal**: Por favor indique qual secao especifica dentro dos cards voce gostaria de ver em layout horizontal
 
 ### Secao Tecnica
 
-#### Arquivos Modificados
-
-| Arquivo | Mudancas |
-|---------|----------|
-| `src/pages/Hub.tsx` | Layout horizontal dos cards + cores Brighter + relogio melhorado |
-| `src/components/DashboardTabs.tsx` | Remover botao Voltar |
-| `src/pages/WeeklyPortfolio.tsx` | Cores semanticas |
-| `src/pages/StockTrades.tsx` | Cores semanticas |
-| `src/pages/Portfolio.tsx` | Cores semanticas |
-| `src/components/DailyWeeklyCharts.tsx` | Cores semanticas |
-| `src/components/PnLEvolutionChart.tsx` | Cores semanticas |
-| `src/components/stock/StockTradeForm.tsx` | Cores semanticas |
-| `src/components/stock/StockMonthHeatmap.tsx` | Cores semanticas |
-| `src/components/MarketSessionsClock.tsx` | Cores semanticas |
-| `src/components/StatCard.tsx` | Warning variant com primary |
-
-#### Paleta Oficial Brighter
-
-```css
-/* index.css - variaveis disponiveis */
---primary: 43 96% 56%;     /* Dourado - destaque principal */
---success: 142 76% 36%;    /* Verde - ganhos e positivo */
---destructive: 0 84% 60%;  /* Vermelho - perdas e negativo */
---muted: 220 13% 15%;      /* Neutro escuro */
---muted-foreground: 0 0% 65%; /* Texto secundario */
+**Arquivo:** `src/pages/StockSimulator.tsx`
+**Linha:** 409
+**Codigo Atual:**
+```tsx
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 ```
 
-#### Classes Tailwind a Usar
+Este codigo ja cria o layout horizontal de 3 colunas para os cards principais do simulador.
 
-- Ganhos/Positivo: `text-success`, `bg-success/10`, `border-success/30`
-- Perdas/Negativo: `text-destructive`, `bg-destructive/10`, `border-destructive/30`
-- Destaques/Alerta: `text-primary`, `bg-primary/10`, `border-primary/30`
-- Neutro: `text-muted-foreground`, `bg-muted`, `border-border`
-
----
-
-### Resultado Visual Esperado
-
-#### Hub (Meus Dashboards)
-```
-+-----------------------------------------------------------+
-|  Bom dia, Jan! 👋                    [🕐 18:44:58]        |
-|  Escolha um dashboard...                                   |
-+-----------------------------------------------------------+
-|  +-----------------+ +-----------------+ +-----------------+
-|  | 📊 Futuros      | | 📈 Ações        | | 🌐 Internacional|
-|  | Mini Index...   | | Daytrade...     | | Forex, Cripto...|
-|  | Risco: R$ 2.500 | | Risco: R$ 2.500 | | Risco: R$ 2.500 |
-|  +-----------------+ +-----------------+ +-----------------+
-+-----------------------------------------------------------+
-```
-
-- Cards lado a lado (flexbox horizontal)
-- Relogio com fundo e borda
-- Cores consistentes da paleta Brighter
-
-#### DashboardTabs (sem Voltar)
-```
-+-----------------------------------------------------------+
-| [Calendário] [Trades] [Simulador] [Carteira v]            |
-+-----------------------------------------------------------+
-```
-
-- Apenas tabs de navegacao
-- Sem botao "Voltar" e sem separador
