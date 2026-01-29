@@ -42,6 +42,7 @@ import Cookies from "./pages/Cookies";
 import LGPD from "./pages/LGPD";
 import UploadVideos from "./pages/UploadVideos";
 import UploadAdmin from "./pages/UploadAdmin";
+import Admin from "./pages/Admin";
 import { Navbar } from "./components/Navbar";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { AdminRoute } from "./components/AdminRoute";
@@ -92,6 +93,7 @@ const App = () => (
               <Route path="/lgpd" element={<LGPD />} />
               <Route path="/upload-videos" element={<UploadVideos />} />
               <Route path="/upload-admin" element={<UploadAdmin />} />
+              <Route path="/admin" element={<Admin />} />
               <Route path="/hub" element={<ProtectedRoute><Hub /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/dashboard/:dashboardId" element={<ProtectedRoute><StockDashboard /></ProtectedRoute>} />
