@@ -1,236 +1,252 @@
 
 
-## Plano: Reestruturar Simulador de Acoes com Modalidade Day Trade/Swing e Multi-Ativos
+## Plano: Adicionar Valor Alocado e Calculo de Margem com Alavancagem
 
-### Objetivo
-Transformar o Simulador de Acoes para seguir o novo fluxo:
-1. Perguntar se eh Day Trade ou Swing Trade
-2. Se Day Trade: mostrar seletor com ativos BTG e suas alavancagens
-3. Se Swing Trade: usar alavancagem fixa de 5x
-4. Permitir adicionar multiplos ativos com calculos independentes
-5. Mostrar quantidade de acoes permitida baseada no stop financeiro maximo
+### Resumo
+Reestruturar o simulador para incluir o campo "Valor Alocado" e calcular a quantidade maxima de acoes considerando DOIS limites:
+1. **Limite de Margem:** Quanto capital o usuario tem disponivel para alocar
+2. **Limite de Stop:** Quanto o usuario aceita perder (maximo 70% do valor alocado)
+
+A quantidade final de acoes sera o MENOR valor entre os dois limites.
 
 ---
 
-### Mudancas na Interface
+### Nova Estrutura de Inputs
 
-#### Layout Atual vs Novo
-
-**ANTES:**
 ```
-+------------------+------------------+------------------+
-|   Simulacao de   |   Analise de     |   Parametros     |
-|    Operacao      |     Risco        |    Atuais        |
-|  (inputs gerais) | (risco calculado)|  (capital, etc)  |
-+------------------+------------------+------------------+
-```
-
-**DEPOIS:**
-```
-+------------------------+------------------+------------------+
-|   Simulacao de         |   Analise de     |   Parametros     |
-|    Operacao            |     Risco        |    Atuais        |
-| - Modalidade (DT/SW)   | - Lista ativos   |  (capital, etc)  |
-| - Stop Financeiro Max  |   adicionados    |                  |
-| - Seletor de Ativos    | - Quantidade     |                  |
-| - [+ Adicionar Ativo]  | - Perda por ativo|                  |
-|                        | - Resumo total   |                  |
-+------------------------+------------------+------------------+
++------------------------------------------+
+|   Simulacao de Operacao                   |
++------------------------------------------+
+|   Modalidade: [Day Trade v] ou Swing      |
++------------------------------------------+
+|   Valor Alocado (R$): [___________]       |
+|   (Capital que voce vai usar como margem) |
++------------------------------------------+
+|   Stop Financeiro Maximo (R$): [_______]  |
+|   (Max 70% do Valor Alocado)              |
+|   Limite: R$ XXX.XX                       |
++------------------------------------------+
 ```
 
 ---
 
-### Fluxo do Usuario
+### Nova Logica de Calculo
 
+#### Passo 1: Quantidade Maxima pela Margem (Alavancagem)
 ```
-1. Seleciona Modalidade
-   |
-   +---> Day Trade: Lista de ativos BTG com alavancagem automatica
-   |
-   +---> Swing Trade: Alavancagem fixa de 5x para todos os ativos
-   |
-   v
-2. Define Stop Financeiro Maximo (R$)
-   (ex: R$ 500)
-   |
-   v
-3. Clica em "+ Adicionar Ativo"
-   |
-   v
-4. Para cada ativo:
-   - Seleciona Ticker (autocomplete com BTG se Day Trade)
-   - Informa Preco da Acao (R$)
-   - Sistema calcula automaticamente:
-     - Alavancagem (BTG se DT, 5x se Swing)
-     - Quantidade maxima de acoes
-     - Perda maxima daquele ativo
-   |
-   v
-5. Pode adicionar mais ativos
-   |
-   v
-6. Ve resumo com:
-   - Total de risco distribuido
-   - Barra de progresso do stop usado
-   - Clareza de quantas acoes entrar em cada trade
+Se Day Trade (BTG):
+  alavancagem = btgAsset.leverage  (ex: 98x)
+  margemPorAcao = btgAsset.marginPerShare
+  qtdMaxMargem = valorAlocado / margemPorAcao
+
+Se Swing Trade:
+  alavancagem = 5
+  margemPorAcao = precoAcao / 5
+  qtdMaxMargem = valorAlocado / margemPorAcao
 ```
 
----
-
-### Logica de Calculo
-
-#### Day Trade (com BTG)
+#### Passo 2: Quantidade Maxima pelo Stop Financeiro
 ```
-alavancagem = btgAssets[ticker].leverage  // Ex: 98x para PETR4
 stopPorAcao = precoAcao * (stopPercentual / 100)
-quantidade = stopFinanceiroMax / stopPorAcao
-perdaMaxima = quantidade * stopPorAcao
+qtdMaxStop = stopFinanceiroDisponivel / stopPorAcao
 ```
 
-#### Swing Trade
+#### Passo 3: Quantidade Final
 ```
-alavancagem = 5  // Fixo
-stopPorAcao = precoAcao * (stopPercentual / 100)
-quantidade = stopFinanceiroMax / stopPorAcao
-perdaMaxima = quantidade * stopPorAcao
+quantidadeFinal = Math.floor(Math.min(qtdMaxMargem, qtdMaxStop))
 ```
 
-**Nota:** A alavancagem BTG eh usada para calcular a margem necessaria, nao o risco. O risco eh baseado no preco real da acao e no stop percentual.
+A quantidade final respeita AMBOS os limites.
 
 ---
 
-### Estrutura dos Dados
+### Validacao: Stop Maximo de 70%
 
-```typescript
-interface StockSimulatorPosition {
-  id: string;
-  ticker: string;
-  precoAtivo: number;
-  stopPercentual: number;
-  alavancagem: number;      // BTG ou 5x
-  quantidade: number;       // Calculado
-  perdaMaxima: number;      // Calculado
-  margemNecessaria: number; // Se BTG
-}
-
-type Modalidade = 'daytrade' | 'swing';
 ```
+stopFinanceiroMax <= valorAlocado * 0.70
+```
+
+Se o usuario tentar colocar um stop maior que 70% do valor alocado, mostrar um aviso e limitar automaticamente.
 
 ---
 
-### Alteracoes no Arquivo
+### Novas Informacoes Mostradas por Ativo
+
+Para cada ativo adicionado, mostrar:
+
+| Campo | Descricao |
+|-------|-----------|
+| Ticker | Codigo do ativo |
+| Alavancagem | BTG (ex: 98x) ou 5x se Swing |
+| Preco | Preco da acao informado |
+| Stop % | Percentual de stop |
+| Margem Necessaria | margemPorAcao × quantidade |
+| Qtd Max (Margem) | valorAlocado / margemPorAcao |
+| Qtd Max (Stop) | stopDisponivel / stopPorAcao |
+| **Quantidade Final** | Menor dos dois acima |
+| Perda Maxima | quantidade × stopPorAcao |
+
+---
+
+### Exemplo Pratico
+
+**Inputs do Usuario:**
+- Modalidade: Day Trade
+- Valor Alocado: R$ 1.000,00
+- Stop Financeiro Max: R$ 500,00 (50% do alocado - OK)
+
+**Adiciona PETR4:**
+- Preco: R$ 35,00
+- Stop: 2%
+- Alavancagem BTG: 98x
+- Margem por Acao BTG: R$ 0,37
+
+**Calculos:**
+```
+Qtd Max pela Margem = R$ 1.000 / R$ 0,37 = 2.702 acoes
+Qtd Max pelo Stop = R$ 500 / (R$ 35 × 2%) = 714 acoes
+Quantidade Final = min(2.702, 714) = 714 acoes
+Perda Maxima = 714 × R$ 0,70 = R$ 499,80
+Margem Usada = 714 × R$ 0,37 = R$ 264,18
+```
+
+O limite foi o STOP, nao a margem.
+
+---
+
+### Alteracoes no Codigo
 
 **Arquivo:** `src/pages/StockSimulator.tsx`
 
 #### 1. Novos States
 ```typescript
-// Adicionar
-const [modalidadeAtiva, setModalidadeAtiva] = useState<'daytrade' | 'swing'>('daytrade');
-const [stopFinanceiroMax, setStopFinanceiroMax] = useState(500);
-const [positions, setPositions] = useState<StockSimulatorPosition[]>([]);
-
-// Remover/simplificar
-// - capitalOperacao (sera calculado por ativo)
-// - alavancagem (sera automatico por modalidade)
-// - stopLoss (sera por ativo)
-// - autoStop
+const [valorAlocado, setValorAlocado] = useState(1000);
 ```
 
-#### 2. Novo Card "Simulacao de Operacao"
+#### 2. Calculo do Limite de Stop
+```typescript
+const stopMaximoPermitido = valorAlocado * 0.70;
+const stopValido = stopFinanceiroMax <= stopMaximoPermitido;
+```
 
-Substituir o card atual por:
+#### 3. Nova Interface SimulatorPosition
+```typescript
+interface SimulatorPosition {
+  id: string;
+  ticker: string;
+  precoAtivo: number;
+  stopPercentual: number;
+  alavancagem: number;
+  margemPorAcao: number;
+  qtdMaxMargem: number;      // NOVO
+  qtdMaxStop: number;        // NOVO
+  quantidade: number;        // Min dos dois acima
+  perdaMaxima: number;
+  margemNecessaria: number;
+}
+```
 
-1. **Selector de Modalidade**
-   - Radio ou Select com "Day Trade" e "Swing Trade"
-   - Ao mudar, limpar as posicoes
+#### 4. Atualizar UI do Card "Simulacao de Operacao"
 
-2. **Input de Stop Financeiro Maximo**
-   - Valor em R$ que o usuario aceita perder no total
-   - Distribui entre os ativos adicionados
+Adicionar input de Valor Alocado ANTES do Stop Financeiro Maximo.
+Mostrar validacao de 70% em tempo real.
 
-3. **Lista de Ativos Adicionados**
-   - Cada ativo mostra: ticker, preco, alavancagem, quantidade, perda
-   - Botao de remover para cada
+#### 5. Atualizar Card "Analise de Risco"
 
-4. **Botao "+ Adicionar Ativo"**
-   - Abre seletor com:
-     - Ticker (autocomplete se Day Trade com lista BTG)
-     - Preco da acao (R$)
-   - Slider de Stop % (0.1% a 10%)
+Para cada ativo, mostrar:
+- Quantidade (destacado)
+- Limite que definiu a quantidade (margem ou stop)
+- Margem utilizada vs disponivel
 
-#### 3. Novo Card "Analise de Risco"
+#### 6. Adicionar ao Card "Parametros Atuais"
 
-Mostrar:
-- Lista resumida de cada ativo com sua quantidade e perda
-- Barra de progresso do stop usado vs maximo
-- Status: "Dentro do Limite" ou "Acima do Limite"
-
-#### 4. Card "Parametros Atuais"
-
-Manter como esta, mostrando:
-- Capital Total
-- Risco Mensal Base
-- Risco Diario Atual
-- Perda Acumulada
+- Valor Alocado Total
+- Margem Total Utilizada
+- Margem Disponivel
 
 ---
 
-### Componentes Reutilizados
+### Fluxo Visual Atualizado
 
-Vou reaproveitar a logica do `StockRiskCalculator.tsx`:
-- Interface `StockPosition`
-- Funcao `PositionCard` (com adaptacoes)
-- Logica de calculo de quantidade
-- Progress bar de uso do stop
+```
+1. Usuario seleciona Modalidade (Day Trade / Swing)
+          |
+          v
+2. Usuario informa Valor Alocado (ex: R$ 1.000)
+          |
+          v
+3. Sistema calcula: Stop Max = 70% × R$ 1.000 = R$ 700
+          |
+          v
+4. Usuario informa Stop Financeiro Max (ate R$ 700)
+          |
+          v
+5. Clica em "+ Adicionar Ativo"
+          |
+          v
+6. Seleciona Ticker (PETR4), Preco (R$ 35), Stop % (2%)
+          |
+          v
+7. Sistema calcula:
+   - Margem/acao (BTG): R$ 0,37
+   - Qtd Max Margem: 2.702 acoes
+   - Qtd Max Stop: 714 acoes
+   - Quantidade FINAL: 714 acoes (menor)
+   - Perda Max: R$ 499,80
+   - Margem Usada: R$ 264,18
+          |
+          v
+8. Usuario ve claramente:
+   - Quantas acoes pode entrar
+   - Por que esse numero (limite de margem ou stop)
+   - Quanto vai gastar de margem
+   - Quanto pode perder no maximo
+```
 
 ---
 
 ### Secao Tecnica
 
-#### Arquivos Modificados
-| Arquivo | Acao |
-|---------|------|
-| `src/pages/StockSimulator.tsx` | Reescrever logica e UI |
+#### Formula Completa
 
-#### Dependencias Usadas
-- `@/lib/btgAssets` - Lista de ativos BTG com alavancagem
-- `@/components/ui/select` - Seletor de modalidade
-- `@/components/ui/slider` - Stop percentual
-- `@/components/ui/progress` - Barra de uso do stop
-- `@/components/ui/command` - Autocomplete de tickers
+```typescript
+// Para Day Trade com BTG
+const btgAsset = getBTGAsset(ticker);
+const alavancagem = btgAsset?.leverage || 1;
+const margemPorAcao = btgAsset?.marginPerShare || precoAtivo;
 
-#### Formula Principal
+// Para Swing Trade
+const alavancagem = 5;
+const margemPorAcao = precoAtivo / 5;
 
-Para Day Trade (BTG):
-```
-Se ticker na lista BTG:
-  alavancagem = btgAsset.leverage
-  margemPorAcao = btgAsset.marginPerShare
-Senao:
-  alavancagem = 1
-  margemPorAcao = precoAtivo
+// Calculos
+const qtdMaxMargem = Math.floor(valorAlocadoDisponivel / margemPorAcao);
+const stopPorAcao = precoAtivo * (stopPercentual / 100);
+const qtdMaxStop = Math.floor(stopFinanceiroDisponivel / stopPorAcao);
+const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
+
+const perdaMaxima = quantidade * stopPorAcao;
+const margemNecessaria = quantidade * margemPorAcao;
 ```
 
-Para Swing Trade:
-```
-alavancagem = 5 (fixo)
-margemPorAcao = precoAtivo / 5
-```
+#### Validacao de 70%
 
-Calculo da quantidade:
-```
-stopPorAcao = precoAtivo * (stopPercentual / 100)
-quantidade = Math.floor(stopFinanceiroDisponivelParaEsteAtivo / stopPorAcao)
-perdaMaxima = quantidade * stopPorAcao
+```typescript
+const stopMaximoPermitido = valorAlocado * 0.70;
+const isStopValido = stopFinanceiroMax <= stopMaximoPermitido;
+
+// Se nao for valido, mostrar warning e sugerir o valor maximo
 ```
 
 ---
 
 ### Resultado Final
 
-O usuario tera CLAREZA total sobre:
-1. Quantas acoes pode comprar de cada ativo
-2. Qual o loss maximo de cada posicao
-3. Se esta dentro ou fora do limite de risco definido
-4. Como distribuir o risco entre multiplos ativos
+O usuario tera clareza total sobre:
+1. Quanto capital esta alocando (margem)
+2. Quanto aceita perder (stop) - limitado a 70% do alocado
+3. Quantas acoes pode operar de cada ativo
+4. QUAL limite definiu a quantidade (margem ou stop)
+5. Quanto de margem esta utilizando por ativo
+6. Quanto pode perder por ativo
 
