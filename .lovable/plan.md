@@ -1,267 +1,276 @@
 
 
-## Plano: Dashboard Admin Completo com Gestao de Usuarios
+## Plano: Mostrar Todos os Ativos BTG + Adicao Manual
 
-### Analise da Situacao Atual
+### Problema Atual
 
-O sistema ja possui uma estrutura robusta de administracao:
-
-| Funcionalidade | Status | Localizacao |
-|----------------|--------|-------------|
-| Portal admin com login | Implementado | `/admin` |
-| Listagem de usuarios | Implementado | `/admin/users` |
-| Criar usuario | Implementado | Via edge function |
-| Importar CSV | Implementado | Via edge function |
-| Ativar/Revogar status | Implementado | Update direto no `profiles` |
-| **Atualizar plano** | Faltando | - |
-| **Editar perfil completo** | Faltando | - |
-| **Deletar usuario** | Faltando | - |
-| Logs de webhooks | Implementado | `/admin/webhooks` |
+O simulador tem as seguintes limitacoes:
+- Lista BTG possui **142 ativos**, mas apenas **24 sao exibidos** inicialmente
+- Limite de 24 tambem na busca: `.slice(0, 24)` nas linhas 98-101
+- Nao ha feedback quando um ativo nao e encontrado na lista
+- Nao e possivel adicionar manualmente ativos que nao estao na lista BTG
 
 ---
 
-### Mudancas Propostas
+### Solucao Proposta
 
-#### 1. Expandir Edge Function `admin-manage-users`
+#### 1. Exibir Todos os Ativos da Lista BTG
 
-A edge function atual so suporta criacao de usuarios. Precisamos adicionar:
+Remover ou aumentar significativamente o limite de ativos exibidos:
 
 ```text
-+------------------------------------------+
-|  Operacoes Suportadas                     |
-+------------------------------------------+
-|  CREATE - Criar usuario (ja existe)      |
-|  UPDATE - Atualizar nome, plano, status  |
-|  DELETE - Remover usuario do sistema     |
-+------------------------------------------+
+// ANTES (limitado a 24)
+return tickerList.slice(0, 24);
+...
+.slice(0, 24);
+
+// DEPOIS (todos os 142 ativos)
+return tickerList;  // Sem limite - mostra todos
 ```
 
-**Nova estrutura de request:**
+A ScrollArea ja existe com altura fixa de 200px, entao os ativos terao scroll adequado.
+
+#### 2. Feedback de "Nao Encontrado" + Botao de Adicao Manual
+
+Quando a busca nao retornar resultados da lista BTG:
+
+```text
++-------------------------------------------------------+
+|  Pesquisar acoes (ex: PETR4, VALE3)...                |
+|  [ XPTO3                                          ]   |
++-------------------------------------------------------+
+|                                                       |
+|  ⚠️ O ativo "XPTO3" nao esta na lista BTG.            |
+|                                                       |
+|  [+ Adicionar "XPTO3" Manualmente]                    |
+|                                                       |
+|  Nota: Ativos manuais usarao alavancagem 1x e         |
+|  margem igual ao preco da acao.                       |
++-------------------------------------------------------+
+```
+
+#### 3. Interface para Ativo Manual
+
+Quando o usuario adiciona manualmente, o ativo e inserido com valores padrao:
+
 ```typescript
-interface AdminRequest {
-  action: 'create' | 'update' | 'delete';
-  
-  // Para CREATE (existente)
-  users?: Array<{ email: string; name?: string; plano?: string }>;
-  
-  // Para UPDATE
-  userId?: string;
-  updates?: {
-    name?: string;
-    plano?: string;
-    status_pagamento?: 'pending' | 'approved' | 'revoked';
-    phone?: string;
-  };
-  
-  // Para DELETE
-  userIdToDelete?: string;
+// Ativo manual (nao esta na lista BTG)
+{
+  ticker: 'XPTO3',
+  preco: 0, // Sera preenchido na Etapa 2
+  isManual: true // Flag para identificar
 }
 ```
 
-#### 2. Dialog de Edicao na Pagina AdminUsers
+Na etapa de precos e calculos, ativos manuais usam:
+- **Alavancagem:** 1x (sem alavancagem)
+- **Margem por acao:** igual ao preco de entrada
 
-Adicionar um dialog para editar usuario com campos:
+---
 
-```text
-+-----------------------------------------------+
-|           Editar Usuario                       |
-+-----------------------------------------------+
-|  Email: usuario@exemplo.com (somente leitura) |
-|                                               |
-|  Nome:          [ Joao Silva           ]     |
-|  Telefone:      [ (11) 99999-9999      ]     |
-|  Plano:         [ Premium          v ]       |
-|  Status:        [ Aprovado         v ]       |
-|                                               |
-|  [Cancelar]           [Salvar Alteracoes]    |
-|                                               |
-|  ⚠️ Alterar manualmente pode conflitar com   |
-|     webhooks de pagamento.                    |
-+-----------------------------------------------+
+### Mudancas no Codigo
+
+#### 1. Estado para Ativos Manuais
+
+```typescript
+interface SelectedAsset {
+  ticker: string;
+  preco: number;
+  isManual?: boolean; // Novo campo
+}
 ```
 
-#### 3. Confirmacao de Exclusao
+#### 2. Logica de Filtragem Atualizada
 
-```text
-+-----------------------------------------------+
-|        Excluir Usuario                        |
-+-----------------------------------------------+
-|  Tem certeza que deseja excluir?              |
-|                                               |
-|  Email: usuario@exemplo.com                   |
-|                                               |
-|  ⚠️ Esta acao e IRREVERSIVEL!                 |
-|                                               |
-|  Isso ira:                                    |
-|  • Remover acesso ao sistema                  |
-|  • Manter historico de webhooks               |
-|  • Manter registros de subscriptions          |
-|                                               |
-|  [Cancelar]           [Excluir Permanente]   |
-+-----------------------------------------------+
+```typescript
+// Mostrar todos os ativos da lista
+const filteredTickers = useMemo(() => {
+  if (!searchQuery.trim()) return tickerList; // Todos
+  return tickerList.filter(ticker => 
+    ticker.toLowerCase().includes(searchQuery.toLowerCase())
+  ); // Todos os filtrados, sem limite
+}, [searchQuery, tickerList]);
+
+// Verificar se busca nao encontrou nada
+const searchNotFound = useMemo(() => {
+  if (!searchQuery.trim()) return false;
+  const normalizedQuery = searchQuery.trim().toUpperCase();
+  return !tickerList.some(t => t.toUpperCase().includes(normalizedQuery));
+}, [searchQuery, tickerList]);
+```
+
+#### 3. UI de "Nao Encontrado"
+
+```tsx
+{/* Quando busca nao encontra na lista BTG */}
+{searchNotFound && searchQuery.trim() && (
+  <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+    <div className="flex items-center gap-2 text-amber-500 mb-2">
+      <AlertTriangle className="h-4 w-4" />
+      <span className="font-medium">
+        O ativo "{searchQuery.toUpperCase()}" nao esta na lista BTG
+      </span>
+    </div>
+    <Button 
+      variant="outline" 
+      size="sm"
+      className="mt-2"
+      onClick={() => addManualAsset(searchQuery.toUpperCase())}
+    >
+      <Plus className="h-4 w-4 mr-1" />
+      Adicionar "{searchQuery.toUpperCase()}" Manualmente
+    </Button>
+    <p className="text-xs text-muted-foreground mt-2">
+      Ativos manuais usarao alavancagem 1x e margem igual ao preco.
+    </p>
+  </div>
+)}
+```
+
+#### 4. Funcao de Adicao Manual
+
+```typescript
+const addManualAsset = (ticker: string) => {
+  const normalizedTicker = ticker.toUpperCase().trim();
+  if (!isSelected(normalizedTicker) && normalizedTicker.length > 0) {
+    setSelectedAssets(prev => [...prev, { 
+      ticker: normalizedTicker, 
+      preco: 0, 
+      isManual: true 
+    }]);
+    setSearchQuery(''); // Limpar busca
+  }
+};
+```
+
+#### 5. Identificacao Visual de Ativos Manuais
+
+Na lista de selecionados, ativos manuais terao badge diferente:
+
+```tsx
+{selectedAssets.map((asset) => (
+  <Badge 
+    key={asset.ticker} 
+    variant={asset.isManual ? "outline" : "default"}
+    className="flex items-center gap-1 px-3 py-1.5 text-sm"
+  >
+    {asset.ticker}
+    {asset.isManual && (
+      <span className="text-xs text-amber-500 ml-1">(manual)</span>
+    )}
+    <button ...>
+      <X className="h-3 w-3" />
+    </button>
+  </Badge>
+))}
+```
+
+#### 6. Tratamento na Etapa de Precos
+
+Mostrar aviso para ativos manuais:
+
+```tsx
+{selectedAssets.map((asset) => {
+  const btgInfo = getBTGAsset(asset.ticker);
+  return (
+    <div key={asset.ticker} className="p-4 rounded-lg border">
+      <div className="flex justify-between items-center mb-2">
+        <span className="font-bold text-lg">{asset.ticker}</span>
+        {btgInfo ? (
+          <span className="text-xs text-muted-foreground">
+            {btgInfo.leverage}x | R$ {btgInfo.marginPerShare.toFixed(2)}/acao
+          </span>
+        ) : (
+          <span className="text-xs text-amber-500">
+            Manual - 1x | Margem = Preco
+          </span>
+        )}
+      </div>
+      {/* Input de preco */}
+    </div>
+  );
+})}
 ```
 
 ---
 
-### Fluxo de Seguranca
-
-```text
-Admin clica "Editar" ou "Excluir"
-        |
-        v
-  Abre Dialog de confirmacao
-        |
-        v
-  Chama Edge Function
-        |
-        v
-  Edge Function verifica:
-  1. Token JWT valido?
-  2. Usuario tem role 'admin'?
-  3. Operacao permitida?
-        |
-        v
-  Executa com Service Role Key
-        |
-        v
-  Registra log de auditoria
-        |
-        v
-  Retorna resultado
-```
-
----
-
-### Preservacao de Webhooks
-
-**Importante:** As alteracoes manuais de plano/status NAO afetam os webhooks existentes porque:
-
-1. Tabela `webhook_events` - Permanece inalterada (somente leitura pelo admin)
-2. Tabela `subscriptions` - Permanece inalterada (registro historico)
-3. Tabela `pending_orders` - Permanece inalterada
-4. Apenas `profiles` e `auth.users` sao modificados
-
-Quando um novo pagamento chegar via webhook, ele atualizara o perfil normalmente, sobrescrevendo qualquer alteracao manual.
-
----
-
-### Arquivos a Modificar
+### Arquivo a Modificar
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `supabase/functions/admin-manage-users/index.ts` | Adicionar acoes UPDATE e DELETE |
-| `src/pages/AdminUsers.tsx` | Adicionar dialog de edicao e botao de exclusao |
+| `src/pages/StockSimulator.tsx` | Exibir todos os ativos, adicionar busca manual, feedback visual |
 
 ---
 
 ### Secao Tecnica
 
-#### Edge Function - Nova Estrutura
+#### Interface Atualizada
 
 ```typescript
-// Verificar acao
-const { action, users, userId, updates, userIdToDelete } = await req.json();
-
-switch (action) {
-  case 'create':
-    // Logica existente de criacao
-    break;
-    
-  case 'update':
-    // Atualizar profile com os campos fornecidos
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        name: updates.name,
-        plano: updates.plano,
-        status_pagamento: updates.status_pagamento,
-        phone: updates.phone,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
-    
-    // Log de auditoria
-    await supabase.rpc('log_audit', {
-      p_actor: adminEmail,
-      p_action: 'admin_update_user',
-      p_meta: { userId, changes: updates },
-    });
-    break;
-    
-  case 'delete':
-    // Deletar usuario do auth (cascade remove profile)
-    await supabase.auth.admin.deleteUser(userIdToDelete);
-    
-    // Log de auditoria
-    await supabase.rpc('log_audit', {
-      p_actor: adminEmail,
-      p_action: 'admin_delete_user',
-      p_meta: { userId: userIdToDelete },
-    });
-    break;
+interface SelectedAsset {
+  ticker: string;
+  preco: number;
+  isManual?: boolean;
 }
 ```
 
-#### Componente EditDialog
+#### Novas Funcoes
 
-```tsx
-interface EditUserData {
-  id: string;
-  email: string;
-  name: string | null;
-  phone: string | null;
-  plano: string | null;
-  status_pagamento: string;
-}
+```typescript
+// Verificar se busca nao encontrou na lista
+const searchNotFound = useMemo(() => {
+  if (!searchQuery.trim()) return false;
+  const normalizedQuery = searchQuery.trim().toUpperCase();
+  // Verifica se nao existe exatamente e se nao ha match parcial
+  return filteredTickers.length === 0;
+}, [searchQuery, filteredTickers]);
 
-// State para edicao
-const [editingUser, setEditingUser] = useState<EditUserData | null>(null);
-const [showEditDialog, setShowEditDialog] = useState(false);
-
-// Funcao de update
-const handleUpdateUser = async () => {
-  const { error } = await supabase.functions.invoke('admin-manage-users', {
-    body: {
-      action: 'update',
-      userId: editingUser.id,
-      updates: {
-        name: editingUser.name,
-        plano: editingUser.plano,
-        phone: editingUser.phone,
-        status_pagamento: editingUser.status_pagamento,
-      },
-    },
-  });
-  // ...
+// Adicionar ativo manual
+const addManualAsset = (ticker: string) => {
+  const normalized = ticker.toUpperCase().trim();
+  // Validar formato basico (letras + numeros, 4-6 caracteres)
+  if (normalized.length >= 4 && normalized.length <= 6 && !isSelected(normalized)) {
+    setSelectedAssets(prev => [...prev, { ticker: normalized, preco: 0, isManual: true }]);
+    setSearchQuery('');
+    toast.info(`"${normalized}" adicionado como ativo manual (1x alavancagem)`);
+  }
 };
 ```
 
----
+#### Logica de Margem para Manuais
 
-### Opcoes de Plano no Select
+```typescript
+const getMargemPorAcao = (ticker: string, preco: number, isManual?: boolean): number => {
+  // Ativos manuais: margem = preco (sem alavancagem)
+  if (isManual) {
+    return preco;
+  }
+  if (modalidade === 'swing') {
+    return preco / 5;
+  }
+  const btgAsset = getBTGAsset(ticker);
+  if (btgAsset) {
+    return btgAsset.marginPerShare;
+  }
+  return preco; // Fallback
+};
 
-```tsx
-const planoOptions = [
-  { value: '', label: 'Sem Plano' },
-  { value: 'mensal', label: 'Mensal' },
-  { value: 'trimestral', label: 'Trimestral' },
-  { value: 'semestral', label: 'Semestral' },
-  { value: 'anual', label: 'Anual' },
-];
+const getAlavancagem = (ticker: string, isManual?: boolean): number => {
+  if (isManual) return 1;
+  if (modalidade === 'swing') return 5;
+  return getBTGAsset(ticker)?.leverage || 1;
+};
 ```
 
 ---
 
 ### Resultado Final
 
-Apos implementacao, o admin podera:
-
-1. **Visualizar** todos os usuarios em tabela
-2. **Buscar** por email
-3. **Criar** usuario individual ou via CSV
-4. **Editar** nome, telefone, plano e status de qualquer usuario
-5. **Excluir** usuarios permanentemente (com confirmacao)
-6. **Revogar** em massa (funcionalidade existente)
-
-Tudo isso **sem afetar** os registros de webhooks, subscriptions e pending_orders, que sao apenas para auditoria e historico.
+1. **Todos os 142 ativos BTG** visiveis na grid (com scroll)
+2. **Busca sem limite** - mostra todos os matches
+3. **Feedback claro** quando ativo nao esta na lista
+4. **Botao para adicionar manualmente** qualquer ticker
+5. **Ativos manuais identificados** visualmente com badge "(manual)"
+6. **Alavancagem 1x** para ativos manuais (conservador)
+7. **Margem = Preco** para ativos manuais
 
