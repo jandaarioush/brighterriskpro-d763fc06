@@ -1,257 +1,330 @@
 
 
-## Plano: Simulador com Barra de Pesquisa e Fluxo em Etapas
+## Plano: Criar Pagina Principal /admin
 
-### Objetivo
+### Situacao Atual
 
-Transformar o simulador atual em um fluxo guiado em 3 etapas:
-1. Pesquisar e selecionar as acoes
-2. Configurar os precos de cada acao
-3. Definir parametros globais (stop, objetivo, modalidade, valor alocado)
+O projeto ja possui:
+- Sistema completo de autenticacao (`useAuth`, `signIn`, `signUp`)
+- Verificacao de role admin via `has_role` no banco de dados
+- Componente `AdminRoute` que protege rotas admin
+- Paginas admin existentes: `/admin/users`, `/admin/webhooks`, `/admin/reports`, `/admin/engagement`
+
+**Problema:** A rota `/admin` nao existe - apenas as sub-rotas. Quando o usuario acessa `/admin`, ve a pagina NotFound.
+
+### Solucao Proposta
+
+Criar uma pagina `/admin` que funciona como **portal central** para administradores, com dois cenarios:
+
+1. **Usuario nao autenticado:** Mostra formulario de login
+2. **Usuario autenticado como admin:** Mostra painel com links para as areas admin
 
 ---
 
-### Fluxo Proposto
+### Fluxo de Acesso
 
 ```
-+----------------------------------------------------------+
-|  ETAPA 1: Selecionar Ativos                               |
-+----------------------------------------------------------+
-|  [ Pesquisar acoes... ]                                   |
-|                                                          |
-|  +-------+ +-------+ +-------+ +-------+                  |
-|  | PETR4 | | VALE3 | | ITUB4 | | BBAS3 |  (chips)         |
-|  +-------+ +-------+ +-------+ +-------+                  |
-|                                                          |
-|  Clique para adicionar. Ativos selecionados aparecem     |
-|  como badges que podem ser removidos.                    |
-|                                                          |
-|  Selecionados: [PETR4 x] [VALE3 x] [ITUB4 x]              |
-|                                                          |
-|            [ Proximo >> ]                                 |
-+----------------------------------------------------------+
-
-+----------------------------------------------------------+
-|  ETAPA 2: Configurar Precos                               |
-+----------------------------------------------------------+
-|  PETR4                                                   |
-|  [ R$ 35.50 ]  Alavancagem: 98x | Margem: R$ 0.37/acao   |
-|                                                          |
-|  VALE3                                                   |
-|  [ R$ 52.80 ]  Alavancagem: 98x | Margem: R$ 0.87/acao   |
-|                                                          |
-|  ITUB4                                                   |
-|  [ R$ 28.90 ]  Alavancagem: 99x | Margem: R$ 0.46/acao   |
-|                                                          |
-|    [ << Voltar ]            [ Proximo >> ]               |
-+----------------------------------------------------------+
-
-+----------------------------------------------------------+
-|  ETAPA 3: Parametros da Operacao                          |
-+----------------------------------------------------------+
-|  Modalidade:    [Day Trade (BTG) v]                      |
-|  Valor Alocado: [ R$ 1.000 ]                             |
-|  Stop Maximo:   [ R$ 500 ]                               |
-|                                                          |
-|  Stop Loss (%): [====O=====] 2.0%                        |
-|  Objetivo (%):  [======O===] 4.0%                        |
-|                                                          |
-|    [ << Voltar ]        [ Calcular Posicoes ]            |
-+----------------------------------------------------------+
+Usuario acessa /admin
+        |
+        v
+    Autenticado?
+     /        \
+   Nao        Sim
+    |          |
+    v          v
+ Login      Admin?
+  Form      /    \
+           Nao    Sim
+            |      |
+            v      v
+       "Acesso    Painel
+        Negado"   Admin
 ```
 
 ---
 
-### Mudancas no StockSimulator.tsx
-
-#### Nova Estrutura de Estado
-
-```typescript
-// Estados do Wizard
-type WizardStep = 'select' | 'prices' | 'params';
-const [currentStep, setCurrentStep] = useState<WizardStep>('select');
-
-// Ativos selecionados (antes de ter precos)
-interface SelectedAsset {
-  ticker: string;
-  preco: number;
-}
-const [selectedAssets, setSelectedAssets] = useState<SelectedAsset[]>([]);
-
-// Campo de busca
-const [searchQuery, setSearchQuery] = useState('');
-```
-
-#### Etapa 1: Selecao de Ativos
-
-Componente com:
-- Input de pesquisa com filtragem em tempo real
-- Lista de resultados clicaveis (Command/Autocomplete)
-- Badges dos ativos selecionados com botao X para remover
-- Botao "Proximo" habilitado quando >= 1 ativo selecionado
+### Nova Pagina: src/pages/Admin.tsx
 
 ```tsx
-// Exemplo de UI
-<div className="space-y-4">
-  <div className="relative">
-    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-    <Input
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-      placeholder="Pesquisar acoes (ex: PETR4, VALE3)..."
-      className="pl-10"
-    />
-  </div>
-  
-  {/* Resultados da busca */}
-  <div className="grid grid-cols-4 gap-2 max-h-48 overflow-auto">
-    {filteredTickers.map((ticker) => (
-      <Button
-        key={ticker}
-        variant="outline"
-        size="sm"
-        onClick={() => addAsset(ticker)}
-        disabled={isSelected(ticker)}
-      >
-        {ticker}
-      </Button>
-    ))}
-  </div>
-  
-  {/* Ativos selecionados */}
-  <div className="flex flex-wrap gap-2">
-    {selectedAssets.map((asset) => (
-      <Badge key={asset.ticker} className="flex items-center gap-1">
-        {asset.ticker}
-        <X className="h-3 w-3 cursor-pointer" onClick={() => removeAsset(asset.ticker)} />
-      </Badge>
-    ))}
-  </div>
-</div>
+// Estados
+const { user, loading, isAdmin, checkingRole, signIn } = useAuth();
+const [email, setEmail] = useState('');
+const [password, setPassword] = useState('');
+const [loginLoading, setLoginLoading] = useState(false);
+
+// Cenario 1: Nao autenticado - Mostrar formulario de login
+// Cenario 2: Autenticado mas nao admin - Mostrar acesso negado
+// Cenario 3: Autenticado e admin - Mostrar painel
 ```
 
-#### Etapa 2: Configuracao de Precos
+#### Layout do Login Admin
+
+```
++-----------------------------------------------+
+|           RISK PRO - AREA ADMIN               |
+|                   [Logo]                       |
++-----------------------------------------------+
+|                                               |
+|   +---------------------------------------+   |
+|   |  Email                                |   |
+|   |  [admin@exemplo.com               ]   |   |
+|   |                                       |   |
+|   |  Senha                                |   |
+|   |  [**********                      ]   |   |
+|   |                                       |   |
+|   |  [       Acessar Painel Admin     ]   |   |
+|   +---------------------------------------+   |
+|                                               |
+|   Acesso restrito a administradores           |
++-----------------------------------------------+
+```
+
+#### Layout do Painel Admin
+
+```
++-----------------------------------------------+
+|           PAINEL ADMINISTRATIVO               |
+|   Bem-vindo, admin@exemplo.com                |
++-----------------------------------------------+
+|                                               |
+|  +----------+  +----------+  +------------+   |
+|  | USUARIOS |  | WEBHOOKS |  | RELATORIOS |   |
+|  |   👥     |  |   ⚡     |  |     📊     |   |
+|  +----------+  +----------+  +------------+   |
+|                                               |
+|  +------------+                               |
+|  | ENGAJAMENTO|                               |
+|  |    📈      |                               |
+|  +------------+                               |
+|                                               |
+|  [Voltar ao Dashboard]   [Sair]               |
++-----------------------------------------------+
+```
+
+---
+
+### Codigo da Pagina Admin
 
 ```tsx
-<div className="space-y-4">
-  {selectedAssets.map((asset, index) => {
-    const btgInfo = getBTGAsset(asset.ticker);
+// src/pages/Admin.tsx
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ThemeLogo } from '@/components/ThemeLogo';
+import { toast } from 'sonner';
+import { Users, Webhook, BarChart3, TrendingUp, Shield, ArrowLeft, LogOut } from 'lucide-react';
+
+export default function Admin() {
+  const { user, loading, isAdmin, checkingRole, signIn, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // Estado de carregamento
+  if (loading || checkingRole) {
     return (
-      <div key={asset.ticker} className="p-4 rounded-lg border">
-        <div className="flex justify-between items-center mb-2">
-          <span className="font-bold text-lg">{asset.ticker}</span>
-          {btgInfo && (
-            <span className="text-xs text-muted-foreground">
-              {btgInfo.leverage}x | R$ {btgInfo.marginPerShare.toFixed(2)}/acao
-            </span>
-          )}
-        </div>
-        <div>
-          <Label>Preco de Entrada (R$)</Label>
-          <Input
-            type="number"
-            value={asset.preco || ''}
-            onChange={(e) => updateAssetPrice(index, parseFloat(e.target.value) || 0)}
-            placeholder="Ex: 35.50"
-          />
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-lg">Verificando credenciais...</p>
       </div>
     );
-  })}
-</div>
+  }
+
+  // Formulario de login para usuarios nao autenticados
+  if (!user) {
+    const handleLogin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setLoginLoading(true);
+      
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        toast.error(error.message);
+      }
+      // Se login OK, o estado sera atualizado e a pagina re-renderiza
+      
+      setLoginLoading(false);
+    };
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <ThemeLogo className="h-10 mx-auto mb-4" />
+            <CardTitle className="flex items-center justify-center gap-2">
+              <Shield className="h-5 w-5" />
+              Area Administrativa
+            </CardTitle>
+            <CardDescription>
+              Acesso restrito a administradores do sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@exemplo.com"
+                  required
+                />
+              </div>
+              <div>
+                <Label>Senha</Label>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="********"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loginLoading}>
+                {loginLoading ? 'Entrando...' : 'Acessar Painel Admin'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Usuario autenticado mas nao e admin
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="max-w-md text-center p-8">
+          <h1 className="text-2xl font-bold text-destructive mb-4">
+            Acesso Negado
+          </h1>
+          <p className="text-muted-foreground mb-6">
+            Voce nao tem permissao para acessar a area administrativa.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              Ir para Dashboard
+            </Button>
+            <Button variant="ghost" onClick={signOut}>
+              Sair
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Painel admin - usuario autenticado E e admin
+  const adminLinks = [
+    { to: '/admin/users', icon: Users, title: 'Usuarios', description: 'Gerenciar contas e permissoes' },
+    { to: '/admin/webhooks', icon: Webhook, title: 'Webhooks', description: 'Monitorar eventos de pagamento' },
+    { to: '/admin/reports', icon: BarChart3, title: 'Relatorios', description: 'Visualizar metricas do sistema' },
+    { to: '/admin/engagement', icon: TrendingUp, title: 'Engajamento', description: 'Analisar uso da plataforma' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto p-6 space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <Shield className="h-8 w-8 text-primary" />
+              Painel Administrativo
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Bem-vindo, {user.email}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+            <Button variant="ghost" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </Button>
+          </div>
+        </div>
+
+        {/* Admin Links Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {adminLinks.map(({ to, icon: Icon, title, description }) => (
+            <Link key={to} to={to}>
+              <Card className="h-full hover:border-primary/50 transition-colors cursor-pointer">
+                <CardHeader>
+                  <Icon className="h-10 w-10 text-primary mb-2" />
+                  <CardTitle>{title}</CardTitle>
+                  <CardDescription>{description}</CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 ```
-
-#### Etapa 3: Parametros Globais
-
-Reutiliza os campos existentes:
-- Modalidade (Day Trade / Swing)
-- Valor Alocado
-- Stop Financeiro Maximo
-- Stop Loss %
-- Objetivo / Gain %
-
-Botao "Calcular Posicoes" executa toda a logica de calculo e mostra os resultados.
 
 ---
 
-### Navegacao entre Etapas
-
-```tsx
-const canProceed = {
-  select: selectedAssets.length > 0,
-  prices: selectedAssets.every(a => a.preco > 0),
-  params: true,
-};
-
-const handleNext = () => {
-  if (currentStep === 'select') setCurrentStep('prices');
-  else if (currentStep === 'prices') setCurrentStep('params');
-  else if (currentStep === 'params') calculatePositions();
-};
-
-const handleBack = () => {
-  if (currentStep === 'prices') setCurrentStep('select');
-  else if (currentStep === 'params') setCurrentStep('prices');
-};
-```
-
----
-
-### Indicador de Progresso
-
-```tsx
-<div className="flex items-center justify-center gap-4 mb-8">
-  <StepIndicator step={1} current={currentStep === 'select'} label="Selecionar" />
-  <div className="h-px w-8 bg-border" />
-  <StepIndicator step={2} current={currentStep === 'prices'} label="Precos" />
-  <div className="h-px w-8 bg-border" />
-  <StepIndicator step={3} current={currentStep === 'params'} label="Parametros" />
-</div>
-```
-
----
-
-### Arquivos Modificados
+### Mudancas Necessarias
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/pages/StockSimulator.tsx` | Implementar wizard de 3 etapas com barra de pesquisa |
+| `src/pages/Admin.tsx` | **Criar** - Nova pagina portal admin |
+| `src/App.tsx` | Adicionar rota `/admin` |
+
+---
+
+### Rota no App.tsx
+
+```tsx
+// Adicionar import
+import Admin from "./pages/Admin";
+
+// Adicionar rota (antes das rotas admin/*)
+<Route path="/admin" element={<Admin />} />
+```
+
+**Nota:** A rota `/admin` NAO precisa de `ProtectedRoute` ou `AdminRoute` porque a propria pagina gerencia os 3 cenarios internamente (nao logado, logado sem permissao, admin).
 
 ---
 
 ### Secao Tecnica
 
-#### Componentes Utilizados
-- `Input` com icone de pesquisa (Search)
-- `Badge` para ativos selecionados
-- `Button` para itens da lista de pesquisa
-- `Command/CommandInput` para autocomplete (alternativa)
-- `Slider` para stop e objetivo
-- `Select` para modalidade
+#### Seguranca
 
-#### Logica de Filtragem
+- Login usa o mesmo `signIn` do hook `useAuth`
+- Verificacao de admin e feita via `has_role` no banco (server-side)
+- Nenhum dado sensivel armazenado no localStorage
+- Compativel com o sistema de autenticacao existente
 
-```typescript
-const filteredTickers = useMemo(() => {
-  if (!searchQuery) return tickerList.slice(0, 20);
-  return tickerList.filter(ticker => 
-    ticker.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, 20);
-}, [searchQuery, tickerList]);
-```
+#### Responsividade
 
-#### Funcao de Calculo Final
-
-Quando o usuario clica "Calcular Posicoes", a logica existente de `handleAddPosition` sera adaptada para processar todos os ativos de uma vez, distribuindo o stop proporcionalmente entre eles.
+- Grid de cards: 1 coluna mobile, 2 tablet, 4 desktop
+- Formulario de login centralizado e responsivo
+- Botoes adaptados para mobile
 
 ---
 
 ### Resultado Final
 
-Um fluxo intuitivo em 3 passos:
-1. Pesquisar e selecionar multiplas acoes facilmente
-2. Preencher os precos de entrada de cada uma
-3. Configurar parametros globais e calcular
+1. **Usuario nao logado** acessando `/admin`:
+   - Ve formulario de login estilizado
+   - Apos login, automaticamente ve o painel (se admin) ou "Acesso Negado"
 
-Os cards de "Analise de Risco" e "Parametros Atuais" continuam aparecendo apos o calculo, com os sliders de redistribuicao funcionando normalmente.
+2. **Usuario comum** acessando `/admin`:
+   - Ve mensagem "Acesso Negado" com opcao de ir ao Dashboard
+
+3. **Admin** acessando `/admin`:
+   - Ve painel com 4 cards para cada area administrativa
+   - Pode navegar para qualquer sub-pagina
 
