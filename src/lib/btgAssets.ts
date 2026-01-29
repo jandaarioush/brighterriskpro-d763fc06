@@ -180,6 +180,11 @@ export function findBTGAsset(ticker: string): BTGAsset | undefined {
   return btgAssets.find(a => a.ticker.toUpperCase() === ticker.toUpperCase());
 }
 
+// Alias for findBTGAsset (convenience function)
+export function getBTGAsset(ticker: string): BTGAsset | undefined {
+  return findBTGAsset(ticker);
+}
+
 // Get all tickers for autocomplete
 export function getBTGTickers(): string[] {
   return btgAssets.map(a => a.ticker);
