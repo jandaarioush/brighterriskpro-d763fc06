@@ -849,18 +849,24 @@ export default function StockSimulator() {
             </div>
 
             <div className="space-y-4">
-              {/* Resumo por ativo */}
+              {/* Resumo por ativo com sliders de redistribuição */}
               {positions.length > 0 ? (
-                <ScrollArea className="h-[280px] pr-2">
+                <ScrollArea className="h-[320px] pr-2">
                   <div className="space-y-3">
                     {positions.map((pos) => (
                       <div key={pos.id} className="p-3 rounded-lg bg-background/50">
                         <div className="flex justify-between items-start mb-2">
-                          <div>
+                          <div className="flex items-center gap-2">
                             <span className="font-bold">{pos.ticker}</span>
-                            <span className="text-xs text-muted-foreground ml-2">
+                            <span className="text-xs text-muted-foreground">
                               {pos.alavancagem}x
                             </span>
+                            <button
+                              onClick={() => handleRemovePosition(pos.id)}
+                              className="text-destructive/60 hover:text-destructive transition-colors"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
                           </div>
                           <span className={`text-xs px-2 py-1 rounded ${
                             pos.limiteFator === 'margem' 
@@ -870,14 +876,33 @@ export default function StockSimulator() {
                             {pos.limiteFator === 'margem' ? 'Limitado por Margem' : 'Limitado por Stop'}
                           </span>
                         </div>
+                        
+                        {/* Slider de Alocação */}
+                        <div className="mb-3">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs text-muted-foreground">Alocação do Stop:</span>
+                            <span className="text-sm font-bold text-primary">
+                              {pos.stopAlocadoPercent.toFixed(0)}% (R$ {pos.stopAlocado.toFixed(2)})
+                            </span>
+                          </div>
+                          <Slider
+                            value={[pos.stopAlocadoPercent]}
+                            onValueChange={(v) => handleStopAllocationChange(pos.id, v[0])}
+                            min={5}
+                            max={positions.length === 1 ? 100 : 95}
+                            step={1}
+                            className="w-full"
+                          />
+                        </div>
+                        
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
                             <span className="text-muted-foreground">Quantidade:</span>{' '}
                             <span className="font-bold text-primary">{pos.quantidade}</span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Alocação:</span>{' '}
-                            <span className="font-bold">{pos.stopAlocadoPercent.toFixed(0)}%</span>
+                            <span className="text-muted-foreground">R$/Ação:</span>{' '}
+                            <span className="font-medium">R$ {pos.precoAtivo.toFixed(2)}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <AlertTriangle className="h-3 w-3 text-destructive" />
@@ -889,7 +914,7 @@ export default function StockSimulator() {
                           </div>
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          Valor posição: R$ {(pos.precoAtivo * pos.quantidade).toFixed(2)}
+                          Valor posição: R$ {(pos.precoAtivo * pos.quantidade).toFixed(2)} | R/R: 1:{(pos.ganhoObjetivo / (pos.perdaMaxima || 1)).toFixed(1)}
                         </div>
                       </div>
                     ))}
