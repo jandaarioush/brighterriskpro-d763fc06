@@ -16,26 +16,69 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Upload, UserPlus } from 'lucide-react';
+import { Search, Upload, UserPlus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface UserProfile {
   id: string;
   email: string;
   name: string | null;
+  phone: string | null;
   status_pagamento: string;
   plano: string | null;
   kiwify_order_id: string | null;
   last_paid_at: string | null;
   created_at: string;
 }
+
+interface EditUserData {
+  id: string;
+  email: string;
+  name: string;
+  phone: string;
+  plano: string;
+  status_pagamento: string;
+}
+
+const planoOptions = [
+  { value: '', label: 'Sem Plano' },
+  { value: 'mensal', label: 'Mensal' },
+  { value: 'trimestral', label: 'Trimestral' },
+  { value: 'semestral', label: 'Semestral' },
+  { value: 'anual', label: 'Anual' },
+];
+
+const statusOptions = [
+  { value: 'pending', label: 'Pendente' },
+  { value: 'approved', label: 'Aprovado' },
+  { value: 'revoked', label: 'Revogado' },
+];
 
 export default function AdminUsers() {
   const { user } = useAuth();
@@ -51,6 +94,16 @@ export default function AdminUsers() {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPlano, setNewUserPlano] = useState('');
+
+  // Edit dialog state
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<EditUserData | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Delete dialog state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -194,7 +247,7 @@ export default function AdminUsers() {
       }
 
       const { data, error } = await supabase.functions.invoke('admin-manage-users', {
-        body: { users: usersData },
+        body: { action: 'create', users: usersData },
       });
 
       if (error) throw error;
@@ -231,6 +284,7 @@ export default function AdminUsers() {
     try {
       const { data, error } = await supabase.functions.invoke('admin-manage-users', {
         body: {
+          action: 'create',
           users: [{
             email: newUserEmail,
             name: newUserName || undefined,
@@ -257,6 +311,87 @@ export default function AdminUsers() {
       toast.error('Erro: ' + error.message);
     } finally {
       setBulkLoading(false);
+    }
+  };
+
+  const openEditDialog = (userProfile: UserProfile) => {
+    setEditingUser({
+      id: userProfile.id,
+      email: userProfile.email,
+      name: userProfile.name || '',
+      phone: userProfile.phone || '',
+      plano: userProfile.plano || '',
+      status_pagamento: userProfile.status_pagamento || 'pending',
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+
+    setEditLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-manage-users', {
+        body: {
+          action: 'update',
+          userId: editingUser.id,
+          updates: {
+            name: editingUser.name || null,
+            phone: editingUser.phone || null,
+            plano: editingUser.plano || null,
+            status_pagamento: editingUser.status_pagamento,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      toast.success('Usuário atualizado com sucesso!');
+      setShowEditDialog(false);
+      setEditingUser(null);
+      loadUsers();
+    } catch (error: any) {
+      toast.error('Erro ao atualizar: ' + error.message);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const openDeleteDialog = (userProfile: UserProfile) => {
+    setUserToDelete(userProfile);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-manage-users', {
+        body: {
+          action: 'delete',
+          userIdToDelete: userToDelete.id,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      toast.success('Usuário excluído com sucesso!');
+      setShowDeleteDialog(false);
+      setUserToDelete(null);
+      loadUsers();
+    } catch (error: any) {
+      toast.error('Erro ao excluir: ' + error.message);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -330,11 +465,18 @@ export default function AdminUsers() {
                 </div>
                 <div>
                   <Label>Plano</Label>
-                  <Input
-                    value={newUserPlano}
-                    onChange={(e) => setNewUserPlano(e.target.value)}
-                    placeholder="Premium, Básico, etc."
-                  />
+                  <Select value={newUserPlano} onValueChange={setNewUserPlano}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o plano" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {planoOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value || 'none'}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="bg-muted p-3 rounded text-sm">
                   <strong>Senha padrão:</strong> TempPass123!
@@ -455,39 +597,56 @@ export default function AdminUsers() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
+                filteredUsers.map((userProfile) => (
+                  <TableRow key={userProfile.id}>
                     <TableCell>
                       <Checkbox
-                        checked={selectedUsers.has(user.id)}
-                        onCheckedChange={() => toggleSelectUser(user.id)}
+                        checked={selectedUsers.has(userProfile.id)}
+                        onCheckedChange={() => toggleSelectUser(userProfile.id)}
                       />
                     </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.name || '-'}</TableCell>
-                    <TableCell>{user.plano || '-'}</TableCell>
-                    <TableCell>{getStatusBadge(user.status_pagamento)}</TableCell>
+                    <TableCell>{userProfile.email}</TableCell>
+                    <TableCell>{userProfile.name || '-'}</TableCell>
+                    <TableCell>{userProfile.plano || '-'}</TableCell>
+                    <TableCell>{getStatusBadge(userProfile.status_pagamento)}</TableCell>
                     <TableCell>
-                      {user.last_paid_at
-                        ? format(new Date(user.last_paid_at), 'dd/MM/yyyy')
+                      {userProfile.last_paid_at
+                        ? format(new Date(userProfile.last_paid_at), 'dd/MM/yyyy')
                         : '-'}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        {user.status_pagamento !== 'approved' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(userProfile)}
+                          title="Editar"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openDeleteDialog(userProfile)}
+                          className="text-destructive hover:text-destructive"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        {userProfile.status_pagamento !== 'approved' && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => updateUserStatus(user.id, 'approved')}
+                            onClick={() => updateUserStatus(userProfile.id, 'approved')}
                           >
                             Ativar
                           </Button>
                         )}
-                        {user.status_pagamento === 'approved' && (
+                        {userProfile.status_pagamento === 'approved' && (
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => updateUserStatus(user.id, 'revoked')}
+                            onClick={() => updateUserStatus(userProfile.id, 'revoked')}
                           >
                             Revogar
                           </Button>
@@ -501,6 +660,143 @@ export default function AdminUsers() {
           </Table>
         </div>
       </Card>
+
+      {/* Edit User Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>
+              Altere os dados do usuário abaixo.
+            </DialogDescription>
+          </DialogHeader>
+          {editingUser && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-muted-foreground">Email (somente leitura)</Label>
+                <Input
+                  value={editingUser.email}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+              <div>
+                <Label>Nome</Label>
+                <Input
+                  value={editingUser.name}
+                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                  placeholder="Nome do usuário"
+                />
+              </div>
+              <div>
+                <Label>Telefone</Label>
+                <Input
+                  value={editingUser.phone}
+                  onChange={(e) => setEditingUser({ ...editingUser, phone: e.target.value })}
+                  placeholder="+55 11 99999-9999"
+                />
+              </div>
+              <div>
+                <Label>Plano</Label>
+                <Select 
+                  value={editingUser.plano || 'none'} 
+                  onValueChange={(value) => setEditingUser({ ...editingUser, plano: value === 'none' ? '' : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o plano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {planoOptions.map((option) => (
+                      <SelectItem key={option.value || 'none'} value={option.value || 'none'}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select 
+                  value={editingUser.status_pagamento} 
+                  onValueChange={(value) => setEditingUser({ ...editingUser, status_pagamento: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  Alterações manuais podem conflitar com webhooks de pagamento. 
+                  Novos pagamentos sobrescreverão estas alterações.
+                </p>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleUpdateUser} disabled={editLoading}>
+                  {editLoading ? 'Salvando...' : 'Salvar Alterações'}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Excluir Usuário
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Tem certeza que deseja excluir permanentemente?
+              </p>
+              {userToDelete && (
+                <p className="font-medium text-foreground">
+                  Email: {userToDelete.email}
+                </p>
+              )}
+              <div className="bg-destructive/10 border border-destructive/30 p-3 rounded text-sm">
+                <p className="font-semibold text-destructive mb-2">
+                  ⚠️ Esta ação é IRREVERSÍVEL!
+                </p>
+                <p className="text-muted-foreground">
+                  Isso irá:
+                </p>
+                <ul className="list-disc list-inside text-muted-foreground mt-1">
+                  <li>Remover acesso ao sistema</li>
+                  <li>Excluir perfil do usuário</li>
+                  <li>Manter histórico de webhooks (para auditoria)</li>
+                  <li>Manter registros de subscriptions</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              disabled={deleteLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLoading ? 'Excluindo...' : 'Excluir Permanentemente'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

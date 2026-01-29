@@ -14,6 +14,36 @@ interface BulkCreateRequest {
   }>;
 }
 
+interface UpdateRequest {
+  userId: string;
+  updates: {
+    name?: string;
+    plano?: string;
+    status_pagamento?: 'pending' | 'approved' | 'revoked';
+    phone?: string;
+  };
+}
+
+interface DeleteRequest {
+  userIdToDelete: string;
+}
+
+interface AdminRequest {
+  action?: 'create' | 'update' | 'delete';
+  // For CREATE (backwards compatible)
+  users?: Array<{ email: string; name?: string; plano?: string }>;
+  // For UPDATE
+  userId?: string;
+  updates?: {
+    name?: string;
+    plano?: string;
+    status_pagamento?: 'pending' | 'approved' | 'revoked';
+    phone?: string;
+  };
+  // For DELETE
+  userIdToDelete?: string;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -49,91 +79,212 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Acesso negado - apenas administradores');
     }
 
-    const { users }: BulkCreateRequest = await req.json();
+    const body: AdminRequest = await req.json();
+    
+    // Determine action - default to 'create' for backwards compatibility
+    const action = body.action || 'create';
 
-    if (!users || !Array.isArray(users) || users.length === 0) {
-      throw new Error('Lista de usuários inválida');
-    }
+    console.log(`Admin action: ${action} by ${user.email}`);
 
-    if (users.length > 100) {
-      throw new Error('Máximo de 100 usuários por vez');
-    }
-
-    const results = {
-      success: [] as string[],
-      errors: [] as { email: string; error: string }[],
-    };
-
-    const defaultPassword = 'TempPass123!';
-
-    for (const userData of users) {
-      try {
-        const email = userData.email?.trim().toLowerCase();
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          results.errors.push({ email: email || 'inválido', error: 'Email inválido' });
-          continue;
+    switch (action) {
+      case 'create': {
+        const { users } = body;
+        
+        if (!users || !Array.isArray(users) || users.length === 0) {
+          throw new Error('Lista de usuários inválida');
         }
 
-        // Verificar se usuário já existe
-        const { data: existingUser } = await supabase.auth.admin.listUsers();
-        const userExists = existingUser?.users?.some(u => u.email === email);
-
-        if (userExists) {
-          results.errors.push({ email, error: 'Usuário já existe' });
-          continue;
+        if (users.length > 100) {
+          throw new Error('Máximo de 100 usuários por vez');
         }
 
-        // Criar usuário com senha padrão
-        const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-          email,
-          password: defaultPassword,
-          email_confirm: true,
+        const results = {
+          success: [] as string[],
+          errors: [] as { email: string; error: string }[],
+        };
+
+        const defaultPassword = 'TempPass123!';
+
+        for (const userData of users) {
+          try {
+            const email = userData.email?.trim().toLowerCase();
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+              results.errors.push({ email: email || 'inválido', error: 'Email inválido' });
+              continue;
+            }
+
+            // Verificar se usuário já existe
+            const { data: existingUser } = await supabase.auth.admin.listUsers();
+            const userExists = existingUser?.users?.some(u => u.email === email);
+
+            if (userExists) {
+              results.errors.push({ email, error: 'Usuário já existe' });
+              continue;
+            }
+
+            // Criar usuário com senha padrão
+            const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+              email,
+              password: defaultPassword,
+              email_confirm: true,
+            });
+
+            if (createError || !newUser.user) {
+              results.errors.push({ email, error: createError?.message || 'Erro ao criar usuário' });
+              continue;
+            }
+
+            // Criar perfil com status aprovado
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .insert({
+                id: newUser.user.id,
+                email,
+                name: userData.name || null,
+                plano: userData.plano || null,
+                status_pagamento: 'approved',
+              });
+
+            if (profileError) {
+              console.error('Erro ao criar perfil:', profileError);
+              // Tentar deletar o usuário criado
+              await supabase.auth.admin.deleteUser(newUser.user.id);
+              results.errors.push({ email, error: 'Erro ao criar perfil' });
+              continue;
+            }
+
+            // Log de auditoria
+            await supabase.rpc('log_audit', {
+              p_actor: user.email || user.id,
+              p_action: 'bulk_create_user',
+              p_meta: { target_email: email, plano: userData.plano },
+            });
+
+            results.success.push(email);
+          } catch (error: any) {
+            results.errors.push({ email: userData.email, error: error.message });
+          }
+        }
+
+        return new Response(
+          JSON.stringify(results),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      case 'update': {
+        const { userId, updates } = body;
+
+        if (!userId) {
+          throw new Error('ID do usuário é obrigatório');
+        }
+
+        if (!updates || Object.keys(updates).length === 0) {
+          throw new Error('Nenhuma atualização fornecida');
+        }
+
+        // Build update object with only provided fields
+        const updateData: Record<string, any> = {
+          updated_at: new Date().toISOString(),
+        };
+
+        if (updates.name !== undefined) updateData.name = updates.name;
+        if (updates.plano !== undefined) updateData.plano = updates.plano;
+        if (updates.status_pagamento !== undefined) updateData.status_pagamento = updates.status_pagamento;
+        if (updates.phone !== undefined) updateData.phone = updates.phone;
+
+        console.log(`Updating user ${userId}:`, updateData);
+
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update(updateData)
+          .eq('id', userId);
+
+        if (updateError) {
+          console.error('Erro ao atualizar perfil:', updateError);
+          throw new Error('Erro ao atualizar perfil: ' + updateError.message);
+        }
+
+        // Get user email for audit log
+        const { data: targetUser } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', userId)
+          .single();
+
+        // Log de auditoria
+        await supabase.rpc('log_audit', {
+          p_actor: user.email || user.id,
+          p_action: 'admin_update_user',
+          p_meta: { 
+            target_user_id: userId, 
+            target_email: targetUser?.email,
+            changes: updates 
+          },
         });
 
-        if (createError || !newUser.user) {
-          results.errors.push({ email, error: createError?.message || 'Erro ao criar usuário' });
-          continue;
+        console.log(`User ${userId} updated successfully`);
+
+        return new Response(
+          JSON.stringify({ success: true, message: 'Usuário atualizado com sucesso' }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      case 'delete': {
+        const { userIdToDelete } = body;
+
+        if (!userIdToDelete) {
+          throw new Error('ID do usuário é obrigatório');
         }
 
-        // Criar perfil com status aprovado
-        const { error: profileError } = await supabase
+        // Get user email before deletion for audit log
+        const { data: targetUser } = await supabase
           .from('profiles')
-          .insert({
-            id: newUser.user.id,
-            email,
-            name: userData.name || null,
-            plano: userData.plano || null,
-            status_pagamento: 'approved',
-          });
+          .select('email')
+          .eq('id', userIdToDelete)
+          .single();
 
-        if (profileError) {
-          console.error('Erro ao criar perfil:', profileError);
-          // Tentar deletar o usuário criado
-          await supabase.auth.admin.deleteUser(newUser.user.id);
-          results.errors.push({ email, error: 'Erro ao criar perfil' });
-          continue;
+        console.log(`Deleting user ${userIdToDelete} (${targetUser?.email})`);
+
+        // Delete user from auth (this will cascade to profiles due to RLS policies)
+        const { error: deleteError } = await supabase.auth.admin.deleteUser(userIdToDelete);
+
+        if (deleteError) {
+          console.error('Erro ao deletar usuário:', deleteError);
+          throw new Error('Erro ao deletar usuário: ' + deleteError.message);
         }
 
         // Log de auditoria
         await supabase.rpc('log_audit', {
           p_actor: user.email || user.id,
-          p_action: 'bulk_create_user',
-          p_meta: { target_email: email, plano: userData.plano },
+          p_action: 'admin_delete_user',
+          p_meta: { 
+            deleted_user_id: userIdToDelete, 
+            deleted_email: targetUser?.email 
+          },
         });
 
-        results.success.push(email);
-      } catch (error: any) {
-        results.errors.push({ email: userData.email, error: error.message });
-      }
-    }
+        console.log(`User ${userIdToDelete} deleted successfully`);
 
-    return new Response(
-      JSON.stringify(results),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        return new Response(
+          JSON.stringify({ success: true, message: 'Usuário excluído com sucesso' }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
       }
-    );
+
+      default:
+        throw new Error(`Ação inválida: ${action}`);
+    }
   } catch (error: any) {
     console.error('Erro na função admin-manage-users:', error);
     return new Response(
