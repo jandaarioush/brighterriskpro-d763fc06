@@ -1,116 +1,118 @@
 
 
-## Plano: Adicionar Valor Alocado e Calculo de Margem com Alavancagem
+## Plano: Adicionar Distribuicao Proporcional de Risco e Objetivo de Trade
 
 ### Resumo
-Reestruturar o simulador para incluir o campo "Valor Alocado" e calcular a quantidade maxima de acoes considerando DOIS limites:
-1. **Limite de Margem:** Quanto capital o usuario tem disponivel para alocar
-2. **Limite de Stop:** Quanto o usuario aceita perder (maximo 70% do valor alocado)
-
-A quantidade final de acoes sera o MENOR valor entre os dois limites.
+Expandir o simulador para permitir:
+1. Ajustar a distribuicao do stop financeiro entre multiplas acoes via sliders
+2. Adicionar campo de "Objetivo" (gain) em percentual com calculo do valor em R$
 
 ---
 
-### Nova Estrutura de Inputs
+### Parte 1: Distribuicao Proporcional de Risco
 
+#### Conceito
+Quando o usuario adiciona multiplas acoes, cada uma recebe uma "fatia" do stop financeiro maximo. O usuario podera ajustar essas fatias via slider para colocar mais risco em uma acao e menos em outra.
+
+#### Fluxo
 ```
-+------------------------------------------+
-|   Simulacao de Operacao                   |
-+------------------------------------------+
-|   Modalidade: [Day Trade v] ou Swing      |
-+------------------------------------------+
-|   Valor Alocado (R$): [___________]       |
-|   (Capital que voce vai usar como margem) |
-+------------------------------------------+
-|   Stop Financeiro Maximo (R$): [_______]  |
-|   (Max 70% do Valor Alocado)              |
-|   Limite: R$ XXX.XX                       |
-+------------------------------------------+
+Usuario define Stop Financeiro Max = R$ 500
+    |
+    v
+Adiciona PETR4 -> Sistema aloca R$ 500 (100%)
+    |
+    v
+Adiciona VALE3 -> Sistema redistribui:
+    PETR4: R$ 250 (50%)
+    VALE3: R$ 250 (50%)
+    |
+    v
+Usuario arrasta slider de PETR4 para 70%
+    -> PETR4: R$ 350
+    -> VALE3: R$ 150
+    |
+    v
+Recalcula quantidade de acoes para cada uma
+```
+
+#### Nova Interface SimulatorPosition
+```typescript
+interface SimulatorPosition {
+  id: string;
+  ticker: string;
+  precoAtivo: number;
+  stopPercentual: number;        // % de stop loss (ex: 2%)
+  objetivoPercentual: number;    // NOVO: % de gain (ex: 4%)
+  alavancagem: number;
+  margemPorAcao: number;
+  stopAlocado: number;           // NOVO: Quanto do stop total esta alocado
+  stopAlocadoPercent: number;    // NOVO: % do stop total (0-100)
+  qtdMaxMargem: number;
+  qtdMaxStop: number;
+  quantidade: number;
+  perdaMaxima: number;
+  ganhoObjetivo: number;         // NOVO: Valor em R$ do objetivo
+  margemNecessaria: number;
+  limiteFator: 'margem' | 'stop';
+}
 ```
 
 ---
 
-### Nova Logica de Calculo
+### Parte 2: Slider de Distribuicao
 
-#### Passo 1: Quantidade Maxima pela Margem (Alavancagem)
-```
-Se Day Trade (BTG):
-  alavancagem = btgAsset.leverage  (ex: 98x)
-  margemPorAcao = btgAsset.marginPerShare
-  qtdMaxMargem = valorAlocado / margemPorAcao
+#### Implementacao
+Cada posicao tera um slider que controla `stopAlocadoPercent`. A soma de todos os sliders sempre sera 100%.
 
-Se Swing Trade:
-  alavancagem = 5
-  margemPorAcao = precoAcao / 5
-  qtdMaxMargem = valorAlocado / margemPorAcao
 ```
-
-#### Passo 2: Quantidade Maxima pelo Stop Financeiro
-```
-stopPorAcao = precoAcao * (stopPercentual / 100)
-qtdMaxStop = stopFinanceiroDisponivel / stopPorAcao
-```
-
-#### Passo 3: Quantidade Final
-```
-quantidadeFinal = Math.floor(Math.min(qtdMaxMargem, qtdMaxStop))
++-----------------------------------------------+
+|  PETR4 - R$ 35,00 - 2% stop                   |
+|  Alocacao: [==========70%=========]  R$ 350   |
+|  -> 500 acoes | Perda max: R$ 350,00          |
+|  -> Objetivo 4%: Ganho R$ 700,00              |
++-----------------------------------------------+
+|  VALE3 - R$ 60,00 - 1.5% stop                 |
+|  Alocacao: [====30%====]  R$ 150              |
+|  -> 166 acoes | Perda max: R$ 149,40          |
+|  -> Objetivo 3%: Ganho R$ 298,80              |
++-----------------------------------------------+
+|  TOTAL                                         |
+|  [==================100%==================]    |
+|  Perda max total: R$ 499,40 / R$ 500,00       |
++-----------------------------------------------+
 ```
 
-A quantidade final respeita AMBOS os limites.
+#### Logica de Redistribuicao
+Quando o usuario ajusta um slider:
+1. Calcula a diferenca
+2. Distribui proporcionalmente entre os outros
+3. Garante que nenhum fique abaixo de 5%
+4. Recalcula quantidade de acoes para cada posicao
 
 ---
 
-### Validacao: Stop Maximo de 70%
+### Parte 3: Objetivo do Trade
+
+#### Novo Campo
+Adicionar input de "Objetivo (%)" ao lado do Stop Loss (%) no formulario de adicionar ativo.
 
 ```
-stopFinanceiroMax <= valorAlocado * 0.70
++------------------------------------------+
+|  Stop Loss (%): [===2%===]               |
+|  Objetivo (%):  [====4%====]             |
++------------------------------------------+
 ```
 
-Se o usuario tentar colocar um stop maior que 70% do valor alocado, mostrar um aviso e limitar automaticamente.
+#### Calculo
+```typescript
+const ganhoObjetivo = quantidade * precoAtivo * (objetivoPercentual / 100);
+```
 
----
-
-### Novas Informacoes Mostradas por Ativo
-
-Para cada ativo adicionado, mostrar:
-
-| Campo | Descricao |
-|-------|-----------|
-| Ticker | Codigo do ativo |
-| Alavancagem | BTG (ex: 98x) ou 5x se Swing |
-| Preco | Preco da acao informado |
-| Stop % | Percentual de stop |
-| Margem Necessaria | margemPorAcao × quantidade |
-| Qtd Max (Margem) | valorAlocado / margemPorAcao |
-| Qtd Max (Stop) | stopDisponivel / stopPorAcao |
-| **Quantidade Final** | Menor dos dois acima |
-| Perda Maxima | quantidade × stopPorAcao |
-
----
-
-### Exemplo Pratico
-
-**Inputs do Usuario:**
-- Modalidade: Day Trade
-- Valor Alocado: R$ 1.000,00
-- Stop Financeiro Max: R$ 500,00 (50% do alocado - OK)
-
-**Adiciona PETR4:**
+#### Exemplo
 - Preco: R$ 35,00
-- Stop: 2%
-- Alavancagem BTG: 98x
-- Margem por Acao BTG: R$ 0,37
-
-**Calculos:**
-```
-Qtd Max pela Margem = R$ 1.000 / R$ 0,37 = 2.702 acoes
-Qtd Max pelo Stop = R$ 500 / (R$ 35 × 2%) = 714 acoes
-Quantidade Final = min(2.702, 714) = 714 acoes
-Perda Maxima = 714 × R$ 0,70 = R$ 499,80
-Margem Usada = 714 × R$ 0,37 = R$ 264,18
-```
-
-O limite foi o STOP, nao a margem.
+- Quantidade: 500 acoes
+- Objetivo: 4%
+- Ganho potencial: 500 × R$ 35 × 4% = R$ 700,00
 
 ---
 
@@ -120,133 +122,158 @@ O limite foi o STOP, nao a margem.
 
 #### 1. Novos States
 ```typescript
-const [valorAlocado, setValorAlocado] = useState(1000);
+const [newObjetivoPercentual, setNewObjetivoPercentual] = useState(4);
 ```
 
-#### 2. Calculo do Limite de Stop
+#### 2. Atualizar Interface SimulatorPosition
+Adicionar campos: `objetivoPercentual`, `ganhoObjetivo`, `stopAlocado`, `stopAlocadoPercent`
+
+#### 3. Funcao de Redistribuicao
 ```typescript
-const stopMaximoPermitido = valorAlocado * 0.70;
-const stopValido = stopFinanceiroMax <= stopMaximoPermitido;
+const handleStopAllocationChange = (id: string, newPercent: number) => {
+  setPositions(prev => {
+    const others = prev.filter(p => p.id !== id);
+    const totalOthers = others.reduce((sum, p) => sum + p.stopAlocadoPercent, 0);
+    const remaining = 100 - newPercent;
+    
+    return prev.map(p => {
+      if (p.id === id) {
+        return recalculatePosition({ ...p, stopAlocadoPercent: newPercent });
+      }
+      // Redistribui proporcionalmente
+      const ratio = totalOthers > 0 ? p.stopAlocadoPercent / totalOthers : 1 / others.length;
+      return recalculatePosition({ ...p, stopAlocadoPercent: remaining * ratio });
+    });
+  });
+};
 ```
 
-#### 3. Nova Interface SimulatorPosition
+#### 4. Funcao de Recalculo
 ```typescript
-interface SimulatorPosition {
-  id: string;
-  ticker: string;
-  precoAtivo: number;
-  stopPercentual: number;
-  alavancagem: number;
-  margemPorAcao: number;
-  qtdMaxMargem: number;      // NOVO
-  qtdMaxStop: number;        // NOVO
-  quantidade: number;        // Min dos dois acima
-  perdaMaxima: number;
-  margemNecessaria: number;
-}
+const recalculatePosition = (pos: SimulatorPosition): SimulatorPosition => {
+  const stopAlocado = stopFinanceiroMax * (pos.stopAlocadoPercent / 100);
+  const stopPorAcao = pos.precoAtivo * (pos.stopPercentual / 100);
+  const ganhoPorAcao = pos.precoAtivo * (pos.objetivoPercentual / 100);
+  
+  const qtdMaxMargem = Math.floor(margemDisponivel / pos.margemPorAcao);
+  const qtdMaxStop = Math.floor(stopAlocado / stopPorAcao);
+  const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
+  
+  return {
+    ...pos,
+    stopAlocado,
+    qtdMaxStop,
+    quantidade,
+    perdaMaxima: quantidade * stopPorAcao,
+    ganhoObjetivo: quantidade * ganhoPorAcao,
+    limiteFator: qtdMaxMargem <= qtdMaxStop ? 'margem' : 'stop',
+  };
+};
 ```
 
-#### 4. Atualizar UI do Card "Simulacao de Operacao"
+#### 5. Atualizar UI das Posicoes
 
-Adicionar input de Valor Alocado ANTES do Stop Financeiro Maximo.
-Mostrar validacao de 70% em tempo real.
+Para cada posicao, mostrar:
+- Slider de alocacao (0-100%)
+- Valor alocado em R$
+- Quantidade de acoes
+- Perda maxima
+- Objetivo com valor em R$
 
-#### 5. Atualizar Card "Analise de Risco"
+#### 6. ScrollArea para Lista de Posicoes
 
-Para cada ativo, mostrar:
-- Quantidade (destacado)
-- Limite que definiu a quantidade (margem ou stop)
-- Margem utilizada vs disponivel
+Usar `ScrollArea` do Radix para permitir rolagem quando houver muitas posicoes:
 
-#### 6. Adicionar ao Card "Parametros Atuais"
+```tsx
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-- Valor Alocado Total
-- Margem Total Utilizada
-- Margem Disponivel
+<ScrollArea className="h-[400px] pr-4">
+  {positions.map(pos => (
+    <PositionCard key={pos.id} position={pos} ... />
+  ))}
+</ScrollArea>
+```
 
 ---
 
-### Fluxo Visual Atualizado
+### Resultado Visual
 
 ```
-1. Usuario seleciona Modalidade (Day Trade / Swing)
-          |
-          v
-2. Usuario informa Valor Alocado (ex: R$ 1.000)
-          |
-          v
-3. Sistema calcula: Stop Max = 70% × R$ 1.000 = R$ 700
-          |
-          v
-4. Usuario informa Stop Financeiro Max (ate R$ 700)
-          |
-          v
-5. Clica em "+ Adicionar Ativo"
-          |
-          v
-6. Seleciona Ticker (PETR4), Preco (R$ 35), Stop % (2%)
-          |
-          v
-7. Sistema calcula:
-   - Margem/acao (BTG): R$ 0,37
-   - Qtd Max Margem: 2.702 acoes
-   - Qtd Max Stop: 714 acoes
-   - Quantidade FINAL: 714 acoes (menor)
-   - Perda Max: R$ 499,80
-   - Margem Usada: R$ 264,18
-          |
-          v
-8. Usuario ve claramente:
-   - Quantas acoes pode entrar
-   - Por que esse numero (limite de margem ou stop)
-   - Quanto vai gastar de margem
-   - Quanto pode perder no maximo
++------------------------------------------+
+|  Simulacao de Operacao                    |
++------------------------------------------+
+|  Modalidade: [Day Trade v]                |
+|  Valor Alocado: R$ 1.000,00               |
+|  Stop Financeiro Max: R$ 500,00           |
++------------------------------------------+
+|  DISTRIBUICAO DE RISCO           (scroll)|
+| +--------------------------------------+ |
+| | PETR4 - R$ 35 - Alav: 98x           | |
+| | Stop: 2% | Objetivo: 4%             | |
+| | Alocacao: [======70%======] R$ 350  | |
+| | -> 500 acoes                        | |
+| | Perda: R$ 350 | Ganho: R$ 700       | |
+| +--------------------------------------+ |
+| | VALE3 - R$ 60 - Alav: 47x           | |
+| | Stop: 1.5% | Objetivo: 3%           | |
+| | Alocacao: [===30%===] R$ 150        | |
+| | -> 166 acoes                        | |
+| | Perda: R$ 149 | Ganho: R$ 299       | |
+| +--------------------------------------+ |
++------------------------------------------+
+|  [+ Adicionar Ativo]                      |
++------------------------------------------+
 ```
 
 ---
 
 ### Secao Tecnica
 
-#### Formula Completa
+#### Arquivos Modificados
+| Arquivo | Acao |
+|---------|------|
+| `src/pages/StockSimulator.tsx` | Adicionar sliders, objetivo e scroll |
 
-```typescript
-// Para Day Trade com BTG
-const btgAsset = getBTGAsset(ticker);
-const alavancagem = btgAsset?.leverage || 1;
-const margemPorAcao = btgAsset?.marginPerShare || precoAtivo;
+#### Componentes Utilizados
+- `@/components/ui/slider` - Slider de alocacao
+- `@/components/ui/scroll-area` - Area de rolagem para posicoes
+- Estados existentes serao expandidos
 
-// Para Swing Trade
-const alavancagem = 5;
-const margemPorAcao = precoAtivo / 5;
+#### Logica de Alocacao
+```
+Ao adicionar nova posicao:
+  - Nova posicao recebe fatia igual dos outros
+  - Todos redistribuidos proporcionalmente
+  - Minimo de 5% por posicao
 
-// Calculos
-const qtdMaxMargem = Math.floor(valorAlocadoDisponivel / margemPorAcao);
-const stopPorAcao = precoAtivo * (stopPercentual / 100);
-const qtdMaxStop = Math.floor(stopFinanceiroDisponivel / stopPorAcao);
-const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
+Ao remover posicao:
+  - Redistribui % liberado entre os restantes
 
-const perdaMaxima = quantidade * stopPorAcao;
-const margemNecessaria = quantidade * margemPorAcao;
+Ao ajustar slider:
+  - Outros ajustam proporcionalmente
+  - Soma sempre = 100%
 ```
 
-#### Validacao de 70%
-
+#### Formulas
 ```typescript
-const stopMaximoPermitido = valorAlocado * 0.70;
-const isStopValido = stopFinanceiroMax <= stopMaximoPermitido;
+// Stop alocado para cada posicao
+stopAlocado = stopFinanceiroMax * (stopAlocadoPercent / 100)
 
-// Se nao for valido, mostrar warning e sugerir o valor maximo
+// Quantidade baseada no stop alocado
+qtdMaxStop = Math.floor(stopAlocado / (precoAtivo * stopPercentual / 100))
+
+// Ganho objetivo
+ganhoObjetivo = quantidade * precoAtivo * (objetivoPercentual / 100)
 ```
 
 ---
 
 ### Resultado Final
 
-O usuario tera clareza total sobre:
-1. Quanto capital esta alocando (margem)
-2. Quanto aceita perder (stop) - limitado a 70% do alocado
-3. Quantas acoes pode operar de cada ativo
-4. QUAL limite definiu a quantidade (margem ou stop)
-5. Quanto de margem esta utilizando por ativo
-6. Quanto pode perder por ativo
+O usuario tera:
+1. Clareza de como distribuir o risco entre multiplas acoes
+2. Controle total via sliders arrastando mais para uma ou outra
+3. Visualizacao do objetivo de cada trade em R$
+4. Scroll para gerenciar muitas posicoes
+5. Recalculo automatico ao ajustar qualquer slider
 
