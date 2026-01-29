@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { calculateTradeResult } from '@/lib/stockRiskCalculations';
-import { Plus, Loader2 } from 'lucide-react';
+import { getBTGAsset, btgAssets } from '@/lib/btgAssets';
+import { Plus, Loader2, Check, ChevronsUpDown, Info } from 'lucide-react';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from '@/lib/utils';
 
 interface StockTradeFormProps {
   dashboardId: string;
@@ -20,6 +35,7 @@ interface StockTradeFormProps {
 export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: StockTradeFormProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [tickerOpen, setTickerOpen] = useState(false);
   const [formData, setFormData] = useState({
     trade_date: new Date().toISOString().split('T')[0],
     ticker: '',
@@ -35,6 +51,43 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
     nota_disciplina: '',
     notes: '',
   });
+
+  // Lista de tickers BTG
+  const btgTickers = useMemo(() => btgAssets.map(a => a.ticker), []);
+
+  // Info do ativo BTG selecionado
+  const selectedBTGAsset = useMemo(() => {
+    if (!formData.ticker) return null;
+    return getBTGAsset(formData.ticker);
+  }, [formData.ticker]);
+
+  // Handler para seleção de ticker
+  const handleTickerSelect = (ticker: string) => {
+    const btgAsset = getBTGAsset(ticker);
+    if (formData.modalidade === 'daytrade' && btgAsset) {
+      setFormData({ 
+        ...formData, 
+        ticker, 
+        alavancagem: btgAsset.leverage.toString() 
+      });
+    } else {
+      setFormData({ ...formData, ticker });
+    }
+    setTickerOpen(false);
+  };
+
+  // Handler para mudança de modalidade
+  const handleModalidadeChange = (modalidade: 'daytrade' | 'swing') => {
+    const btgAsset = formData.ticker ? getBTGAsset(formData.ticker) : null;
+    
+    if (modalidade === 'daytrade' && btgAsset) {
+      setFormData({ ...formData, modalidade, alavancagem: btgAsset.leverage.toString() });
+    } else if (modalidade === 'swing') {
+      setFormData({ ...formData, modalidade, alavancagem: '5' });
+    } else {
+      setFormData({ ...formData, modalidade, alavancagem: '1' });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,14 +205,85 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
               />
             </div>
             
+            {/* Ticker com Autocomplete BTG */}
             <div className="space-y-2">
               <Label htmlFor="ticker">Ticker *</Label>
-              <Input
-                id="ticker"
-                value={formData.ticker}
-                onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
-                placeholder="PETR4"
-              />
+              <Popover open={tickerOpen} onOpenChange={setTickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={tickerOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    {formData.ticker || "Selecione ou digite..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Buscar ticker..." 
+                      onValueChange={(value) => {
+                        if (value && !btgTickers.includes(value.toUpperCase())) {
+                          // Permite ticker customizado
+                          setFormData({ ...formData, ticker: value.toUpperCase() });
+                        }
+                      }}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        <div className="py-2 text-center">
+                          <p className="text-sm text-muted-foreground">Ticker não encontrado na lista BTG</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => {
+                              setTickerOpen(false);
+                            }}
+                          >
+                            Usar ticker digitado
+                          </Button>
+                        </div>
+                      </CommandEmpty>
+                      <CommandGroup heading="Ativos BTG">
+                        {btgTickers.map((ticker) => {
+                          const asset = getBTGAsset(ticker);
+                          return (
+                            <CommandItem
+                              key={ticker}
+                              value={ticker}
+                              onSelect={() => handleTickerSelect(ticker)}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.ticker === ticker ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <span className="font-medium">{ticker}</span>
+                              {asset && (
+                                <span className="ml-auto text-xs text-muted-foreground">
+                                  {asset.leverage}x | R$ {asset.marginPerShare.toFixed(2)}/ação
+                                </span>
+                              )}
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              
+              {/* Info do ativo BTG selecionado */}
+              {selectedBTGAsset && formData.modalidade === 'daytrade' && (
+                <div className="flex items-center gap-1 text-xs text-primary">
+                  <Info className="h-3 w-3" />
+                  <span>BTG: {selectedBTGAsset.leverage}x alavancagem | R$ {selectedBTGAsset.marginPerShare.toFixed(2)}/ação</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -168,7 +292,7 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
               <Label htmlFor="modalidade">Modalidade</Label>
               <Select 
                 value={formData.modalidade} 
-                onValueChange={(v) => setFormData({ ...formData, modalidade: v as 'daytrade' | 'swing' })}
+                onValueChange={(v) => handleModalidadeChange(v as 'daytrade' | 'swing')}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -240,7 +364,11 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
                 value={formData.alavancagem}
                 onChange={(e) => setFormData({ ...formData, alavancagem: e.target.value })}
                 placeholder="1"
+                className={selectedBTGAsset && formData.modalidade === 'daytrade' ? 'border-primary/50' : ''}
               />
+              {selectedBTGAsset && formData.modalidade === 'daytrade' && (
+                <p className="text-xs text-primary">Automático: BTG {selectedBTGAsset.leverage}x</p>
+              )}
             </div>
 
             <div className="space-y-2">

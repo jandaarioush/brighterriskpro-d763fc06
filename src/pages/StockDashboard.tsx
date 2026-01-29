@@ -8,13 +8,15 @@ import { StockMonthHeatmap } from '@/components/stock/StockMonthHeatmap';
 import { StockTradeForm } from '@/components/stock/StockTradeForm';
 import { BrokerSelectionDialog, BrokerType } from '@/components/stock/BrokerSelectionDialog';
 import DashboardLayoutWrapper from '@/components/DashboardLayoutWrapper';
+import { Card } from '@/components/ui/card';
 import { 
   DollarSign, 
   TrendingUp, 
   AlertTriangle, 
   Percent,
   Shield,
-  Activity
+  Activity,
+  Calculator
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -233,6 +235,24 @@ export default function StockDashboard() {
           </p>
         </div>
 
+        {/* Simulação Rápida - Destaque no início */}
+        <Card className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-primary/20">
+              <Calculator className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Simulação Rápida</h2>
+              <p className="text-sm text-muted-foreground">Calcule sua posição antes de operar</p>
+            </div>
+          </div>
+          <StockRiskCalculator 
+            broker={broker || 'outra'} 
+            capitalTotal={capitalTotal} 
+            onCapitalChange={handleCapitalChange} 
+          />
+        </Card>
+
         {/* Top Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <StatCard
@@ -291,21 +311,13 @@ export default function StockDashboard() {
           />
         </div>
 
-        {/* Charts and Tools */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2">
-            <StockPnLEvolutionChart 
-              userId={user?.id || ""} 
-              dashboardId={dashboardId!}
-              defaultPeriod="month" 
-              showFilters={true} 
-            />
-          </div>
-          
-          <StockRiskCalculator 
-            broker={broker || 'outra'} 
-            capitalTotal={capitalTotal} 
-            onCapitalChange={handleCapitalChange} 
+        {/* Charts */}
+        <div className="grid grid-cols-1 gap-6 mb-8">
+          <StockPnLEvolutionChart 
+            userId={user?.id || ""} 
+            dashboardId={dashboardId!}
+            defaultPeriod="month" 
+            showFilters={true} 
           />
         </div>
 
