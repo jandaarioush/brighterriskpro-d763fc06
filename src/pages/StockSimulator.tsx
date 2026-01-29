@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
-import { Calculator, AlertTriangle, CheckCircle2, Plus, Trash2, TrendingUp } from 'lucide-react';
+import { Calculator, AlertTriangle, CheckCircle2, Plus, Trash2, TrendingUp, Wallet, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateDailyStockRisk, getWorkingDaysRemaining, StockTrade } from '@/lib/stockRiskCalculations';
@@ -28,6 +28,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Dashboard {
   id: string;
@@ -42,9 +48,13 @@ interface SimulatorPosition {
   precoAtivo: number;
   stopPercentual: number;
   alavancagem: number;
+  margemPorAcao: number;
+  qtdMaxMargem: number;
+  qtdMaxStop: number;
   quantidade: number;
   perdaMaxima: number;
   margemNecessaria: number;
+  limiteFator: 'margem' | 'stop';
 }
 
 type Modalidade = 'daytrade' | 'swing';
@@ -55,8 +65,9 @@ export default function StockSimulator() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Modalidade e Stop Financeiro
+  // Modalidade, Valor Alocado e Stop Financeiro
   const [modalidade, setModalidade] = useState<Modalidade>('daytrade');
+  const [valorAlocado, setValorAlocado] = useState(1000);
   const [stopFinanceiroMax, setStopFinanceiroMax] = useState(500);
   const [positions, setPositions] = useState<SimulatorPosition[]>([]);
 
@@ -74,12 +85,15 @@ export default function StockSimulator() {
   const [dailyRiskValue, setDailyRiskValue] = useState(0);
   const [accumulatedLoss, setAccumulatedLoss] = useState(0);
 
+  // Validações
+  const stopMaximoPermitido = valorAlocado * 0.70;
+  const isStopValido = stopFinanceiroMax <= stopMaximoPermitido;
+
   // Lista de tickers disponíveis
   const tickerList = useMemo(() => {
     if (modalidade === 'daytrade') {
       return btgAssets.map(a => a.ticker);
     }
-    // Para swing, permitir qualquer ticker (usa os mesmos como sugestão)
     return btgAssets.map(a => a.ticker);
   }, [modalidade]);
 
@@ -153,6 +167,18 @@ export default function StockSimulator() {
     setIsAddingPosition(false);
   };
 
+  // Obter margem por ação
+  const getMargemPorAcao = (ticker: string, preco: number): number => {
+    if (modalidade === 'swing') {
+      return preco / 5;
+    }
+    const btgAsset = getBTGAsset(ticker);
+    if (btgAsset) {
+      return btgAsset.marginPerShare;
+    }
+    return preco;
+  };
+
   // Calcular alavancagem baseado na modalidade e ticker
   const getAlavancagem = (ticker: string): number => {
     if (modalidade === 'swing') {
@@ -162,30 +188,34 @@ export default function StockSimulator() {
     return btgAsset?.leverage || 1;
   };
 
-  // Calcular margem necessária
-  const getMargemNecessaria = (ticker: string, preco: number, quantidade: number): number => {
-    if (modalidade === 'swing') {
-      return (preco * quantidade) / 5;
-    }
-    const btgAsset = getBTGAsset(ticker);
-    if (btgAsset) {
-      return btgAsset.marginPerShare * quantidade;
-    }
-    return preco * quantidade;
-  };
+  // Cálculos de margem e stop disponíveis
+  const totalMargemUsada = positions.reduce((sum, p) => sum + p.margemNecessaria, 0);
+  const margemDisponivel = valorAlocado - totalMargemUsada;
+  const totalPerdaUsada = positions.reduce((sum, p) => sum + p.perdaMaxima, 0);
+  const stopDisponivel = stopFinanceiroMax - totalPerdaUsada;
 
-  // Adicionar nova posição
+  // Adicionar nova posição com limite duplo
   const handleAddPosition = () => {
     if (!newTicker || newPreco <= 0) return;
 
-    const stopPorAcao = newPreco * (newStopPercentual / 100);
-    const stopDisponivel = stopFinanceiroMax - totalPerdaUsada;
-    const quantidade = Math.floor(stopDisponivel / stopPorAcao);
-    const perdaMaxima = quantidade * stopPorAcao;
     const alavancagem = getAlavancagem(newTicker);
-    const margemNecessaria = getMargemNecessaria(newTicker, newPreco, quantidade);
+    const margemPorAcao = getMargemPorAcao(newTicker, newPreco);
+    const stopPorAcao = newPreco * (newStopPercentual / 100);
+
+    // Limite pela margem
+    const qtdMaxMargem = Math.floor(margemDisponivel / margemPorAcao);
+    
+    // Limite pelo stop
+    const qtdMaxStop = Math.floor(stopDisponivel / stopPorAcao);
+    
+    // Quantidade final: menor dos dois
+    const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
+    const limiteFator: 'margem' | 'stop' = qtdMaxMargem <= qtdMaxStop ? 'margem' : 'stop';
 
     if (quantidade <= 0) return;
+
+    const perdaMaxima = quantidade * stopPorAcao;
+    const margemNecessaria = quantidade * margemPorAcao;
 
     const newPosition: SimulatorPosition = {
       id: crypto.randomUUID(),
@@ -193,9 +223,13 @@ export default function StockSimulator() {
       precoAtivo: newPreco,
       stopPercentual: newStopPercentual,
       alavancagem,
+      margemPorAcao,
+      qtdMaxMargem,
+      qtdMaxStop,
       quantidade,
       perdaMaxima,
       margemNecessaria,
+      limiteFator,
     };
 
     setPositions([...positions, newPosition]);
@@ -211,10 +245,34 @@ export default function StockSimulator() {
   };
 
   // Cálculos totais
-  const totalPerdaUsada = positions.reduce((sum, p) => sum + p.perdaMaxima, 0);
-  const percentualUsado = stopFinanceiroMax > 0 ? (totalPerdaUsada / stopFinanceiroMax) * 100 : 0;
-  const isWithinLimit = totalPerdaUsada <= stopFinanceiroMax;
-  const stopDisponivel = stopFinanceiroMax - totalPerdaUsada;
+  const percentualStopUsado = stopFinanceiroMax > 0 ? (totalPerdaUsada / stopFinanceiroMax) * 100 : 0;
+  const percentualMargemUsada = valorAlocado > 0 ? (totalMargemUsada / valorAlocado) * 100 : 0;
+  const isWithinLimit = totalPerdaUsada <= stopFinanceiroMax && totalMargemUsada <= valorAlocado;
+
+  // Preview do cálculo
+  const previewCalculo = useMemo(() => {
+    if (!newTicker || newPreco <= 0) return null;
+    
+    const alavancagem = getAlavancagem(newTicker);
+    const margemPorAcao = getMargemPorAcao(newTicker, newPreco);
+    const stopPorAcao = newPreco * (newStopPercentual / 100);
+    
+    const qtdMaxMargem = Math.floor(margemDisponivel / margemPorAcao);
+    const qtdMaxStop = Math.floor(stopDisponivel / stopPorAcao);
+    const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
+    const limiteFator = qtdMaxMargem <= qtdMaxStop ? 'margem' : 'stop';
+    
+    return {
+      quantidade,
+      qtdMaxMargem,
+      qtdMaxStop,
+      limiteFator,
+      perdaMaxima: quantidade * stopPorAcao,
+      margemNecessaria: quantidade * margemPorAcao,
+      alavancagem,
+      margemPorAcao,
+    };
+  }, [newTicker, newPreco, newStopPercentual, margemDisponivel, stopDisponivel, modalidade]);
 
   if (loading) {
     return (
@@ -236,7 +294,7 @@ export default function StockSimulator() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2 font-montserrat">Simulador - {dashboard?.name}</h1>
           <p className="text-muted-foreground">
-            Calcule quantas ações entrar em cada trade respeitando seu stop máximo
+            Calcule quantas ações entrar em cada trade respeitando margem e stop máximo
           </p>
         </div>
 
@@ -270,19 +328,91 @@ export default function StockSimulator() {
                 </p>
               </div>
 
+              {/* Valor Alocado */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="valorAlocado">Valor Alocado (R$)</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Capital que você vai usar como margem para operar. Este valor determina a quantidade máxima de ações baseado na alavancagem.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Input
+                  id="valorAlocado"
+                  type="number"
+                  min="0"
+                  value={valorAlocado}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setValorAlocado(value);
+                    // Ajustar stop se exceder 70%
+                    if (stopFinanceiroMax > value * 0.7) {
+                      setStopFinanceiroMax(value * 0.7);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Capital disponível para margem
+                </p>
+              </div>
+
               {/* Stop Financeiro Máximo */}
               <div>
-                <Label htmlFor="stopMax">Stop Financeiro Máximo (R$)</Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="stopMax">Stop Financeiro Máximo (R$)</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Máximo que você aceita perder. Limitado a 70% do Valor Alocado.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <Input
                   id="stopMax"
                   type="number"
                   min="0"
+                  max={stopMaximoPermitido}
                   value={stopFinanceiroMax}
-                  onChange={(e) => setStopFinanceiroMax(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setStopFinanceiroMax(Math.min(value, stopMaximoPermitido));
+                  }}
+                  className={!isStopValido ? 'border-destructive' : ''}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Valor máximo que você aceita perder nesta simulação
-                </p>
+                <div className="flex justify-between items-center mt-1">
+                  <p className={`text-xs ${isStopValido ? 'text-muted-foreground' : 'text-destructive'}`}>
+                    Limite máximo: R$ {stopMaximoPermitido.toFixed(2)} (70%)
+                  </p>
+                  {!isStopValido && (
+                    <span className="text-xs text-destructive font-medium">Excede 70%!</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Resumo de Limites */}
+              <div className="p-3 rounded-lg bg-background/50 border border-border/50 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Margem Disponível:</span>
+                  <span className={`font-medium ${margemDisponivel < 0 ? 'text-destructive' : 'text-green-500'}`}>
+                    R$ {margemDisponivel.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Stop Disponível:</span>
+                  <span className={`font-medium ${stopDisponivel < 0 ? 'text-destructive' : 'text-blue-500'}`}>
+                    R$ {stopDisponivel.toFixed(2)}
+                  </span>
+                </div>
               </div>
 
               {/* Lista de Posições Adicionadas */}
@@ -316,14 +446,35 @@ export default function StockSimulator() {
                           <span className="text-muted-foreground">Stop:</span>{' '}
                           <span className="font-medium">{pos.stopPercentual.toFixed(1)}%</span>
                         </div>
-                        <div className="col-span-2 pt-2 border-t border-border/30">
+                        <div>
+                          <span className="text-muted-foreground">Margem/ação:</span>{' '}
+                          <span className="font-medium">R$ {pos.margemPorAcao.toFixed(2)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Margem usada:</span>{' '}
+                          <span className="font-medium">R$ {pos.margemNecessaria.toFixed(2)}</span>
+                        </div>
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-border/30">
+                        <div className="flex justify-between items-center">
                           <span className="text-primary font-bold text-lg">
                             {pos.quantidade} ações
                           </span>
-                          <span className="text-muted-foreground text-xs ml-2">
-                            (perda: R$ {pos.perdaMaxima.toFixed(2)})
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            pos.limiteFator === 'margem' 
+                              ? 'bg-orange-500/20 text-orange-500' 
+                              : 'bg-blue-500/20 text-blue-500'
+                          }`}>
+                            Limite: {pos.limiteFator === 'margem' ? 'Margem' : 'Stop'}
                           </span>
                         </div>
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>Qtd máx (margem): {pos.qtdMaxMargem}</span>
+                          <span>Qtd máx (stop): {pos.qtdMaxStop}</span>
+                        </div>
+                        <p className="text-sm text-destructive mt-1">
+                          Perda máx: R$ {pos.perdaMaxima.toFixed(2)}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -370,7 +521,7 @@ export default function StockSimulator() {
                                     <span className="font-medium">{ticker}</span>
                                     {modalidade === 'daytrade' && btgAsset && (
                                       <span className="ml-auto text-xs text-muted-foreground">
-                                        {btgAsset.leverage}x
+                                        {btgAsset.leverage}x | R$ {btgAsset.marginPerShare.toFixed(2)}/ação
                                       </span>
                                     )}
                                   </CommandItem>
@@ -417,15 +568,59 @@ export default function StockSimulator() {
                     </div>
                   </div>
 
-                  {/* Preview do Cálculo */}
-                  {newTicker && newPreco > 0 && (
-                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                      <p className="text-sm text-muted-foreground mb-1">Prévia do cálculo:</p>
-                      <p className="font-bold text-primary">
-                        {Math.floor(stopDisponivel / (newPreco * (newStopPercentual / 100)))} ações
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Perda máx: R$ {(Math.floor(stopDisponivel / (newPreco * (newStopPercentual / 100))) * newPreco * (newStopPercentual / 100)).toFixed(2)}
+                  {/* Preview do Cálculo com Limite Duplo */}
+                  {previewCalculo && previewCalculo.quantidade > 0 && (
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
+                      <p className="text-sm font-semibold text-primary">Prévia do cálculo:</p>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Alavancagem:</span>{' '}
+                          <span className="font-medium">{previewCalculo.alavancagem}x</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Margem/ação:</span>{' '}
+                          <span className="font-medium">R$ {previewCalculo.margemPorAcao.toFixed(2)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Qtd máx (margem):</span>{' '}
+                          <span className={`font-medium ${previewCalculo.limiteFator === 'margem' ? 'text-orange-500' : ''}`}>
+                            {previewCalculo.qtdMaxMargem}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Qtd máx (stop):</span>{' '}
+                          <span className={`font-medium ${previewCalculo.limiteFator === 'stop' ? 'text-blue-500' : ''}`}>
+                            {previewCalculo.qtdMaxStop}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-primary/20">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-primary text-lg">
+                            {previewCalculo.quantidade} ações
+                          </span>
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            previewCalculo.limiteFator === 'margem' 
+                              ? 'bg-orange-500/20 text-orange-500' 
+                              : 'bg-blue-500/20 text-blue-500'
+                          }`}>
+                            Limite: {previewCalculo.limiteFator === 'margem' ? 'Margem' : 'Stop'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>Margem: R$ {previewCalculo.margemNecessaria.toFixed(2)}</span>
+                          <span>Perda máx: R$ {previewCalculo.perdaMaxima.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {previewCalculo && previewCalculo.quantidade <= 0 && (
+                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                      <p className="text-sm text-destructive">
+                        Sem margem ou stop disponível para adicionar este ativo.
                       </p>
                     </div>
                   )}
@@ -442,7 +637,7 @@ export default function StockSimulator() {
                     <Button
                       className="flex-1"
                       onClick={handleAddPosition}
-                      disabled={!newTicker || newPreco <= 0 || stopDisponivel <= 0}
+                      disabled={!newTicker || newPreco <= 0 || !previewCalculo || previewCalculo.quantidade <= 0}
                     >
                       Adicionar
                     </Button>
@@ -453,7 +648,7 @@ export default function StockSimulator() {
                   variant="outline"
                   className="w-full"
                   onClick={() => setIsAddingPosition(true)}
-                  disabled={stopDisponivel <= 0}
+                  disabled={margemDisponivel <= 0 && stopDisponivel <= 0}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Adicionar Ativo
@@ -476,16 +671,40 @@ export default function StockSimulator() {
               {positions.length > 0 ? (
                 <div className="space-y-3">
                   {positions.map((pos) => (
-                    <div key={pos.id} className="flex justify-between items-center p-3 rounded-lg bg-background/50">
-                      <div>
-                        <span className="font-bold">{pos.ticker}</span>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {pos.quantidade} ações
+                    <div key={pos.id} className="p-3 rounded-lg bg-background/50">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <span className="font-bold">{pos.ticker}</span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {pos.alavancagem}x
+                          </span>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          pos.limiteFator === 'margem' 
+                            ? 'bg-orange-500/20 text-orange-500' 
+                            : 'bg-blue-500/20 text-blue-500'
+                        }`}>
+                          {pos.limiteFator === 'margem' ? 'Limitado por Margem' : 'Limitado por Stop'}
                         </span>
                       </div>
-                      <span className="text-destructive font-medium">
-                        -R$ {pos.perdaMaxima.toFixed(2)}
-                      </span>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Quantidade:</span>{' '}
+                          <span className="font-bold text-primary">{pos.quantidade}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Perda máx:</span>{' '}
+                          <span className="text-destructive">R$ {pos.perdaMaxima.toFixed(2)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Margem usada:</span>{' '}
+                          <span className="font-medium">R$ {pos.margemNecessaria.toFixed(2)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Valor posição:</span>{' '}
+                          <span className="font-medium">R$ {(pos.precoAtivo * pos.quantidade).toFixed(2)}</span>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -496,20 +715,43 @@ export default function StockSimulator() {
                 </div>
               )}
 
-              {/* Barra de Progresso */}
+              {/* Barra de Progresso - Margem */}
               <div className="pt-4 border-t border-border/30">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-muted-foreground">Stop Utilizado</span>
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Wallet className="h-4 w-4" />
+                    Margem Utilizada
+                  </span>
+                  <span className="font-bold">
+                    R$ {totalMargemUsada.toFixed(2)} / R$ {valorAlocado.toFixed(2)}
+                  </span>
+                </div>
+                <Progress 
+                  value={Math.min(percentualMargemUsada, 100)} 
+                  className={`h-3 ${percentualMargemUsada > 100 ? '[&>div]:bg-destructive' : '[&>div]:bg-orange-500'}`}
+                />
+                <p className="text-xs text-muted-foreground mt-1 text-right">
+                  {percentualMargemUsada.toFixed(1)}% utilizado
+                </p>
+              </div>
+
+              {/* Barra de Progresso - Stop */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    <AlertTriangle className="h-4 w-4" />
+                    Stop Utilizado
+                  </span>
                   <span className="font-bold">
                     R$ {totalPerdaUsada.toFixed(2)} / R$ {stopFinanceiroMax.toFixed(2)}
                   </span>
                 </div>
                 <Progress 
-                  value={Math.min(percentualUsado, 100)} 
-                  className={`h-3 ${percentualUsado > 100 ? '[&>div]:bg-destructive' : ''}`}
+                  value={Math.min(percentualStopUsado, 100)} 
+                  className={`h-3 ${percentualStopUsado > 100 ? '[&>div]:bg-destructive' : ''}`}
                 />
                 <p className="text-xs text-muted-foreground mt-1 text-right">
-                  {percentualUsado.toFixed(1)}% utilizado
+                  {percentualStopUsado.toFixed(1)}% utilizado
                 </p>
               </div>
 
@@ -521,12 +763,12 @@ export default function StockSimulator() {
                     {isWithinLimit ? 'Dentro do Limite' : 'Acima do Limite'}
                   </p>
                 </div>
-                <p className="text-sm">
-                  {isWithinLimit 
-                    ? `Sobra: R$ ${stopDisponivel.toFixed(2)} para novos ativos`
-                    : `Excede em R$ ${Math.abs(stopDisponivel).toFixed(2)}`
-                  }
-                </p>
+                {isWithinLimit && (
+                  <div className="text-sm space-y-1">
+                    <p>Margem livre: R$ {margemDisponivel.toFixed(2)}</p>
+                    <p>Stop livre: R$ {stopDisponivel.toFixed(2)}</p>
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -541,36 +783,52 @@ export default function StockSimulator() {
             </div>
 
             <div className="space-y-4">
-              <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
-                <p className="text-sm text-muted-foreground">Capital Total</p>
-                <p className="font-bold">R$ {capitalTotal.toLocaleString('pt-BR')}</p>
+              {/* Valores Alocados */}
+              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-purple-500">
+                <p className="text-xs text-muted-foreground mb-1">Valor Alocado</p>
+                <p className="font-bold text-lg">R$ {valorAlocado.toLocaleString('pt-BR')}</p>
               </div>
 
-              <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
-                <p className="text-sm text-muted-foreground">Risco Mensal Base</p>
-                <p className="font-bold text-green-500">{riskPercentual}%</p>
+              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-orange-500">
+                <p className="text-xs text-muted-foreground mb-1">Margem Total Utilizada</p>
+                <p className="font-bold text-lg text-orange-500">R$ {totalMargemUsada.toFixed(2)}</p>
               </div>
 
-              <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
-                <p className="text-sm text-muted-foreground">Risco Diário Atual</p>
-                <p className="font-bold">{dailyRiskPercent.toFixed(2)}%</p>
+              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-green-500">
+                <p className="text-xs text-muted-foreground mb-1">Margem Disponível</p>
+                <p className={`font-bold text-lg ${margemDisponivel >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                  R$ {margemDisponivel.toFixed(2)}
+                </p>
               </div>
 
-              <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
-                <p className="text-sm text-muted-foreground">Risco Diário (R$)</p>
-                <p className="font-bold text-blue-500">R$ {dailyRiskValue.toFixed(2)}</p>
-              </div>
+              <div className="border-t border-border/30 pt-4">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
+                  <p className="text-sm text-muted-foreground">Capital Total</p>
+                  <p className="font-bold">R$ {capitalTotal.toLocaleString('pt-BR')}</p>
+                </div>
 
-              <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
-                <p className="text-sm text-muted-foreground">Perda Acumulada (Mês)</p>
-                <p className="font-bold text-red-500">{accumulatedLoss.toFixed(2)}%</p>
+                <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
+                  <p className="text-sm text-muted-foreground">Risco Mensal Base</p>
+                  <p className="font-bold text-green-500">{riskPercentual}%</p>
+                </div>
+
+                <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
+                  <p className="text-sm text-muted-foreground">Risco Diário (R$)</p>
+                  <p className="font-bold text-blue-500">R$ {dailyRiskValue.toFixed(2)}</p>
+                </div>
+
+                <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
+                  <p className="text-sm text-muted-foreground">Perda Acumulada (Mês)</p>
+                  <p className="font-bold text-red-500">{accumulatedLoss.toFixed(2)}%</p>
+                </div>
               </div>
 
               <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                <p className="text-xs font-semibold text-green-500 mb-2">Dica:</p>
+                <p className="text-xs font-semibold text-green-500 mb-2">Como funciona:</p>
                 <p className="text-xs text-muted-foreground">
-                  Use o Risco Diário (R$) como referência para o Stop Financeiro Máximo 
-                  para manter sua gestão de risco consistente.
+                  A quantidade de ações é calculada pelo MENOR valor entre:
+                  <br />• <strong className="text-orange-500">Limite de Margem:</strong> Valor Alocado ÷ Margem por ação
+                  <br />• <strong className="text-blue-500">Limite de Stop:</strong> Stop Financeiro ÷ Stop por ação
                 </p>
               </div>
             </div>
