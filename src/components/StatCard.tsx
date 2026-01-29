@@ -25,14 +25,14 @@ export function StatCard({
     default: "border-border",
     success: "border-success/30 bg-success/5",
     danger: "border-danger/30 bg-danger/5",
-    warning: "border-yellow-500/30 bg-yellow-500/5"
+    warning: "border-primary/30 bg-primary/5"
   };
 
   const iconStyles = {
     default: "text-primary",
     success: "text-success",
     danger: "text-danger",
-    warning: "text-yellow-500"
+    warning: "text-primary"
   };
 
   return (

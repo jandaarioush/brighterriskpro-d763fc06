@@ -284,10 +284,10 @@ export default function StockTrades() {
                     <TableCell className="text-right">R$ {trade.preco_saida.toFixed(2)}</TableCell>
                     <TableCell className="text-right">{trade.quantidade}</TableCell>
                     <TableCell className="text-right">{trade.alavancagem}x</TableCell>
-                    <TableCell className={`text-right font-semibold ${trade.resultado_reais >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    <TableCell className={`text-right font-semibold ${trade.resultado_reais >= 0 ? 'text-success' : 'text-destructive'}`}>
                       R$ {trade.resultado_reais.toFixed(2)}
                     </TableCell>
-                    <TableCell className={`text-right ${trade.resultado_percentual >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    <TableCell className={`text-right ${trade.resultado_percentual >= 0 ? 'text-success' : 'text-destructive'}`}>
                       {trade.resultado_percentual.toFixed(2)}%
                     </TableCell>
                     <TableCell>{trade.setup_utilizado || '-'}</TableCell>

@@ -89,13 +89,13 @@ export function PnLEvolutionChart({
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
           <p className="font-semibold mb-1">{data.dateLabel}</p>
           <p className="text-sm">
-            Resultado: <span className={data.dailyResult >= 0 ? "text-green-500" : "text-red-500"}>
+            Resultado: <span className={data.dailyResult >= 0 ? "text-success" : "text-destructive"}>
               {formatCurrency(data.dailyResult)}
             </span>
           </p>
           {payload[0].dataKey === "cumulativeResult" && (
             <p className="text-sm">
-              Acumulado: <span className={data.cumulativeResult >= 0 ? "text-green-500" : "text-red-500"}>
+              Acumulado: <span className={data.cumulativeResult >= 0 ? "text-success" : "text-destructive"}>
                 {formatCurrency(data.cumulativeResult)}
               </span>
             </p>

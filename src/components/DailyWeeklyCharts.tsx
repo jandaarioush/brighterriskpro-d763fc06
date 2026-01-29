@@ -29,7 +29,7 @@ export function DailyWeeklyCharts({ trades, currentMonth, monthlyRisk }: DailyWe
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
           <p className="font-semibold mb-1">{data.dateLabel}</p>
           <p className="text-sm">
-            Resultado: <span className={data.dailyResult >= 0 ? "text-green-500" : "text-red-500"}>
+            Resultado: <span className={data.dailyResult >= 0 ? "text-success" : "text-destructive"}>
               {formatCurrency(data.dailyResult)}
             </span>
           </p>
