@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Calculator, AlertTriangle, CheckCircle2, Plus, Trash2, TrendingUp, Wallet, Info, Target } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Calculator, AlertTriangle, CheckCircle2, Trash2, TrendingUp, Wallet, Info, Target, Search, X, ChevronRight, ChevronLeft, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateDailyStockRisk, getWorkingDaysRemaining, StockTrade } from '@/lib/stockRiskCalculations';
@@ -16,19 +17,6 @@ import { btgAssets, getBTGAsset } from '@/lib/btgAssets';
 import { format, endOfMonth } from 'date-fns';
 import DashboardLayoutWrapper from '@/components/DashboardLayoutWrapper';
 import DashboardTabs from '@/components/DashboardTabs';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -62,7 +50,13 @@ interface SimulatorPosition {
   limiteFator: 'margem' | 'stop';
 }
 
+interface SelectedAsset {
+  ticker: string;
+  preco: number;
+}
+
 type Modalidade = 'daytrade' | 'swing';
+type WizardStep = 'select' | 'prices' | 'params' | 'results';
 
 export default function StockSimulator() {
   const { dashboardId } = useParams<{ dashboardId: string }>();
@@ -70,19 +64,18 @@ export default function StockSimulator() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState<WizardStep>('select');
+  const [selectedAssets, setSelectedAssets] = useState<SelectedAsset[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Modalidade, Valor Alocado e Stop Financeiro
   const [modalidade, setModalidade] = useState<Modalidade>('daytrade');
   const [valorAlocado, setValorAlocado] = useState(1000);
   const [stopFinanceiroMax, setStopFinanceiroMax] = useState(500);
+  const [stopLossPercent, setStopLossPercent] = useState(2);
+  const [objetivoPercent, setObjetivoPercent] = useState(4);
   const [positions, setPositions] = useState<SimulatorPosition[]>([]);
-
-  // Form para adicionar novo ativo
-  const [isAddingPosition, setIsAddingPosition] = useState(false);
-  const [newTicker, setNewTicker] = useState('');
-  const [newPreco, setNewPreco] = useState(0);
-  const [newStopPercentual, setNewStopPercentual] = useState(2);
-  const [newObjetivoPercentual, setNewObjetivoPercentual] = useState(4);
-  const [tickerOpen, setTickerOpen] = useState(false);
 
   // Parâmetros atuais (do dashboard)
   const [capitalTotal, setCapitalTotal] = useState(0);
@@ -97,11 +90,16 @@ export default function StockSimulator() {
 
   // Lista de tickers disponíveis
   const tickerList = useMemo(() => {
-    if (modalidade === 'daytrade') {
-      return btgAssets.map(a => a.ticker);
-    }
     return btgAssets.map(a => a.ticker);
-  }, [modalidade]);
+  }, []);
+
+  // Filtered tickers based on search
+  const filteredTickers = useMemo(() => {
+    if (!searchQuery.trim()) return tickerList.slice(0, 24);
+    return tickerList.filter(ticker => 
+      ticker.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 24);
+  }, [searchQuery, tickerList]);
 
   useEffect(() => {
     if (user && dashboardId) {
@@ -166,11 +164,28 @@ export default function StockSimulator() {
     }
   }, [capitalTotal, riskPercentual, accumulatedLoss]);
 
-  // Limpar posições ao mudar modalidade
-  const handleModalidadeChange = (newModalidade: Modalidade) => {
-    setModalidade(newModalidade);
-    setPositions([]);
-    setIsAddingPosition(false);
+  // Check if asset is already selected
+  const isSelected = (ticker: string) => {
+    return selectedAssets.some(a => a.ticker === ticker);
+  };
+
+  // Add asset to selection
+  const addAsset = (ticker: string) => {
+    if (!isSelected(ticker)) {
+      setSelectedAssets(prev => [...prev, { ticker, preco: 0 }]);
+    }
+  };
+
+  // Remove asset from selection
+  const removeAsset = (ticker: string) => {
+    setSelectedAssets(prev => prev.filter(a => a.ticker !== ticker));
+  };
+
+  // Update asset price
+  const updateAssetPrice = (ticker: string, preco: number) => {
+    setSelectedAssets(prev => prev.map(a => 
+      a.ticker === ticker ? { ...a, preco } : a
+    ));
   };
 
   // Obter margem por ação
@@ -255,66 +270,51 @@ export default function StockSimulator() {
     });
   };
 
-  // Adicionar nova posição com distribuição proporcional
-  const handleAddPosition = () => {
-    if (!newTicker || newPreco <= 0) return;
+  // Calculate all positions from selected assets
+  const calculateAllPositions = () => {
+    if (selectedAssets.length === 0) return;
 
-    const alavancagem = getAlavancagem(newTicker);
-    const margemPorAcao = getMargemPorAcao(newTicker, newPreco);
-    
-    // Calcular nova distribuição proporcional
-    const numPositions = positions.length + 1;
-    const newStopPercent = 100 / numPositions;
-    
-    // Redistribuir posições existentes
-    const redistributedPositions = positions.map(p => 
-      recalculatePosition({ 
-        ...p, 
-        stopAlocadoPercent: (100 - newStopPercent) * (p.stopAlocadoPercent / 100) 
-      })
-    );
+    const numPositions = selectedAssets.length;
+    const stopPercentEach = 100 / numPositions;
 
-    // Criar nova posição
-    const stopAlocado = stopFinanceiroMax * (newStopPercent / 100);
-    const stopPorAcao = newPreco * (newStopPercentual / 100);
-    const ganhoPorAcao = newPreco * (newObjetivoPercentual / 100);
-    
-    const qtdMaxMargem = Math.floor(valorAlocado / margemPorAcao);
-    const qtdMaxStop = stopPorAcao > 0 ? Math.floor(stopAlocado / stopPorAcao) : 0;
-    const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
-    const limiteFator: 'margem' | 'stop' = qtdMaxMargem <= qtdMaxStop ? 'margem' : 'stop';
+    const newPositions: SimulatorPosition[] = selectedAssets.map(asset => {
+      const alavancagem = getAlavancagem(asset.ticker);
+      const margemPorAcao = getMargemPorAcao(asset.ticker, asset.preco);
+      const stopAlocado = stopFinanceiroMax * (stopPercentEach / 100);
+      const stopPorAcao = asset.preco * (stopLossPercent / 100);
+      const ganhoPorAcao = asset.preco * (objetivoPercent / 100);
+      
+      const qtdMaxMargem = Math.floor(valorAlocado / margemPorAcao);
+      const qtdMaxStop = stopPorAcao > 0 ? Math.floor(stopAlocado / stopPorAcao) : 0;
+      const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
+      const limiteFator: 'margem' | 'stop' = qtdMaxMargem <= qtdMaxStop ? 'margem' : 'stop';
 
-    if (quantidade <= 0) return;
+      const perdaMaxima = quantidade * stopPorAcao;
+      const ganhoObjetivo = quantidade * ganhoPorAcao;
+      const margemNecessaria = quantidade * margemPorAcao;
 
-    const perdaMaxima = quantidade * stopPorAcao;
-    const ganhoObjetivo = quantidade * ganhoPorAcao;
-    const margemNecessaria = quantidade * margemPorAcao;
+      return {
+        id: crypto.randomUUID(),
+        ticker: asset.ticker,
+        precoAtivo: asset.preco,
+        stopPercentual: stopLossPercent,
+        objetivoPercentual: objetivoPercent,
+        alavancagem,
+        margemPorAcao,
+        stopAlocadoPercent: stopPercentEach,
+        stopAlocado,
+        qtdMaxMargem,
+        qtdMaxStop,
+        quantidade,
+        perdaMaxima,
+        ganhoObjetivo,
+        margemNecessaria,
+        limiteFator,
+      };
+    });
 
-    const newPosition: SimulatorPosition = {
-      id: crypto.randomUUID(),
-      ticker: newTicker.toUpperCase(),
-      precoAtivo: newPreco,
-      stopPercentual: newStopPercentual,
-      objetivoPercentual: newObjetivoPercentual,
-      alavancagem,
-      margemPorAcao,
-      stopAlocadoPercent: newStopPercent,
-      stopAlocado,
-      qtdMaxMargem,
-      qtdMaxStop,
-      quantidade,
-      perdaMaxima,
-      ganhoObjetivo,
-      margemNecessaria,
-      limiteFator,
-    };
-
-    setPositions([...redistributedPositions, newPosition]);
-    setNewTicker('');
-    setNewPreco(0);
-    setNewStopPercentual(2);
-    setNewObjetivoPercentual(4);
-    setIsAddingPosition(false);
+    setPositions(newPositions);
+    setCurrentStep('results');
   };
 
   // Remover posição e redistribuir
@@ -350,37 +350,37 @@ export default function StockSimulator() {
   const percentualMargemUsada = valorAlocado > 0 ? (totalMargemUsada / valorAlocado) * 100 : 0;
   const isWithinLimit = totalPerdaUsada <= stopFinanceiroMax && totalMargemUsada <= valorAlocado;
 
-  // Preview do cálculo
-  const previewCalculo = useMemo(() => {
-    if (!newTicker || newPreco <= 0) return null;
-    
-    const alavancagem = getAlavancagem(newTicker);
-    const margemPorAcao = getMargemPorAcao(newTicker, newPreco);
-    const stopPorAcao = newPreco * (newStopPercentual / 100);
-    const ganhoPorAcao = newPreco * (newObjetivoPercentual / 100);
-    
-    // Para preview, assumir distribuição igual
-    const previewStopPercent = 100 / (positions.length + 1);
-    const previewStopAlocado = stopFinanceiroMax * (previewStopPercent / 100);
-    
-    const qtdMaxMargem = Math.floor(valorAlocado / margemPorAcao);
-    const qtdMaxStop = stopPorAcao > 0 ? Math.floor(previewStopAlocado / stopPorAcao) : 0;
-    const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
-    const limiteFator = qtdMaxMargem <= qtdMaxStop ? 'margem' : 'stop';
-    
-    return {
-      quantidade,
-      qtdMaxMargem,
-      qtdMaxStop,
-      limiteFator,
-      perdaMaxima: quantidade * stopPorAcao,
-      ganhoObjetivo: quantidade * ganhoPorAcao,
-      margemNecessaria: quantidade * margemPorAcao,
-      alavancagem,
-      margemPorAcao,
-      stopAlocadoPercent: previewStopPercent,
-    };
-  }, [newTicker, newPreco, newStopPercentual, newObjetivoPercentual, valorAlocado, stopFinanceiroMax, positions.length, modalidade]);
+  // Navigation
+  const canProceedSelect = selectedAssets.length > 0;
+  const canProceedPrices = selectedAssets.every(a => a.preco > 0);
+  const canProceedParams = isStopValido && valorAlocado > 0 && stopFinanceiroMax > 0;
+
+  const handleNext = () => {
+    if (currentStep === 'select' && canProceedSelect) {
+      setCurrentStep('prices');
+    } else if (currentStep === 'prices' && canProceedPrices) {
+      setCurrentStep('params');
+    } else if (currentStep === 'params' && canProceedParams) {
+      calculateAllPositions();
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep === 'prices') {
+      setCurrentStep('select');
+    } else if (currentStep === 'params') {
+      setCurrentStep('prices');
+    } else if (currentStep === 'results') {
+      setCurrentStep('params');
+    }
+  };
+
+  const handleReset = () => {
+    setSelectedAssets([]);
+    setPositions([]);
+    setCurrentStep('select');
+    setSearchQuery('');
+  };
 
   if (loading) {
     return (
@@ -391,6 +391,22 @@ export default function StockSimulator() {
       </DashboardLayoutWrapper>
     );
   }
+
+  // Step Indicator Component
+  const StepIndicator = ({ step, label, isActive, isCompleted }: { step: number; label: string; isActive: boolean; isCompleted: boolean }) => (
+    <div className="flex items-center gap-2">
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+        isActive ? 'bg-primary text-primary-foreground' : 
+        isCompleted ? 'bg-success text-success-foreground' : 
+        'bg-muted text-muted-foreground'
+      }`}>
+        {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : step}
+      </div>
+      <span className={`text-sm font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+        {label}
+      </span>
+    </div>
+  );
 
   return (
     <DashboardLayoutWrapper>
@@ -406,660 +422,776 @@ export default function StockSimulator() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1: Simulação de Operação */}
-          <Card className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+        {/* Step Indicator */}
+        {currentStep !== 'results' && (
+          <div className="flex items-center justify-center gap-4 mb-8">
+            <StepIndicator 
+              step={1} 
+              label="Selecionar Ativos" 
+              isActive={currentStep === 'select'} 
+              isCompleted={currentStep === 'prices' || currentStep === 'params'} 
+            />
+            <div className={`h-px w-12 ${currentStep !== 'select' ? 'bg-primary' : 'bg-border'}`} />
+            <StepIndicator 
+              step={2} 
+              label="Preços" 
+              isActive={currentStep === 'prices'} 
+              isCompleted={currentStep === 'params'} 
+            />
+            <div className={`h-px w-12 ${currentStep === 'params' ? 'bg-primary' : 'bg-border'}`} />
+            <StepIndicator 
+              step={3} 
+              label="Parâmetros" 
+              isActive={currentStep === 'params'} 
+              isCompleted={false} 
+            />
+          </div>
+        )}
+
+        {/* Step 1: Select Assets */}
+        {currentStep === 'select' && (
+          <Card className="p-6 max-w-4xl mx-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 rounded-lg bg-primary/20">
+                <Search className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Etapa 1: Selecionar Ativos</h2>
+                <p className="text-sm text-muted-foreground">Pesquise e selecione as ações que deseja simular</p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Pesquisar ações (ex: PETR4, VALE3)..."
+                  className="pl-10"
+                />
+              </div>
+
+              {/* Available Tickers Grid */}
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Clique para adicionar ({filteredTickers.length} disponíveis)
+                </Label>
+                <ScrollArea className="h-[200px]">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                    {filteredTickers.map((ticker) => {
+                      const btgAsset = getBTGAsset(ticker);
+                      const selected = isSelected(ticker);
+                      return (
+                        <TooltipProvider key={ticker}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant={selected ? "default" : "outline"}
+                                size="sm"
+                                className={`text-xs ${selected ? 'opacity-50' : ''}`}
+                                onClick={() => !selected && addAsset(ticker)}
+                                disabled={selected}
+                              >
+                                {ticker}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {btgAsset ? (
+                                <p>{btgAsset.leverage}x | R$ {btgAsset.marginPerShare.toFixed(2)}/ação</p>
+                              ) : (
+                                <p>Ativo disponível</p>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* Selected Assets */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block">
+                  Ativos Selecionados ({selectedAssets.length})
+                </Label>
+                {selectedAssets.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 p-4 bg-muted/30 rounded-lg min-h-[60px]">
+                    {selectedAssets.map((asset) => (
+                      <Badge 
+                        key={asset.ticker} 
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm"
+                      >
+                        {asset.ticker}
+                        <button 
+                          onClick={() => removeAsset(asset.ticker)}
+                          className="ml-1 hover:text-destructive transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-muted/30 rounded-lg text-center text-muted-foreground">
+                    Nenhum ativo selecionado. Clique nas ações acima para adicionar.
+                  </div>
+                )}
+              </div>
+
+              {/* Next Button */}
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleNext} 
+                  disabled={!canProceedSelect}
+                  className="gap-2"
+                >
+                  Próximo
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Step 2: Configure Prices */}
+        {currentStep === 'prices' && (
+          <Card className="p-6 max-w-4xl mx-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 rounded-lg bg-primary/20">
+                <TrendingUp className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Etapa 2: Preços de Entrada</h2>
+                <p className="text-sm text-muted-foreground">Informe o preço de entrada para cada ativo</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <ScrollArea className="h-[400px] pr-4">
+                <div className="space-y-4">
+                  {selectedAssets.map((asset) => {
+                    const btgAsset = getBTGAsset(asset.ticker);
+                    return (
+                      <div key={asset.ticker} className="p-4 rounded-lg border bg-card">
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-lg">{asset.ticker}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-destructive/70 hover:text-destructive"
+                              onClick={() => removeAsset(asset.ticker)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {btgAsset && (
+                            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                              {btgAsset.leverage}x | R$ {btgAsset.marginPerShare.toFixed(2)}/ação
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <Label htmlFor={`preco-${asset.ticker}`}>Preço de Entrada (R$)</Label>
+                          <Input
+                            id={`preco-${asset.ticker}`}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={asset.preco || ''}
+                            onChange={(e) => updateAssetPrice(asset.ticker, parseFloat(e.target.value) || 0)}
+                            placeholder="Ex: 35.50"
+                            className={asset.preco <= 0 ? 'border-destructive/50' : ''}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+
+              {/* Navigation */}
+              <div className="flex justify-between pt-4 border-t">
+                <Button variant="outline" onClick={handleBack} className="gap-2">
+                  <ChevronLeft className="h-4 w-4" />
+                  Voltar
+                </Button>
+                <Button onClick={handleNext} disabled={!canProceedPrices} className="gap-2">
+                  Próximo
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Step 3: Global Parameters */}
+        {currentStep === 'params' && (
+          <Card className="p-6 max-w-4xl mx-auto">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 rounded-lg bg-primary/20">
                 <Calculator className="h-6 w-6 text-primary" />
               </div>
-              <h2 className="text-xl font-bold">Simulação de Operação</h2>
+              <div>
+                <h2 className="text-xl font-bold">Etapa 3: Parâmetros da Operação</h2>
+                <p className="text-sm text-muted-foreground">Defina os parâmetros de risco para todas as posições</p>
+              </div>
             </div>
 
-            <div className="space-y-5">
-              {/* Seletor de Modalidade */}
-              <div>
-                <Label htmlFor="modalidade">Modalidade</Label>
-                <Select value={modalidade} onValueChange={(v: Modalidade) => handleModalidadeChange(v)}>
-                  <SelectTrigger id="modalidade">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daytrade">Day Trade (BTG)</SelectItem>
-                    <SelectItem value="swing">Swing Trade (5x)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {modalidade === 'daytrade' 
-                    ? 'Alavancagem automática baseada na lista BTG' 
-                    : 'Alavancagem fixa de 5x para todos os ativos'}
-                </p>
-              </div>
-
-              {/* Valor Alocado */}
-              <div>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="valorAlocado">Valor Alocado (R$)</Label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="h-4 w-4 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p>Capital que você vai usar como margem para operar. Este valor determina a quantidade máxima de ações baseado na alavancagem.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <Input
-                  id="valorAlocado"
-                  type="number"
-                  min="0"
-                  value={valorAlocado}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setValorAlocado(value);
-                    if (stopFinanceiroMax > value * 0.7) {
-                      setStopFinanceiroMax(value * 0.7);
-                    }
-                  }}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Capital disponível para margem
-                </p>
-              </div>
-
-              {/* Stop Financeiro Máximo */}
-              <div>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="stopMax">Stop Financeiro Máximo (R$)</Label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="h-4 w-4 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p>Máximo que você aceita perder. Limitado a 70% do Valor Alocado.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <Input
-                  id="stopMax"
-                  type="number"
-                  min="0"
-                  max={stopMaximoPermitido}
-                  value={stopFinanceiroMax}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setStopFinanceiroMax(Math.min(value, stopMaximoPermitido));
-                  }}
-                  className={!isStopValido ? 'border-destructive' : ''}
-                />
-                <div className="flex justify-between items-center mt-1">
-                  <p className={`text-xs ${isStopValido ? 'text-muted-foreground' : 'text-destructive'}`}>
-                    Limite máximo: R$ {stopMaximoPermitido.toFixed(2)} (70%)
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Left Column */}
+              <div className="space-y-5">
+                {/* Modalidade */}
+                <div>
+                  <Label htmlFor="modalidade">Modalidade</Label>
+                  <Select value={modalidade} onValueChange={(v: Modalidade) => setModalidade(v)}>
+                    <SelectTrigger id="modalidade">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daytrade">Day Trade (BTG)</SelectItem>
+                      <SelectItem value="swing">Swing Trade (5x)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {modalidade === 'daytrade' 
+                      ? 'Alavancagem automática baseada na lista BTG' 
+                      : 'Alavancagem fixa de 5x para todos os ativos'}
                   </p>
-                  {!isStopValido && (
-                    <span className="text-xs text-destructive font-medium">Excede 70%!</span>
+                </div>
+
+                {/* Valor Alocado */}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="valorAlocado">Valor Alocado (R$)</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-4 w-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>Capital que você vai usar como margem para operar.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <Input
+                    id="valorAlocado"
+                    type="number"
+                    min="0"
+                    value={valorAlocado}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      setValorAlocado(value);
+                      if (stopFinanceiroMax > value * 0.7) {
+                        setStopFinanceiroMax(value * 0.7);
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Stop Financeiro Máximo */}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="stopMax">Stop Financeiro Máximo (R$)</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-4 w-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>Máximo que você aceita perder. Limitado a 70% do Valor Alocado.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <Input
+                    id="stopMax"
+                    type="number"
+                    min="0"
+                    max={stopMaximoPermitido}
+                    value={stopFinanceiroMax}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      setStopFinanceiroMax(Math.min(value, stopMaximoPermitido));
+                    }}
+                    className={!isStopValido ? 'border-destructive' : ''}
+                  />
+                  <div className="flex justify-between items-center mt-1">
+                    <p className={`text-xs ${isStopValido ? 'text-muted-foreground' : 'text-destructive'}`}>
+                      Limite máximo: R$ {stopMaximoPermitido.toFixed(2)} (70%)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-5">
+                {/* Stop Loss % */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <Label>Stop Loss (%)</Label>
+                    <span className="text-sm font-bold text-destructive">{stopLossPercent.toFixed(1)}%</span>
+                  </div>
+                  <Slider
+                    value={[stopLossPercent]}
+                    onValueChange={(v) => setStopLossPercent(v[0])}
+                    min={0.1}
+                    max={10}
+                    step={0.1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>0.1%</span>
+                    <span>10%</span>
+                  </div>
+                </div>
+
+                {/* Objetivo % */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <Label>Objetivo / Gain (%)</Label>
+                    <span className="text-sm font-bold text-success">{objetivoPercent.toFixed(1)}%</span>
+                  </div>
+                  <Slider
+                    value={[objetivoPercent]}
+                    onValueChange={(v) => setObjetivoPercent(v[0])}
+                    min={0.1}
+                    max={20}
+                    step={0.1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>0.1%</span>
+                    <span>20%</span>
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <div className="p-4 rounded-lg bg-muted/30 border">
+                  <p className="text-sm font-medium mb-2">Resumo da Operação</p>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="text-muted-foreground">Ativos:</div>
+                    <div className="font-medium">{selectedAssets.length}</div>
+                    <div className="text-muted-foreground">Stop por ativo:</div>
+                    <div className="font-medium text-destructive">
+                      R$ {(stopFinanceiroMax / selectedAssets.length).toFixed(2)}
+                    </div>
+                    <div className="text-muted-foreground">R/R esperado:</div>
+                    <div className="font-medium text-primary">
+                      1:{(objetivoPercent / stopLossPercent).toFixed(1)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between pt-6 border-t mt-6">
+              <Button variant="outline" onClick={handleBack} className="gap-2">
+                <ChevronLeft className="h-4 w-4" />
+                Voltar
+              </Button>
+              <Button onClick={handleNext} disabled={!canProceedParams} className="gap-2">
+                <Calculator className="h-4 w-4" />
+                Calcular Posições
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Step 4: Results */}
+        {currentStep === 'results' && (
+          <>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-success/20">
+                  <CheckCircle2 className="h-6 w-6 text-success" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Resultado da Simulação</h2>
+                  <p className="text-sm text-muted-foreground">{positions.length} posições calculadas</p>
+                </div>
+              </div>
+              <Button variant="outline" onClick={handleReset} className="gap-2">
+                <ArrowRight className="h-4 w-4" />
+                Nova Simulação
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Card 1: Simulação de Operação */}
+              <Card className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 rounded-lg bg-primary/20">
+                    <Calculator className="h-6 w-6 text-primary" />
+                  </div>
+                  <h2 className="text-xl font-bold">Simulação de Operação</h2>
+                </div>
+
+                <div className="space-y-5">
+                  {/* Resumo de Limites */}
+                  <div className="p-3 rounded-lg bg-background/50 border border-border/50 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Stop Total Alocado:</span>
+                      <span className="font-medium text-primary">
+                        R$ {stopFinanceiroMax.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Perda Máx Total:</span>
+                      <span className={`font-medium ${totalPerdaUsada > stopFinanceiroMax ? 'text-destructive' : 'text-success'}`}>
+                        R$ {totalPerdaUsada.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Ganho Potencial Total:</span>
+                      <span className="font-medium text-success">
+                        R$ {totalGanhoObjetivo.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Lista de Posições com Sliders */}
+                  {positions.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <Label>Distribuição de Risco</Label>
+                        <span className="text-xs text-muted-foreground">
+                          {positions.length} ativo(s)
+                        </span>
+                      </div>
+                      
+                      <ScrollArea className="h-[320px] pr-2">
+                        <div className="space-y-4">
+                          {positions.map((pos) => (
+                            <div key={pos.id} className="p-4 rounded-lg bg-background/50 border border-border/50">
+                              <div className="flex justify-between items-start mb-3">
+                                <div>
+                                  <span className="font-bold text-lg">{pos.ticker}</span>
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    {pos.alavancagem}x | R$ {pos.precoAtivo.toFixed(2)}
+                                  </span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-destructive hover:text-destructive"
+                                  onClick={() => handleRemovePosition(pos.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              
+                              {/* Info de Stop e Objetivo */}
+                              <div className="flex gap-4 text-xs mb-3">
+                                <span className="text-destructive">
+                                  Stop: {pos.stopPercentual.toFixed(1)}%
+                                </span>
+                              <span className="text-success">
+                                  Objetivo: {pos.objetivoPercentual.toFixed(1)}%
+                                </span>
+                              </div>
+                              
+                              {/* Slider de Alocação */}
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center text-sm">
+                                  <span className="text-muted-foreground">Alocação do Stop:</span>
+                                  <span className="font-bold text-primary">
+                                    {pos.stopAlocadoPercent.toFixed(0)}% = R$ {pos.stopAlocado.toFixed(2)}
+                                  </span>
+                                </div>
+                                <Slider
+                                  value={[pos.stopAlocadoPercent]}
+                                  onValueChange={(v) => handleStopAllocationChange(pos.id, v[0])}
+                                  min={5}
+                                  max={positions.length === 1 ? 100 : 95}
+                                  step={1}
+                                  className="w-full"
+                                />
+                              </div>
+                              
+                              {/* Resultado */}
+                              <div className="mt-3 pt-3 border-t border-border/30">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-primary font-bold text-lg">
+                                    {pos.quantidade} ações
+                                  </span>
+                                  <span className={`text-xs px-2 py-1 rounded ${
+                                    pos.limiteFator === 'margem' 
+                                      ? 'bg-primary/20 text-primary' 
+                                      : 'bg-muted text-muted-foreground'
+                                  }`}>
+                                    {pos.limiteFator === 'margem' ? 'Limite: Margem' : 'Limite: Stop'}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+                                  <div className="flex items-center gap-1">
+                                    <AlertTriangle className="h-3 w-3 text-destructive" />
+                                    <span className="text-destructive">
+                                      Perda: R$ {pos.perdaMaxima.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Target className="h-3 w-3 text-success" />
+                                    <span className="text-success">
+                                      Ganho: R$ {pos.ganhoObjetivo.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  Margem: R$ {pos.margemNecessaria.toFixed(2)}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                      
+                      {/* Barra de Alocação Total */}
+                      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium">Alocação Total</span>
+                          <span className="text-sm font-bold text-primary">
+                            {positions.reduce((sum, p) => sum + p.stopAlocadoPercent, 0).toFixed(0)}%
+                          </span>
+                        </div>
+                        <Progress 
+                          value={positions.reduce((sum, p) => sum + p.stopAlocadoPercent, 0)} 
+                          className="h-2"
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
-              </div>
+              </Card>
 
-              {/* Resumo de Limites */}
-              <div className="p-3 rounded-lg bg-background/50 border border-border/50 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Stop Total Alocado:</span>
-                  <span className="font-medium text-primary">
-                    R$ {stopFinanceiroMax.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Perda Máx Total:</span>
-                  <span className={`font-medium ${totalPerdaUsada > stopFinanceiroMax ? 'text-destructive' : 'text-success'}`}>
-                    R$ {totalPerdaUsada.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Ganho Potencial Total:</span>
-                  <span className="font-medium text-success">
-                    R$ {totalGanhoObjetivo.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Lista de Posições com Sliders */}
-              {positions.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <Label>Distribuição de Risco</Label>
-                    <span className="text-xs text-muted-foreground">
-                      {positions.length} ativo(s)
-                    </span>
+              {/* Card 2: Análise de Risco */}
+              <Card className="p-6 bg-gradient-to-br from-muted to-muted/50 border-border">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 rounded-lg bg-primary/20">
+                    <AlertTriangle className="h-6 w-6 text-primary" />
                   </div>
-                  
-                  <ScrollArea className="h-[320px] pr-2">
-                    <div className="space-y-4">
-                      {positions.map((pos) => (
-                        <div key={pos.id} className="p-4 rounded-lg bg-background/50 border border-border/50">
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <span className="font-bold text-lg">{pos.ticker}</span>
-                              <span className="text-xs text-muted-foreground ml-2">
-                                {pos.alavancagem}x | R$ {pos.precoAtivo.toFixed(2)}
-                              </span>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-destructive hover:text-destructive"
-                              onClick={() => handleRemovePosition(pos.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          
-                          {/* Info de Stop e Objetivo */}
-                          <div className="flex gap-4 text-xs mb-3">
-                            <span className="text-destructive">
-                              Stop: {pos.stopPercentual.toFixed(1)}%
-                            </span>
-                          <span className="text-success">
-                              Objetivo: {pos.objetivoPercentual.toFixed(1)}%
-                            </span>
-                          </div>
-                          
-                          {/* Slider de Alocação */}
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">Alocação do Stop:</span>
-                              <span className="font-bold text-primary">
-                                {pos.stopAlocadoPercent.toFixed(0)}% = R$ {pos.stopAlocado.toFixed(2)}
-                              </span>
-                            </div>
-                            <Slider
-                              value={[pos.stopAlocadoPercent]}
-                              onValueChange={(v) => handleStopAllocationChange(pos.id, v[0])}
-                              min={5}
-                              max={positions.length === 1 ? 100 : 95}
-                              step={1}
-                              className="w-full"
-                            />
-                          </div>
-                          
-                          {/* Resultado */}
-                          <div className="mt-3 pt-3 border-t border-border/30">
-                            <div className="flex justify-between items-center">
-                              <span className="text-primary font-bold text-lg">
-                                {pos.quantidade} ações
-                              </span>
+                  <h2 className="text-xl font-bold">Análise de Risco</h2>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Resumo por ativo com sliders de redistribuição */}
+                  {positions.length > 0 ? (
+                    <ScrollArea className="h-[320px] pr-2">
+                      <div className="space-y-3">
+                        {positions.map((pos) => (
+                          <div key={pos.id} className="p-3 rounded-lg bg-background/50">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold">{pos.ticker}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {pos.alavancagem}x
+                                </span>
+                                <button
+                                  onClick={() => handleRemovePosition(pos.id)}
+                                  className="text-destructive/60 hover:text-destructive transition-colors"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
                               <span className={`text-xs px-2 py-1 rounded ${
                                 pos.limiteFator === 'margem' 
                                   ? 'bg-primary/20 text-primary' 
                                   : 'bg-muted text-muted-foreground'
                               }`}>
-                                {pos.limiteFator === 'margem' ? 'Limite: Margem' : 'Limite: Stop'}
+                                {pos.limiteFator === 'margem' ? 'Limitado por Margem' : 'Limitado por Stop'}
                               </span>
                             </div>
-                            <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+                            
+                            {/* Slider de Alocação */}
+                            <div className="mb-3">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-xs text-muted-foreground">Alocação do Stop:</span>
+                                <span className="text-sm font-bold text-primary">
+                                  {pos.stopAlocadoPercent.toFixed(0)}% (R$ {pos.stopAlocado.toFixed(2)})
+                                </span>
+                              </div>
+                              <Slider
+                                value={[pos.stopAlocadoPercent]}
+                                onValueChange={(v) => handleStopAllocationChange(pos.id, v[0])}
+                                min={5}
+                                max={positions.length === 1 ? 100 : 95}
+                                step={1}
+                                className="w-full"
+                              />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="text-muted-foreground">Quantidade:</span>{' '}
+                                <span className="font-bold text-primary">{pos.quantidade}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">R$/Ação:</span>{' '}
+                                <span className="font-medium">R$ {pos.precoAtivo.toFixed(2)}</span>
+                              </div>
                               <div className="flex items-center gap-1">
                                 <AlertTriangle className="h-3 w-3 text-destructive" />
-                                <span className="text-destructive">
-                                  Perda: R$ {pos.perdaMaxima.toFixed(2)}
-                                </span>
+                                <span className="text-destructive">R$ {pos.perdaMaxima.toFixed(2)}</span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <Target className="h-3 w-3 text-success" />
-                                <span className="text-success">
-                                  Ganho: R$ {pos.ganhoObjetivo.toFixed(2)}
-                                </span>
+                                <span className="text-success">R$ {pos.ganhoObjetivo.toFixed(2)}</span>
                               </div>
                             </div>
                             <div className="text-xs text-muted-foreground mt-1">
-                              Margem: R$ {pos.margemNecessaria.toFixed(2)}
+                              Valor posição: R$ {(pos.precoAtivo * pos.quantidade).toFixed(2)} | R/R: 1:{(pos.ganhoObjetivo / (pos.perdaMaxima || 1)).toFixed(1)}
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <AlertTriangle className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                      <p>Adicione ativos para ver a análise de risco</p>
                     </div>
-                  </ScrollArea>
-                  
-                  {/* Barra de Alocação Total */}
-                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  )}
+
+                  {/* Barra de Progresso - Margem */}
+                  <div className="pt-4 border-t border-border/30">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">Alocação Total</span>
-                      <span className="text-sm font-bold text-primary">
-                        {positions.reduce((sum, p) => sum + p.stopAlocadoPercent, 0).toFixed(0)}%
+                      <span className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Wallet className="h-4 w-4" />
+                        Margem Utilizada
+                      </span>
+                      <span className="font-bold">
+                        R$ {totalMargemUsada.toFixed(2)} / R$ {valorAlocado.toFixed(2)}
                       </span>
                     </div>
                     <Progress 
-                      value={positions.reduce((sum, p) => sum + p.stopAlocadoPercent, 0)} 
-                      className="h-2"
+                      value={Math.min(percentualMargemUsada, 100)} 
+                      className={`h-3 ${percentualMargemUsada > 100 ? '[&>div]:bg-destructive' : '[&>div]:bg-primary'}`}
                     />
-                  </div>
-                </div>
-              )}
-
-              {/* Formulário para Adicionar Ativo */}
-              {isAddingPosition ? (
-                <div className="p-4 rounded-lg bg-background/80 border border-primary/30 space-y-4">
-                  <Label className="text-primary font-semibold">Adicionar Ativo</Label>
-                  
-                  {/* Seletor de Ticker */}
-                  <div>
-                    <Label htmlFor="ticker" className="text-sm">Ticker</Label>
-                    <Popover open={tickerOpen} onOpenChange={setTickerOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={tickerOpen}
-                          className="w-full justify-between"
-                        >
-                          {newTicker || "Selecione o ticker..."}
-                          <TrendingUp className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-full p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Buscar ticker..." />
-                          <CommandList>
-                            <CommandEmpty>Ticker não encontrado.</CommandEmpty>
-                            <CommandGroup className="max-h-60 overflow-auto">
-                              {tickerList.map((ticker) => {
-                                const btgAsset = getBTGAsset(ticker);
-                                return (
-                                  <CommandItem
-                                    key={ticker}
-                                    value={ticker}
-                                    onSelect={(value) => {
-                                      setNewTicker(value.toUpperCase());
-                                      setTickerOpen(false);
-                                    }}
-                                  >
-                                    <span className="font-medium">{ticker}</span>
-                                    {modalidade === 'daytrade' && btgAsset && (
-                                      <span className="ml-auto text-xs text-muted-foreground">
-                                        {btgAsset.leverage}x | R$ {btgAsset.marginPerShare.toFixed(2)}/ação
-                                      </span>
-                                    )}
-                                  </CommandItem>
-                                );
-                              })}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                    <p className="text-xs text-muted-foreground mt-1 text-right">
+                      {percentualMargemUsada.toFixed(1)}% utilizado
+                    </p>
                   </div>
 
-                  {/* Preço da Ação */}
-                  <div>
-                    <Label htmlFor="preco" className="text-sm">Preço da Ação (R$)</Label>
-                    <Input
-                      id="preco"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={newPreco || ''}
-                      onChange={(e) => setNewPreco(parseFloat(e.target.value) || 0)}
-                      placeholder="Ex: 35.50"
-                    />
-                  </div>
-
-                  {/* Slider de Stop % */}
+                  {/* Barra de Progresso - Stop */}
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <Label className="text-sm">Stop Loss (%)</Label>
-                      <span className="text-sm font-bold text-destructive">{newStopPercentual.toFixed(1)}%</span>
+                      <span className="text-sm text-muted-foreground flex items-center gap-1">
+                        <AlertTriangle className="h-4 w-4" />
+                        Stop Utilizado
+                      </span>
+                      <span className="font-bold">
+                        R$ {totalPerdaUsada.toFixed(2)} / R$ {stopFinanceiroMax.toFixed(2)}
+                      </span>
                     </div>
-                    <Slider
-                      value={[newStopPercentual]}
-                      onValueChange={(v) => setNewStopPercentual(v[0])}
-                      min={0.1}
-                      max={10}
-                      step={0.1}
-                      className="w-full"
+                    <Progress 
+                      value={Math.min(percentualStopUsado, 100)} 
+                      className={`h-3 ${percentualStopUsado > 100 ? '[&>div]:bg-destructive' : ''}`}
                     />
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>0.1%</span>
-                      <span>10%</span>
-                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 text-right">
+                      {percentualStopUsado.toFixed(1)}% utilizado
+                    </p>
                   </div>
 
-                  {/* Slider de Objetivo % */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <Label className="text-sm">Objetivo / Gain (%)</Label>
-                      <span className="text-sm font-bold text-success">{newObjetivoPercentual.toFixed(1)}%</span>
-                    </div>
-                    <Slider
-                      value={[newObjetivoPercentual]}
-                      onValueChange={(v) => setNewObjetivoPercentual(v[0])}
-                      min={0.1}
-                      max={20}
-                      step={0.1}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>0.1%</span>
-                      <span>20%</span>
-                    </div>
-                  </div>
-
-                  {/* Preview do Cálculo */}
-                  {previewCalculo && previewCalculo.quantidade > 0 && (
-                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
-                      <p className="text-sm font-semibold text-primary">Prévia do cálculo:</p>
-                      
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className="text-muted-foreground">Alavancagem:</span>{' '}
-                          <span className="font-medium">{previewCalculo.alavancagem}x</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Alocação:</span>{' '}
-                          <span className="font-medium">{previewCalculo.stopAlocadoPercent.toFixed(0)}%</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Qtd máx (margem):</span>{' '}
-                          <span className={`font-medium ${previewCalculo.limiteFator === 'margem' ? 'text-primary' : ''}`}>
-                            {previewCalculo.qtdMaxMargem}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Qtd máx (stop):</span>{' '}
-                          <span className={`font-medium ${previewCalculo.limiteFator === 'stop' ? 'text-muted-foreground' : ''}`}>
-                            {previewCalculo.qtdMaxStop}
-                          </span>
-                        </div>
+                  {/* Resumo Ganho/Perda */}
+                  {positions.length > 0 && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-center">
+                        <p className="text-xs text-muted-foreground">Perda Máx Total</p>
+                        <p className="font-bold text-destructive">R$ {totalPerdaUsada.toFixed(2)}</p>
                       </div>
-
-                      <div className="pt-2 border-t border-primary/20">
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-primary text-lg">
-                            {previewCalculo.quantidade} ações
-                          </span>
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            previewCalculo.limiteFator === 'margem' 
-                              ? 'bg-primary/20 text-primary' 
-                              : 'bg-muted text-muted-foreground'
-                          }`}>
-                            Limite: {previewCalculo.limiteFator === 'margem' ? 'Margem' : 'Stop'}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs mt-2">
-                          <span className="text-destructive">
-                            Perda: R$ {previewCalculo.perdaMaxima.toFixed(2)}
-                          </span>
-                          <span className="text-success">
-                            Ganho: R$ {previewCalculo.ganhoObjetivo.toFixed(2)}
-                          </span>
-                        </div>
+                      <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-center">
+                        <p className="text-xs text-muted-foreground">Ganho Potencial</p>
+                        <p className="font-bold text-success">R$ {totalGanhoObjetivo.toFixed(2)}</p>
                       </div>
                     </div>
                   )}
 
-                  {previewCalculo && previewCalculo.quantidade <= 0 && (
-                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                      <p className="text-sm text-destructive">
-                        Sem margem ou stop disponível para adicionar este ativo.
+                  {/* Status */}
+                  <div className={`p-4 rounded-lg ${isWithinLimit ? 'bg-success/20 border border-success/30' : 'bg-destructive/20 border border-destructive/30'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle2 className={`h-5 w-5 ${isWithinLimit ? 'text-success' : 'text-destructive'}`} />
+                      <p className={`font-semibold ${isWithinLimit ? 'text-success' : 'text-destructive'}`}>
+                        {isWithinLimit ? 'Dentro do Limite' : 'Acima do Limite'}
                       </p>
                     </div>
-                  )}
-
-                  {/* Botões */}
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setIsAddingPosition(false)}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      className="flex-1"
-                      onClick={handleAddPosition}
-                      disabled={!newTicker || newPreco <= 0 || !previewCalculo || previewCalculo.quantidade <= 0}
-                    >
-                      Adicionar
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setIsAddingPosition(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Ativo
-                </Button>
-              )}
-            </div>
-          </Card>
-
-          {/* Card 2: Análise de Risco */}
-          <Card className="p-6 bg-gradient-to-br from-muted to-muted/50 border-border">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-primary/20">
-                <AlertTriangle className="h-6 w-6 text-primary" />
-              </div>
-              <h2 className="text-xl font-bold">Análise de Risco</h2>
-            </div>
-
-            <div className="space-y-4">
-              {/* Resumo por ativo com sliders de redistribuição */}
-              {positions.length > 0 ? (
-                <ScrollArea className="h-[320px] pr-2">
-                  <div className="space-y-3">
-                    {positions.map((pos) => (
-                      <div key={pos.id} className="p-3 rounded-lg bg-background/50">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold">{pos.ticker}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {pos.alavancagem}x
-                            </span>
-                            <button
-                              onClick={() => handleRemovePosition(pos.id)}
-                              className="text-destructive/60 hover:text-destructive transition-colors"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            pos.limiteFator === 'margem' 
-                              ? 'bg-primary/20 text-primary' 
-                              : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {pos.limiteFator === 'margem' ? 'Limitado por Margem' : 'Limitado por Stop'}
-                          </span>
-                        </div>
-                        
-                        {/* Slider de Alocação */}
-                        <div className="mb-3">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs text-muted-foreground">Alocação do Stop:</span>
-                            <span className="text-sm font-bold text-primary">
-                              {pos.stopAlocadoPercent.toFixed(0)}% (R$ {pos.stopAlocado.toFixed(2)})
-                            </span>
-                          </div>
-                          <Slider
-                            value={[pos.stopAlocadoPercent]}
-                            onValueChange={(v) => handleStopAllocationChange(pos.id, v[0])}
-                            min={5}
-                            max={positions.length === 1 ? 100 : 95}
-                            step={1}
-                            className="w-full"
-                          />
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Quantidade:</span>{' '}
-                            <span className="font-bold text-primary">{pos.quantidade}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">R$/Ação:</span>{' '}
-                            <span className="font-medium">R$ {pos.precoAtivo.toFixed(2)}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3 text-destructive" />
-                            <span className="text-destructive">R$ {pos.perdaMaxima.toFixed(2)}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Target className="h-3 w-3 text-success" />
-                            <span className="text-success">R$ {pos.ganhoObjetivo.toFixed(2)}</span>
-                          </div>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Valor posição: R$ {(pos.precoAtivo * pos.quantidade).toFixed(2)} | R/R: 1:{(pos.ganhoObjetivo / (pos.perdaMaxima || 1)).toFixed(1)}
-                        </div>
+                    {isWithinLimit && positions.length > 0 && (
+                      <div className="text-sm">
+                        <p>Risco/Retorno: 1:{(totalGanhoObjetivo / (totalPerdaUsada || 1)).toFixed(1)}</p>
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertTriangle className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>Adicione ativos para ver a análise de risco</p>
-                </div>
-              )}
-
-              {/* Barra de Progresso - Margem */}
-              <div className="pt-4 border-t border-border/30">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Wallet className="h-4 w-4" />
-                    Margem Utilizada
-                  </span>
-                  <span className="font-bold">
-                    R$ {totalMargemUsada.toFixed(2)} / R$ {valorAlocado.toFixed(2)}
-                  </span>
-                </div>
-                <Progress 
-                  value={Math.min(percentualMargemUsada, 100)} 
-                  className={`h-3 ${percentualMargemUsada > 100 ? '[&>div]:bg-destructive' : '[&>div]:bg-primary'}`}
-                />
-                <p className="text-xs text-muted-foreground mt-1 text-right">
-                  {percentualMargemUsada.toFixed(1)}% utilizado
-                </p>
-              </div>
-
-              {/* Barra de Progresso - Stop */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    <AlertTriangle className="h-4 w-4" />
-                    Stop Utilizado
-                  </span>
-                  <span className="font-bold">
-                    R$ {totalPerdaUsada.toFixed(2)} / R$ {stopFinanceiroMax.toFixed(2)}
-                  </span>
-                </div>
-                <Progress 
-                  value={Math.min(percentualStopUsado, 100)} 
-                  className={`h-3 ${percentualStopUsado > 100 ? '[&>div]:bg-destructive' : ''}`}
-                />
-                <p className="text-xs text-muted-foreground mt-1 text-right">
-                  {percentualStopUsado.toFixed(1)}% utilizado
-                </p>
-              </div>
-
-              {/* Resumo Ganho/Perda */}
-              {positions.length > 0 && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-center">
-                    <p className="text-xs text-muted-foreground">Perda Máx Total</p>
-                    <p className="font-bold text-destructive">R$ {totalPerdaUsada.toFixed(2)}</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-center">
-                    <p className="text-xs text-muted-foreground">Ganho Potencial</p>
-                    <p className="font-bold text-success">R$ {totalGanhoObjetivo.toFixed(2)}</p>
+                    )}
                   </div>
                 </div>
-              )}
+              </Card>
 
-              {/* Status */}
-              <div className={`p-4 rounded-lg ${isWithinLimit ? 'bg-success/20 border border-success/30' : 'bg-destructive/20 border border-destructive/30'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 className={`h-5 w-5 ${isWithinLimit ? 'text-success' : 'text-destructive'}`} />
-                  <p className={`font-semibold ${isWithinLimit ? 'text-success' : 'text-destructive'}`}>
-                    {isWithinLimit ? 'Dentro do Limite' : 'Acima do Limite'}
-                  </p>
-                </div>
-                {isWithinLimit && positions.length > 0 && (
-                  <div className="text-sm">
-                    <p>Risco/Retorno: 1:{(totalGanhoObjetivo / (totalPerdaUsada || 1)).toFixed(1)}</p>
+              {/* Card 3: Parâmetros Atuais */}
+              <Card className="p-6 bg-gradient-to-br from-success/10 to-success/5 border-success/20">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 rounded-lg bg-success/20">
+                    <CheckCircle2 className="h-6 w-6 text-success" />
                   </div>
-                )}
-              </div>
+                  <h2 className="text-xl font-bold">Parâmetros Atuais</h2>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Valores Alocados */}
+                  <div className="p-3 rounded-lg bg-background/50 border-l-4 border-primary">
+                    <p className="text-xs text-muted-foreground mb-1">Valor Alocado</p>
+                    <p className="font-bold text-lg">R$ {valorAlocado.toLocaleString('pt-BR')}</p>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-background/50 border-l-4 border-primary/70">
+                    <p className="text-xs text-muted-foreground mb-1">Margem Total Utilizada</p>
+                    <p className="font-bold text-lg text-primary">R$ {totalMargemUsada.toFixed(2)}</p>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-background/50 border-l-4 border-success">
+                    <p className="text-xs text-muted-foreground mb-1">Margem Disponível</p>
+                    <p className={`font-bold text-lg ${margemDisponivel >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      R$ {margemDisponivel.toFixed(2)}
+                    </p>
+                  </div>
+
+                  <div className="border-t border-border/30 pt-4">
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
+                      <p className="text-sm text-muted-foreground">Capital Total</p>
+                      <p className="font-bold">R$ {capitalTotal.toLocaleString('pt-BR')}</p>
+                    </div>
+
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
+                      <p className="text-sm text-muted-foreground">Risco Mensal Base</p>
+                      <p className="font-bold text-success">{riskPercentual}%</p>
+                    </div>
+
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
+                      <p className="text-sm text-muted-foreground">Risco Diário (R$)</p>
+                      <p className="font-bold text-primary">R$ {dailyRiskValue.toFixed(2)}</p>
+                    </div>
+
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
+                      <p className="text-sm text-muted-foreground">Perda Acumulada (Mês)</p>
+                      <p className="font-bold text-destructive">{accumulatedLoss.toFixed(2)}%</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+                    <p className="text-xs font-semibold text-success mb-2">Como funciona:</p>
+                    <p className="text-xs text-muted-foreground">
+                      Distribua o risco entre múltiplas ações usando os sliders.
+                      <br />• <strong>Arraste o slider</strong> para alocar mais/menos risco em cada ativo
+                      <br />• <strong className="text-success">Objetivo:</strong> Ganho potencial em R$
+                      <br />• <strong className="text-destructive">Stop:</strong> Perda máxima em R$
+                    </p>
+                  </div>
+                </div>
+              </Card>
             </div>
-          </Card>
-
-          {/* Card 3: Parâmetros Atuais */}
-          <Card className="p-6 bg-gradient-to-br from-success/10 to-success/5 border-success/20">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-success/20">
-                <CheckCircle2 className="h-6 w-6 text-success" />
-              </div>
-              <h2 className="text-xl font-bold">Parâmetros Atuais</h2>
-            </div>
-
-            <div className="space-y-4">
-              {/* Valores Alocados */}
-              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-primary">
-                <p className="text-xs text-muted-foreground mb-1">Valor Alocado</p>
-                <p className="font-bold text-lg">R$ {valorAlocado.toLocaleString('pt-BR')}</p>
-              </div>
-
-              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-primary/70">
-                <p className="text-xs text-muted-foreground mb-1">Margem Total Utilizada</p>
-                <p className="font-bold text-lg text-primary">R$ {totalMargemUsada.toFixed(2)}</p>
-              </div>
-
-              <div className="p-3 rounded-lg bg-background/50 border-l-4 border-success">
-                <p className="text-xs text-muted-foreground mb-1">Margem Disponível</p>
-                <p className={`font-bold text-lg ${margemDisponivel >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  R$ {margemDisponivel.toFixed(2)}
-                </p>
-              </div>
-
-              <div className="border-t border-border/30 pt-4">
-                <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
-                  <p className="text-sm text-muted-foreground">Capital Total</p>
-                  <p className="font-bold">R$ {capitalTotal.toLocaleString('pt-BR')}</p>
-                </div>
-
-                <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
-                  <p className="text-sm text-muted-foreground">Risco Mensal Base</p>
-                  <p className="font-bold text-success">{riskPercentual}%</p>
-                </div>
-
-                <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
-                  <p className="text-sm text-muted-foreground">Risco Diário (R$)</p>
-                  <p className="font-bold text-primary">R$ {dailyRiskValue.toFixed(2)}</p>
-                </div>
-
-                <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
-                  <p className="text-sm text-muted-foreground">Perda Acumulada (Mês)</p>
-                  <p className="font-bold text-destructive">{accumulatedLoss.toFixed(2)}%</p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-lg bg-success/10 border border-success/20">
-                <p className="text-xs font-semibold text-success mb-2">Como funciona:</p>
-                <p className="text-xs text-muted-foreground">
-                  Distribua o risco entre múltiplas ações usando os sliders.
-                  <br />• <strong>Arraste o slider</strong> para alocar mais/menos risco em cada ativo
-                  <br />• <strong className="text-success">Objetivo:</strong> Ganho potencial em R$
-                  <br />• <strong className="text-destructive">Stop:</strong> Perda máxima em R$
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
+          </>
+        )}
       </div>
     </DashboardLayoutWrapper>
   );
