@@ -9,7 +9,8 @@ import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, AlertTriangle, CheckCircle2, Trash2, TrendingUp, Wallet, Info, Target, Search, X, ChevronRight, ChevronLeft, ArrowRight } from 'lucide-react';
+import { Calculator, AlertTriangle, CheckCircle2, Trash2, TrendingUp, Wallet, Info, Target, Search, X, ChevronRight, ChevronLeft, ArrowRight, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateDailyStockRisk, getWorkingDaysRemaining, StockTrade } from '@/lib/stockRiskCalculations';
@@ -53,6 +54,7 @@ interface SimulatorPosition {
 interface SelectedAsset {
   ticker: string;
   preco: number;
+  isManual?: boolean;
 }
 
 type Modalidade = 'daytrade' | 'swing';
@@ -93,13 +95,19 @@ export default function StockSimulator() {
     return btgAssets.map(a => a.ticker);
   }, []);
 
-  // Filtered tickers based on search
+  // Filtered tickers based on search - show all assets
   const filteredTickers = useMemo(() => {
-    if (!searchQuery.trim()) return tickerList.slice(0, 24);
+    if (!searchQuery.trim()) return tickerList;
     return tickerList.filter(ticker => 
       ticker.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 24);
+    );
   }, [searchQuery, tickerList]);
+
+  // Check if search query doesn't match any BTG asset
+  const searchNotFound = useMemo(() => {
+    if (!searchQuery.trim()) return false;
+    return filteredTickers.length === 0;
+  }, [searchQuery, filteredTickers]);
 
   useEffect(() => {
     if (user && dashboardId) {
@@ -170,9 +178,20 @@ export default function StockSimulator() {
   };
 
   // Add asset to selection
-  const addAsset = (ticker: string) => {
+  const addAsset = (ticker: string, isManual: boolean = false) => {
     if (!isSelected(ticker)) {
-      setSelectedAssets(prev => [...prev, { ticker, preco: 0 }]);
+      setSelectedAssets(prev => [...prev, { ticker, preco: 0, isManual }]);
+    }
+  };
+
+  // Add manual asset (not in BTG list)
+  const addManualAsset = (ticker: string) => {
+    const normalized = ticker.toUpperCase().trim();
+    // Validate basic format (4-6 characters, alphanumeric)
+    if (normalized.length >= 3 && normalized.length <= 8 && !isSelected(normalized)) {
+      addAsset(normalized, true);
+      setSearchQuery('');
+      toast.info(`"${normalized}" adicionado como ativo manual (1x alavancagem)`);
     }
   };
 
@@ -188,8 +207,12 @@ export default function StockSimulator() {
     ));
   };
 
-  // Obter margem por ação
-  const getMargemPorAcao = (ticker: string, preco: number): number => {
+  // Obter margem por ação (considera ativos manuais)
+  const getMargemPorAcao = (ticker: string, preco: number, isManual?: boolean): number => {
+    // Ativos manuais: margem = preço (sem alavancagem)
+    if (isManual) {
+      return preco;
+    }
     if (modalidade === 'swing') {
       return preco / 5;
     }
@@ -200,8 +223,12 @@ export default function StockSimulator() {
     return preco;
   };
 
-  // Calcular alavancagem baseado na modalidade e ticker
-  const getAlavancagem = (ticker: string): number => {
+  // Calcular alavancagem baseado na modalidade, ticker e se é manual
+  const getAlavancagem = (ticker: string, isManual?: boolean): number => {
+    // Ativos manuais: sempre 1x
+    if (isManual) {
+      return 1;
+    }
     if (modalidade === 'swing') {
       return 5;
     }
@@ -278,8 +305,8 @@ export default function StockSimulator() {
     const stopPercentEach = 100 / numPositions;
 
     const newPositions: SimulatorPosition[] = selectedAssets.map(asset => {
-      const alavancagem = getAlavancagem(asset.ticker);
-      const margemPorAcao = getMargemPorAcao(asset.ticker, asset.preco);
+      const alavancagem = getAlavancagem(asset.ticker, asset.isManual);
+      const margemPorAcao = getMargemPorAcao(asset.ticker, asset.preco, asset.isManual);
       const stopAlocado = stopFinanceiroMax * (stopPercentEach / 100);
       const stopPorAcao = asset.preco * (stopLossPercent / 100);
       const ganhoPorAcao = asset.preco * (objetivoPercent / 100);
@@ -491,7 +518,7 @@ export default function StockSimulator() {
                                 variant={selected ? "default" : "outline"}
                                 size="sm"
                                 className={`text-xs ${selected ? 'opacity-50' : ''}`}
-                                onClick={() => !selected && addAsset(ticker)}
+                                onClick={() => !selected && addAsset(ticker, false)}
                                 disabled={selected}
                               >
                                 {ticker}
@@ -510,6 +537,30 @@ export default function StockSimulator() {
                     })}
                   </div>
                 </ScrollArea>
+
+                {/* Asset Not Found - Manual Add */}
+                {searchNotFound && searchQuery.trim() && (
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg mt-4">
+                    <div className="flex items-center gap-2 text-amber-500 mb-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="font-medium">
+                        O ativo "{searchQuery.toUpperCase()}" não está na lista BTG
+                      </span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => addManualAsset(searchQuery)}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Adicionar "{searchQuery.toUpperCase()}" Manualmente
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Ativos manuais usarão alavancagem 1x e margem igual ao preço.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Selected Assets */}
@@ -522,9 +573,13 @@ export default function StockSimulator() {
                     {selectedAssets.map((asset) => (
                       <Badge 
                         key={asset.ticker} 
+                        variant={asset.isManual ? "outline" : "default"}
                         className="flex items-center gap-1 px-3 py-1.5 text-sm"
                       >
                         {asset.ticker}
+                        {asset.isManual && (
+                          <span className="text-xs text-amber-500 ml-1">(manual)</span>
+                        )}
                         <button 
                           onClick={() => removeAsset(asset.ticker)}
                           className="ml-1 hover:text-destructive transition-colors"
@@ -588,11 +643,15 @@ export default function StockSimulator() {
                               <X className="h-4 w-4" />
                             </Button>
                           </div>
-                          {btgAsset && (
+                          {asset.isManual ? (
+                            <span className="text-xs text-amber-500 bg-amber-500/10 px-2 py-1 rounded">
+                              Manual - 1x | Margem = Preço
+                            </span>
+                          ) : btgAsset ? (
                             <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                               {btgAsset.leverage}x | R$ {btgAsset.marginPerShare.toFixed(2)}/ação
                             </span>
-                          )}
+                          ) : null}
                         </div>
                         <div>
                           <Label htmlFor={`preco-${asset.ticker}`}>Preço de Entrada (R$)</Label>
@@ -658,7 +717,7 @@ export default function StockSimulator() {
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
                     {modalidade === 'daytrade' 
-                      ? 'Alavancagem automática baseada na lista BTG' 
+                      ? 'Alavancagem automática baseada na lista BTG (ativos manuais: 1x)' 
                       : 'Alavancagem fixa de 5x para todos os ativos'}
                   </p>
                 </div>
