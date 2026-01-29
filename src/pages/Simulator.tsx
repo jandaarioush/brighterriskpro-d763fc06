@@ -113,10 +113,10 @@ export default function Simulator() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Simulação de Alavancagem */}
-          <Card className="p-6 bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
+          <Card className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-purple-500/20">
-                <Calculator className="h-6 w-6 text-purple-500" />
+              <div className="p-2 rounded-lg bg-primary/20">
+                <Calculator className="h-6 w-6 text-primary" />
               </div>
               <h2 className="text-xl font-bold">Simulação de Alavancagem</h2>
             </div>
@@ -179,10 +179,10 @@ export default function Simulator() {
           </Card>
 
           {/* Análise de Risco */}
-          <Card className="p-6 bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
+          <Card className="p-6 bg-gradient-to-br from-muted to-muted/50 border-border">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-blue-500/20">
-                <AlertTriangle className="h-6 w-6 text-blue-500" />
+              <div className="p-2 rounded-lg bg-primary/20">
+                <AlertTriangle className="h-6 w-6 text-primary" />
               </div>
               <h2 className="text-xl font-bold">Análise de Risco</h2>
             </div>
@@ -206,13 +206,13 @@ export default function Simulator() {
 
               <div className="flex justify-between items-start p-3 rounded-lg bg-background/50">
                 <p className="text-sm text-muted-foreground">Risco Disponível Hoje</p>
-                <p className="text-lg font-bold text-blue-500">R$ {availableRisk.toFixed(2)}</p>
+                <p className="text-lg font-bold text-primary">R$ {availableRisk.toFixed(2)}</p>
               </div>
 
-              <div className={`p-4 rounded-lg ${isWithinLimit ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
+              <div className={`p-4 rounded-lg ${isWithinLimit ? 'bg-success/20 border border-success/30' : 'bg-destructive/20 border border-destructive/30'}`}>
                 <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 className={`h-5 w-5 ${isWithinLimit ? 'text-green-500' : 'text-red-500'}`} />
-                  <p className={`font-semibold ${isWithinLimit ? 'text-green-500' : 'text-red-500'}`}>
+                  <CheckCircle2 className={`h-5 w-5 ${isWithinLimit ? 'text-success' : 'text-destructive'}`} />
+                  <p className={`font-semibold ${isWithinLimit ? 'text-success' : 'text-destructive'}`}>
                     {isWithinLimit ? 'Dentro do Limite' : 'Acima do Limite'}
                   </p>
                 </div>
@@ -224,10 +224,10 @@ export default function Simulator() {
           </Card>
 
           {/* Novo Sistema - Hoje */}
-          <Card className="p-6 bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
+          <Card className="p-6 bg-gradient-to-br from-success/10 to-success/5 border-success/20">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-green-500/20">
-                <CheckCircle2 className="h-6 w-6 text-green-500" />
+              <div className="p-2 rounded-lg bg-success/20">
+                <CheckCircle2 className="h-6 w-6 text-success" />
               </div>
               <h2 className="text-xl font-bold">Novo Sistema - Hoje</h2>
             </div>
@@ -235,12 +235,12 @@ export default function Simulator() {
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
                 <p className="text-sm text-muted-foreground">Stop Atual (Índice)</p>
-                <p className="font-bold text-green-500">{stopIndice.toFixed(0)} pts/contrato</p>
+                <p className="font-bold text-success">{stopIndice.toFixed(0)} pts/contrato</p>
               </div>
 
               <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
                 <p className="text-sm text-muted-foreground">Stop Atual (Dólar)</p>
-                <p className="font-bold text-green-500">{stopDolar.toFixed(0)} pts/contrato</p>
+                <p className="font-bold text-success">{stopDolar.toFixed(0)} pts/contrato</p>
               </div>
 
               <div className="flex justify-between items-center p-3 rounded-lg bg-background/50">
@@ -258,8 +258,8 @@ export default function Simulator() {
                 <p className="font-bold">{maxContractsDolar}</p>
               </div>
 
-              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                <p className="text-xs font-semibold text-green-500 mb-2">Novo Sistema de Gestão:</p>
+              <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+                <p className="text-xs font-semibold text-success mb-2">Novo Sistema de Gestão:</p>
                 <p className="text-xs text-muted-foreground">
                   O risco diário é calculado dividindo o risco mensal restante pelos dias úteis restantes. 
                   Perdas reduzem o risco mensal, ganhos mantêm o risco inalterado.
