@@ -406,7 +406,7 @@ export default function StockSimulator() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Card 1: Simulação de Operação */}
           <Card className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
             <div className="flex items-center gap-3 mb-6">
