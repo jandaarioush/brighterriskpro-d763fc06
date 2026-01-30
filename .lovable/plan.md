@@ -1,136 +1,103 @@
 
 
-## Plano: Integrar Formulários de Lead com Webhook Externo
+## Plano: Criar Tabela Orders e Edge Function Proxy para Leads
 
 ### Objetivo
 
-Atualizar a tabela `pending_orders` e conectar os formulários de captura (Blog Newsletter, Contato, Suporte) ao webhook externo para envio de leads.
+1. Criar uma nova tabela `orders` para armazenar leads convertidos (clientes que pagaram)
+2. Criar uma Edge Function `send-lead` que funciona como proxy seguro para enviar dados ao webhook externo, protegendo a API Key
 
 ---
 
-### Mapeamento de Dados
+### 1. Nova Tabela: `orders` (Leads Convertidos / Clientes)
 
-#### Tabela `pending_orders` (já existente)
-
-A tabela já possui a maioria dos campos necessários:
-
-| Campo Atual | Campo Solicitado | Status |
-|-------------|------------------|--------|
-| `name` | `full_name` | Renomear |
-| `email` | `email` | OK |
-| `phone` | `phone` | OK |
-| - | `cpf` | Adicionar |
-| `plano` | `plan_type` | OK (usar valores: private, group, legacy) |
-| `status` | `status` | OK (pending, completed, expired) |
-| `created_at` | `created_at` | OK |
-
----
-
-### Alterações no Banco de Dados
+| Campo | Tipo | Descrição | Nullable |
+|-------|------|-----------|----------|
+| `id` | uuid | Chave primária | Não |
+| `customer_name` | text | Nome do cliente | Não |
+| `customer_email` | text | Email do cliente | Não |
+| `customer_phone` | text | Telefone do cliente | Sim |
+| `product_id` | text | ID do produto comprado | Não |
+| `product_name` | text | Nome do produto | Não |
+| `status` | text | Status (pending, paid, failed) | Não |
+| `paid_at` | timestamp | Data do pagamento | Sim |
+| `created_at` | timestamp | Data de criação | Não |
 
 ```sql
--- Renomear 'name' para 'full_name'
-ALTER TABLE public.pending_orders RENAME COLUMN name TO full_name;
+CREATE TABLE public.orders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_name text NOT NULL,
+  customer_email text NOT NULL,
+  customer_phone text,
+  product_id text NOT NULL,
+  product_name text NOT NULL,
+  status text NOT NULL DEFAULT 'pending',
+  paid_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
 
--- Adicionar coluna CPF (opcional)
-ALTER TABLE public.pending_orders ADD COLUMN cpf text;
+-- RLS
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+-- Admins podem ver todos os pedidos
+CREATE POLICY "Admins can view all orders"
+  ON public.orders FOR SELECT
+  USING (has_role(auth.uid(), 'admin'::app_role));
 ```
 
 ---
 
-### Formulários a Integrar
+### 2. Edge Function Proxy: `send-lead`
 
-| Formulário | Arquivo | Campos Capturados |
-|------------|---------|-------------------|
-| Newsletter (Blog) | `src/pages/Blog.tsx` | email |
-| Contato | `src/pages/Contato.tsx` | nome, email, telefone, mensagem |
-| Suporte | `src/pages/Suporte.tsx` | nome, email, assunto, mensagem |
-
----
-
-### Configuração do Webhook
-
-**URL do Webhook Externo:**
-```
-https://wsvafihzxxlbgfxbqqmh.supabase.co/functions/v1/lead-capture-webhook
-```
-
-**API Key:** Será armazenada como secret no backend
-
-**Payload Esperado:**
-```json
-{
-  "source": "newsletter" | "contato" | "suporte",
-  "full_name": "Nome do Lead",
-  "email": "email@exemplo.com",
-  "phone": "+5511999999999",
-  "message": "Mensagem (opcional)",
-  "subject": "Assunto (opcional)",
-  "plan_type": "private" | "group" | "legacy",
-  "created_at": "2026-01-30T10:00:00Z"
-}
-```
-
----
-
-### Arquitetura da Solução
+Esta função protege a API Key do webhook externo, recebendo dados do frontend e encaminhando para o CRM/webhook externo de forma segura.
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    FRONTEND (React)                             │
 ├─────────────────────────────────────────────────────────────────┤
-│  Blog.tsx (Newsletter)    Contato.tsx      Suporte.tsx          │
-│       │                       │                 │               │
-│       └───────────────────────┼─────────────────┘               │
-│                               ▼                                 │
-│              supabase.functions.invoke('send-lead')             │
+│  Blog.tsx      Contato.tsx      Suporte.tsx                     │
+│       │             │                 │                         │
+│       └─────────────┼─────────────────┘                         │
+│                     ▼                                           │
+│       supabase.functions.invoke('send-lead', { body: {...} })   │
 └─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
+                      │
+                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │            EDGE FUNCTION: send-lead/index.ts                    │
 ├─────────────────────────────────────────────────────────────────┤
-│  1. Recebe dados do formulário                                  │
-│  2. Valida inputs (zod)                                         │
-│  3. Envia POST para webhook externo com API Key                 │
-│  4. Retorna status de sucesso/erro                              │
+│  1. Recebe dados do formulário (source, email, nome, etc)       │
+│  2. Valida inputs                                               │
+│  3. Busca API Key do secret: LEAD_WEBHOOK_API_KEY               │
+│  4. Envia POST para webhook externo com Authorization header    │
+│  5. Retorna status de sucesso/erro ao frontend                  │
 └─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
+                      │
+                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  WEBHOOK EXTERNO (CRM do Cliente)                               │
+│  WEBHOOK EXTERNO (CRM)                                          │
 │  https://wsvafihzxxlbgfxbqqmh.supabase.co/.../lead-capture      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-### Implementação
-
-#### 1. Armazenar API Key como Secret
-
-Adicionar o secret `LEAD_WEBHOOK_API_KEY` com valor:
-```
-1da7fdeabeba44e3bd9b6852fcd12c40715b999186ae1c1fb0c6c1cc2fec14f9
-```
-
-#### 2. Criar Edge Function `send-lead`
+**Código da Edge Function:**
 
 ```typescript
 // supabase/functions/send-lead/index.ts
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { source, full_name, email, phone, message, subject } = await req.json();
+    const { source, full_name, email, phone, message, subject, plan_type } = await req.json();
 
     // Validação básica
     if (!email || !source) {
@@ -140,30 +107,59 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Enviar para webhook externo
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Email inválido' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // API Key protegida no backend
     const webhookUrl = 'https://wsvafihzxxlbgfxbqqmh.supabase.co/functions/v1/lead-capture-webhook';
     const apiKey = Deno.env.get('LEAD_WEBHOOK_API_KEY');
 
+    if (!apiKey) {
+      console.error('LEAD_WEBHOOK_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Configuração inválida' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Payload para o webhook externo
+    const payload = {
+      source,
+      full_name: full_name?.trim().substring(0, 100) || '',
+      email: email.trim().toLowerCase(),
+      phone: phone?.trim() || '',
+      message: message?.trim().substring(0, 1000) || '',
+      subject: subject?.trim().substring(0, 200) || '',
+      plan_type: plan_type || null,
+      created_at: new Date().toISOString(),
+    };
+
+    console.log('Sending lead to webhook:', { source, email: payload.email });
+
+    // Enviar para webhook externo com API Key
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        source,
-        full_name: full_name || '',
-        email,
-        phone: phone || '',
-        message: message || '',
-        subject: subject || '',
-        created_at: new Date().toISOString(),
-      }),
+      body: JSON.stringify(payload),
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
+      console.error('Webhook error:', response.status, responseText);
       throw new Error(`Webhook retornou ${response.status}`);
     }
+
+    console.log('Lead sent successfully:', { source, email: payload.email });
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -173,14 +169,18 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Erro ao enviar lead:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: error.message || 'Erro ao processar' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
 ```
 
-#### 3. Atualizar Formulário Newsletter (Blog.tsx)
+---
+
+### 3. Atualização dos Formulários
+
+#### Blog.tsx (Newsletter)
 
 ```tsx
 const [email, setEmail] = useState('');
@@ -188,28 +188,31 @@ const [loading, setLoading] = useState(false);
 
 const handleNewsletterSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
-  setLoading(true);
+  if (!email.trim()) return;
   
+  setLoading(true);
   try {
     const { error } = await supabase.functions.invoke('send-lead', {
-      body: { source: 'newsletter', email }
+      body: { source: 'newsletter', email: email.trim() }
     });
     
     if (error) throw error;
     
-    toast({ title: 'Inscrito com sucesso!' });
+    toast({ title: 'Inscrito com sucesso!', description: 'Você receberá nossas novidades.' });
     setEmail('');
   } catch (err) {
-    toast({ title: 'Erro ao inscrever', variant: 'destructive' });
+    toast({ title: 'Erro ao inscrever', description: 'Tente novamente.', variant: 'destructive' });
   } finally {
     setLoading(false);
   }
 };
 ```
 
-#### 4. Atualizar Formulário Contato (Contato.tsx)
+#### Contato.tsx
 
 ```tsx
+const [loading, setLoading] = useState(false);
+
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setLoading(true);
@@ -227,19 +230,21 @@ const handleSubmit = async (e: React.FormEvent) => {
     
     if (error) throw error;
     
-    toast({ title: 'Mensagem enviada!' });
+    toast({ title: 'Mensagem enviada!', description: 'Entraremos em contato em breve.' });
     setFormData({ name: '', email: '', phone: '', message: '' });
   } catch (err) {
-    toast({ title: 'Erro ao enviar', variant: 'destructive' });
+    toast({ title: 'Erro ao enviar', description: 'Tente novamente.', variant: 'destructive' });
   } finally {
     setLoading(false);
   }
 };
 ```
 
-#### 5. Atualizar Formulário Suporte (Suporte.tsx)
+#### Suporte.tsx
 
 ```tsx
+const [loading, setLoading] = useState(false);
+
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setLoading(true);
@@ -257,10 +262,10 @@ const handleSubmit = async (e: React.FormEvent) => {
     
     if (error) throw error;
     
-    toast({ title: 'Mensagem enviada!' });
+    toast({ title: 'Mensagem enviada!', description: 'Entraremos em contato em breve.' });
     setFormData({ name: '', email: '', subject: '', message: '' });
   } catch (err) {
-    toast({ title: 'Erro ao enviar', variant: 'destructive' });
+    toast({ title: 'Erro ao enviar', description: 'Tente novamente.', variant: 'destructive' });
   } finally {
     setLoading(false);
   }
@@ -269,13 +274,22 @@ const handleSubmit = async (e: React.FormEvent) => {
 
 ---
 
-### Arquivos a Modificar/Criar
+### 4. Secret Necessário
+
+Será necessário adicionar o secret `LEAD_WEBHOOK_API_KEY` com o valor:
+```
+1da7fdeabeba44e3bd9b6852fcd12c40715b999186ae1c1fb0c6c1cc2fec14f9
+```
+
+---
+
+### Arquivos a Criar/Modificar
 
 | Arquivo | Ação |
 |---------|------|
-| Migração SQL | Renomear `name` para `full_name` e adicionar `cpf` na tabela `pending_orders` |
-| `supabase/functions/send-lead/index.ts` | Criar edge function para envio ao webhook |
-| `supabase/config.toml` | Adicionar configuração da nova function |
+| Migração SQL | Criar tabela `orders` |
+| `supabase/functions/send-lead/index.ts` | Criar Edge Function proxy |
+| `supabase/config.toml` | Adicionar config da função `send-lead` |
 | `src/pages/Blog.tsx` | Integrar newsletter com edge function |
 | `src/pages/Contato.tsx` | Integrar formulário com edge function |
 | `src/pages/Suporte.tsx` | Integrar formulário com edge function |
@@ -284,8 +298,11 @@ const handleSubmit = async (e: React.FormEvent) => {
 
 ### Segurança
 
-1. **API Key como Secret** - A chave de API será armazenada como secret no backend, nunca exposta no frontend
-2. **Validação de Inputs** - Todos os dados serão validados antes do envio
-3. **CORS** - Headers configurados corretamente para acesso do frontend
-4. **Sem Autenticação** - Os formulários são públicos, não requerem login
+| Aspecto | Implementação |
+|---------|---------------|
+| **API Key Protegida** | Armazenada como secret, nunca exposta no frontend |
+| **Validação de Inputs** | Email validado com regex; campos sanitizados e truncados |
+| **CORS Configurado** | Headers permitem chamadas do frontend |
+| **RLS na tabela orders** | Apenas admins podem visualizar pedidos |
+| **Formulários Públicos** | Não requerem autenticação (leads anônimos) |
 
