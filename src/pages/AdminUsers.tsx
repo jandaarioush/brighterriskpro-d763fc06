@@ -282,22 +282,18 @@ export default function AdminUsers() {
   // Helper function to verify and refresh session before Edge Function calls
   const ensureSession = async (): Promise<boolean> => {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      // Always try to refresh the session to ensure it's valid server-side
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
       
-      if (error) {
-        console.error('Erro ao verificar sessão:', error);
-        toast.error('Erro ao verificar sessão. Tente novamente.');
+      if (refreshError) {
+        console.error('Erro ao atualizar sessão:', refreshError);
+        toast.error('Sessão expirada. Por favor, faça login novamente.');
         return false;
       }
       
-      if (!session) {
-        // Try to refresh
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        
-        if (refreshError || !refreshData.session) {
-          toast.error('Sessão expirada. Por favor, faça login novamente.');
-          return false;
-        }
+      if (!refreshData.session) {
+        toast.error('Sessão não encontrada. Por favor, faça login novamente.');
+        return false;
       }
       
       return true;
