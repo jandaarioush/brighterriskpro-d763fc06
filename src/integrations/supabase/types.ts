@@ -127,6 +127,105 @@ export type Database = {
         }
         Relationships: []
       }
+      international_trades: {
+        Row: {
+          commission: number | null
+          contracts: number
+          created_at: string | null
+          dashboard_id: string
+          entry_price: number
+          exchange_rate: number
+          exit_price: number
+          id: string
+          margin_used: number
+          nota_disciplina: number | null
+          notes: string | null
+          resultado_brl: number
+          resultado_percentual: number
+          resultado_usd: number
+          risco_percentual: number
+          screenshot_url: string | null
+          setup_utilizado: string | null
+          symbol: string
+          tag: string | null
+          tick_size: number
+          tick_value: number
+          trade_date: string
+          trade_type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          commission?: number | null
+          contracts?: number
+          created_at?: string | null
+          dashboard_id: string
+          entry_price: number
+          exchange_rate: number
+          exit_price: number
+          id?: string
+          margin_used: number
+          nota_disciplina?: number | null
+          notes?: string | null
+          resultado_brl: number
+          resultado_percentual: number
+          resultado_usd: number
+          risco_percentual?: number
+          screenshot_url?: string | null
+          setup_utilizado?: string | null
+          symbol: string
+          tag?: string | null
+          tick_size: number
+          tick_value: number
+          trade_date: string
+          trade_type?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          commission?: number | null
+          contracts?: number
+          created_at?: string | null
+          dashboard_id?: string
+          entry_price?: number
+          exchange_rate?: number
+          exit_price?: number
+          id?: string
+          margin_used?: number
+          nota_disciplina?: number | null
+          notes?: string | null
+          resultado_brl?: number
+          resultado_percentual?: number
+          resultado_usd?: number
+          risco_percentual?: number
+          screenshot_url?: string | null
+          setup_utilizado?: string | null
+          symbol?: string
+          tag?: string | null
+          tick_size?: number
+          tick_value?: number
+          trade_date?: string
+          trade_type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "international_trades_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "international_trades_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string

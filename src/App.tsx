@@ -13,6 +13,7 @@ import Demo from "./pages/Demo";
 import Hub from "./pages/Hub";
 import Dashboard from "./pages/Dashboard";
 import StockDashboard from "./pages/StockDashboard";
+import InternationalDashboard from "./pages/InternationalDashboard";
 import Calendar from "./pages/Calendar";
 import StockCalendar from "./pages/StockCalendar";
 import Trades from "./pages/Trades";
@@ -97,6 +98,7 @@ const App = () => (
               <Route path="/hub" element={<ProtectedRoute><Hub /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/dashboard/:dashboardId" element={<ProtectedRoute><StockDashboard /></ProtectedRoute>} />
+              <Route path="/international-dashboard/:dashboardId" element={<ProtectedRoute><InternationalDashboard /></ProtectedRoute>} />
               <Route path="/calendar" element={<ProtectedRoute><DashboardLayoutWrapper><Calendar /></DashboardLayoutWrapper></ProtectedRoute>} />
               <Route path="/calendar/:dashboardId" element={<ProtectedRoute><StockCalendar /></ProtectedRoute>} />
               <Route path="/trades" element={<ProtectedRoute><DashboardLayoutWrapper><Trades /></DashboardLayoutWrapper></ProtectedRoute>} />
