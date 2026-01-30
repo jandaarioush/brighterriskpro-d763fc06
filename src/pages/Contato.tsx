@@ -6,9 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mail, MapPin, Phone, Clock } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Contato = () => {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -16,13 +18,38 @@ const Contato = () => {
     message: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Mensagem enviada!",
-      description: "Entraremos em contato em breve.",
-    });
-    setFormData({ name: "", email: "", phone: "", message: "" });
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.functions.invoke('send-lead', {
+        body: {
+          source: 'contato',
+          full_name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          message: formData.message
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Mensagem enviada!",
+        description: "Entraremos em contato em breve.",
+      });
+      setFormData({ name: "", email: "", phone: "", message: "" });
+    } catch (err) {
+      console.error('Contact form error:', err);
+      toast({
+        title: "Erro ao enviar",
+        description: "Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,6 +90,7 @@ const Contato = () => {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
+                      disabled={loading}
                     />
                   </div>
 
@@ -74,6 +102,7 @@ const Contato = () => {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       required
+                      disabled={loading}
                     />
                   </div>
 
@@ -84,6 +113,7 @@ const Contato = () => {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      disabled={loading}
                     />
                   </div>
 
@@ -95,11 +125,12 @@ const Contato = () => {
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                       rows={6}
                       required
+                      disabled={loading}
                     />
                   </div>
 
-                  <Button type="submit" size="lg" className="w-full">
-                    Enviar Mensagem
+                  <Button type="submit" size="lg" className="w-full" disabled={loading}>
+                    {loading ? "Enviando..." : "Enviar Mensagem"}
                   </Button>
                 </form>
               </Card>

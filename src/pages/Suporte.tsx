@@ -6,30 +6,59 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mail, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
 const Suporte = () => {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     subject: "",
     message: ""
   });
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Mensagem enviada!",
-      description: "Entraremos em contato em breve."
-    });
-    setFormData({
-      name: "",
-      email: "",
-      subject: "",
-      message: ""
-    });
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.functions.invoke('send-lead', {
+        body: {
+          source: 'suporte',
+          full_name: formData.name,
+          email: formData.email,
+          subject: formData.subject,
+          message: formData.message
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Mensagem enviada!",
+        description: "Entraremos em contato em breve."
+      });
+      setFormData({
+        name: "",
+        email: "",
+        subject: "",
+        message: ""
+      });
+    } catch (err) {
+      console.error('Support form error:', err);
+      toast({
+        title: "Erro ao enviar",
+        description: "Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
-  return <div className="min-h-screen bg-background">
+
+  return (
+    <div className="min-h-screen bg-background">
       {/* Hero */}
       <section className="py-20 px-4 bg-gradient-to-br from-primary/20 via-background to-background">
         <div className="container mx-auto max-w-6xl">
@@ -74,38 +103,52 @@ const Suporte = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="name">Nome</Label>
-                    <Input id="name" value={formData.name} onChange={e => setFormData({
-                    ...formData,
-                    name: e.target.value
-                  })} required />
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                      disabled={loading}
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" value={formData.email} onChange={e => setFormData({
-                    ...formData,
-                    email: e.target.value
-                  })} required />
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                      disabled={loading}
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="subject">Assunto</Label>
-                    <Input id="subject" value={formData.subject} onChange={e => setFormData({
-                    ...formData,
-                    subject: e.target.value
-                  })} required />
+                    <Input
+                      id="subject"
+                      value={formData.subject}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                      required
+                      disabled={loading}
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="message">Mensagem</Label>
-                    <Textarea id="message" value={formData.message} onChange={e => setFormData({
-                    ...formData,
-                    message: e.target.value
-                  })} rows={6} required />
+                    <Textarea
+                      id="message"
+                      value={formData.message}
+                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                      rows={6}
+                      required
+                      disabled={loading}
+                    />
                   </div>
 
-                  <Button type="submit" size="lg" className="w-full">
-                    Enviar Mensagem
+                  <Button type="submit" size="lg" className="w-full" disabled={loading}>
+                    {loading ? "Enviando..." : "Enviar Mensagem"}
                   </Button>
                 </form>
               </Card>
@@ -115,7 +158,7 @@ const Suporte = () => {
               <h2 className="font-montserrat text-3xl font-bold mb-6">
                 Perguntas Frequentes
               </h2>
-              
+
               <div className="space-y-4">
                 <Card className="p-6">
                   <div className="flex gap-4">
@@ -146,7 +189,9 @@ const Suporte = () => {
                     <HelpCircle className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
                     <div>
                       <h3 className="font-semibold mb-2">Posso mudar de plano?</h3>
-                      <p className="text-muted-foreground text-sm">Sim! Você pode fazer upgrade do mensal para o anual a qualquer momento. </p>
+                      <p className="text-muted-foreground text-sm">
+                        Sim! Você pode fazer upgrade do mensal para o anual a qualquer momento.
+                      </p>
                     </div>
                   </div>
                 </Card>
@@ -155,6 +200,8 @@ const Suporte = () => {
           </div>
         </div>
       </section>
-    </div>;
+    </div>
+  );
 };
+
 export default Suporte;
