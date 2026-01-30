@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Upload, UserPlus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, Upload, UserPlus, Pencil, Trash2, AlertTriangle, Key } from 'lucide-react';
+import { strongPasswordSchema, passwordRequirements } from '@/lib/passwordValidation';
 import {
   Dialog,
   DialogContent,
@@ -104,6 +105,12 @@ export default function AdminUsers() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Reset password dialog state
+  const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
+  const [userToResetPassword, setUserToResetPassword] = useState<UserProfile | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -406,6 +413,55 @@ export default function AdminUsers() {
     setShowDeleteDialog(true);
   };
 
+  const openResetPasswordDialog = (userProfile: UserProfile) => {
+    setUserToResetPassword(userProfile);
+    setNewPassword('');
+    setShowResetPasswordDialog(true);
+  };
+
+  const closeResetPasswordDialog = () => {
+    setShowResetPasswordDialog(false);
+    setUserToResetPassword(null);
+    setNewPassword('');
+  };
+
+  const handleResetPassword = async () => {
+    if (!userToResetPassword || !newPassword) return;
+
+    // Validate password strength
+    const validation = strongPasswordSchema.safeParse(newPassword);
+    if (!validation.success) {
+      toast.error('Senha não atende aos requisitos de segurança');
+      return;
+    }
+
+    // Verify session before calling Edge Function
+    if (!await ensureSession()) {
+      return;
+    }
+
+    setResetPasswordLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-manage-users', {
+        body: {
+          action: 'reset-password',
+          userId: userToResetPassword.id,
+          newPassword,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast.success('Senha redefinida com sucesso!');
+      closeResetPasswordDialog();
+    } catch (error: any) {
+      toast.error('Erro ao redefinir senha: ' + error.message);
+    } finally {
+      setResetPasswordLoading(false);
+    }
+  };
+
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
 
@@ -672,6 +728,14 @@ export default function AdminUsers() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => openResetPasswordDialog(userProfile)}
+                          title="Redefinir Senha"
+                        >
+                          <Key className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => openDeleteDialog(userProfile)}
                           className="text-destructive hover:text-destructive"
                           title="Excluir"
@@ -842,6 +906,57 @@ export default function AdminUsers() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={showResetPasswordDialog} onOpenChange={setShowResetPasswordDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="w-5 h-5" />
+              Redefinir Senha
+            </DialogTitle>
+            <DialogDescription>
+              Definir nova senha para {userToResetPassword?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nova Senha</Label>
+              <Input
+                type="password"
+                placeholder="Digite a nova senha"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            <div className="bg-muted p-3 rounded">
+              <p className="text-sm font-medium mb-2">Requisitos da senha:</p>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                {passwordRequirements.map((req, index) => (
+                  <li key={index}>• {req}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                O usuário precisará fazer login novamente após a redefinição.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={closeResetPasswordDialog}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleResetPassword} 
+              disabled={resetPasswordLoading || !newPassword}
+            >
+              {resetPasswordLoading ? 'Redefinindo...' : 'Redefinir Senha'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
