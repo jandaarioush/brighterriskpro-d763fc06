@@ -29,7 +29,7 @@ interface DeleteRequest {
 }
 
 interface AdminRequest {
-  action?: 'create' | 'update' | 'delete';
+  action?: 'create' | 'update' | 'delete' | 'reset-password';
   // For CREATE (backwards compatible)
   users?: Array<{ email: string; name?: string; plano?: string }>;
   // For UPDATE
@@ -42,6 +42,8 @@ interface AdminRequest {
   };
   // For DELETE
   userIdToDelete?: string;
+  // For RESET-PASSWORD
+  newPassword?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -299,6 +301,58 @@ const handler = async (req: Request): Promise<Response> => {
 
         return new Response(
           JSON.stringify({ success: true, message: 'Usuário excluído com sucesso' }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      case 'reset-password': {
+        const { userId, newPassword } = body;
+
+        if (!userId) {
+          throw new Error('ID do usuário é obrigatório');
+        }
+
+        if (!newPassword || newPassword.length < 8) {
+          throw new Error('Senha deve ter no mínimo 8 caracteres');
+        }
+
+        // Get user email for audit log
+        const { data: targetUser } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', userId)
+          .single();
+
+        console.log(`Resetting password for user ${userId} (${targetUser?.email})`);
+
+        // Update password using Admin API
+        const { error: updateError } = await supabase.auth.admin.updateUserById(
+          userId,
+          { password: newPassword }
+        );
+
+        if (updateError) {
+          console.error('Erro ao redefinir senha:', updateError);
+          throw new Error('Erro ao redefinir senha: ' + updateError.message);
+        }
+
+        // Log de auditoria
+        await supabase.rpc('log_audit', {
+          p_actor: user.email || user.id,
+          p_action: 'admin_reset_password',
+          p_meta: { 
+            target_user_id: userId, 
+            target_email: targetUser?.email 
+          },
+        });
+
+        console.log(`Password reset for user ${userId} completed successfully`);
+
+        return new Response(
+          JSON.stringify({ success: true, message: 'Senha redefinida com sucesso' }),
           {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
