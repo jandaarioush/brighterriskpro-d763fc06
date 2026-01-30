@@ -21,6 +21,7 @@ export interface PositionSizing {
   maxLossUSD: number;
   maxLossBRL: number;
   effectiveLeverage: number;
+  stopValuePerContract: number;
 }
 
 /**
@@ -133,6 +134,7 @@ export function calculatePositionSizing(
     maxLossUSD,
     maxLossBRL,
     effectiveLeverage,
+    stopValuePerContract: stopLossValuePerContract,
   };
 }
 
