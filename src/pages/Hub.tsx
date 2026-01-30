@@ -141,6 +141,8 @@ export default function Hub() {
   const handleDashboardClick = (dashboard: Dashboard) => {
     if (dashboard.type === 'futuros') {
       navigate('/dashboard');
+    } else if (dashboard.type === 'internacional') {
+      navigate(`/international-dashboard/${dashboard.id}`);
     } else {
       navigate(`/dashboard/${dashboard.id}`);
     }
