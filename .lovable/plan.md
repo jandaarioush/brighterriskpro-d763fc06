@@ -1,175 +1,291 @@
 
 
-## Plano: Atualizar Tipografia, Gradiente Animado nos Títulos e Centralizar Header
+## Plano: Integrar Formulários de Lead com Webhook Externo
 
-### O que será feito
+### Objetivo
 
-1. **Atualizar fontes do Google Fonts** - Adicionar pesos adicionais para Inter (700) e Montserrat (600)
-2. **Criar classe de gradiente animado** - Nova classe `.text-gradient-animated` com as cores da identidade Brighter
-3. **Aplicar gradiente em todos os títulos** - Atualizar h1-h6 para usar o gradiente animado automaticamente
-4. **Centralizar o header** - Ajustar a navegação para ficar centralizada na página
+Atualizar a tabela `pending_orders` e conectar os formulários de captura (Blog Newsletter, Contato, Suporte) ao webhook externo para envio de leads.
 
 ---
 
-### Detalhes da Implementação
+### Mapeamento de Dados
 
-#### 1. Atualizar Google Fonts (index.html)
+#### Tabela `pending_orders` (já existente)
 
-Expandir os pesos das fontes para incluir todos os necessários:
+A tabela já possui a maioria dos campos necessários:
 
-```html
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+| Campo Atual | Campo Solicitado | Status |
+|-------------|------------------|--------|
+| `name` | `full_name` | Renomear |
+| `email` | `email` | OK |
+| `phone` | `phone` | OK |
+| - | `cpf` | Adicionar |
+| `plano` | `plan_type` | OK (usar valores: private, group, legacy) |
+| `status` | `status` | OK (pending, completed, expired) |
+| `created_at` | `created_at` | OK |
+
+---
+
+### Alterações no Banco de Dados
+
+```sql
+-- Renomear 'name' para 'full_name'
+ALTER TABLE public.pending_orders RENAME COLUMN name TO full_name;
+
+-- Adicionar coluna CPF (opcional)
+ALTER TABLE public.pending_orders ADD COLUMN cpf text;
 ```
 
-#### 2. Nova Classe de Gradiente Animado (src/index.css)
+---
 
-Adicionar a animação `gradient-flow` com as cores da paleta Brighter:
+### Formulários a Integrar
 
-| Cor | Hex | Descrição |
-|-----|-----|-----------|
-| Dourado | #e5a74c | Destaque principal |
-| Branco | #ffffff | Transição suave |
-| Azul Corporativo | #0c2238 | Contraste elegante |
+| Formulário | Arquivo | Campos Capturados |
+|------------|---------|-------------------|
+| Newsletter (Blog) | `src/pages/Blog.tsx` | email |
+| Contato | `src/pages/Contato.tsx` | nome, email, telefone, mensagem |
+| Suporte | `src/pages/Suporte.tsx` | nome, email, assunto, mensagem |
 
-```css
-.text-gradient-animated {
-  background: linear-gradient(
-    90deg,
-    #e5a74c 0%,
-    #ffffff 25%,
-    #e5a74c 50%,
-    #0c2238 75%,
-    #e5a74c 100%
-  );
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: gradient-flow 6s ease infinite;
-}
+---
 
-@keyframes gradient-flow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+### Configuração do Webhook
+
+**URL do Webhook Externo:**
+```
+https://wsvafihzxxlbgfxbqqmh.supabase.co/functions/v1/lead-capture-webhook
+```
+
+**API Key:** Será armazenada como secret no backend
+
+**Payload Esperado:**
+```json
+{
+  "source": "newsletter" | "contato" | "suporte",
+  "full_name": "Nome do Lead",
+  "email": "email@exemplo.com",
+  "phone": "+5511999999999",
+  "message": "Mensagem (opcional)",
+  "subject": "Assunto (opcional)",
+  "plan_type": "private" | "group" | "legacy",
+  "created_at": "2026-01-30T10:00:00Z"
 }
 ```
 
-#### 3. Aplicar Gradiente Automaticamente em Títulos
+---
 
-Atualizar o estilo base dos títulos:
-
-```css
-h1, h2, h3, h4, h5, h6 {
-  @apply font-montserrat text-gradient-animated;
-}
-```
-
-> **Nota:** Isso aplicará o gradiente em TODOS os títulos do sistema. Para títulos específicos que não devem ter gradiente (ex: dentro de cards), pode-se usar a classe `text-foreground` para sobrescrever.
-
-#### 4. Centralizar o Header (src/pages/Index.tsx)
-
-Alterar a estrutura do header para centralizar a navegação:
+### Arquitetura da Solução
 
 ```text
-ANTES:
-┌──────────────────────────────────────────────────────────┐
-│  [Logo Risk Pro]                     Recursos | Benefícios | Planos | [1º acesso] [Entrar]  │
-└──────────────────────────────────────────────────────────┘
-
-DEPOIS:
-┌──────────────────────────────────────────────────────────┐
-│  [Logo]      Recursos   Benefícios   Planos      [1º acesso] [Entrar]  │
-│              ←────────── centralizado ──────────→                      │
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    FRONTEND (React)                             │
+├─────────────────────────────────────────────────────────────────┤
+│  Blog.tsx (Newsletter)    Contato.tsx      Suporte.tsx          │
+│       │                       │                 │               │
+│       └───────────────────────┼─────────────────┘               │
+│                               ▼                                 │
+│              supabase.functions.invoke('send-lead')             │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│            EDGE FUNCTION: send-lead/index.ts                    │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Recebe dados do formulário                                  │
+│  2. Valida inputs (zod)                                         │
+│  3. Envia POST para webhook externo com API Key                 │
+│  4. Retorna status de sucesso/erro                              │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  WEBHOOK EXTERNO (CRM do Cliente)                               │
+│  https://wsvafihzxxlbgfxbqqmh.supabase.co/.../lead-capture      │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Arquivos a Modificar
+### Implementação
 
-| Arquivo | Mudança |
-|---------|---------|
-| `index.html` | Atualizar link do Google Fonts com pesos adicionais |
-| `src/index.css` | Adicionar `.text-gradient-animated` e keyframes; aplicar em h1-h6 |
-| `src/pages/Index.tsx` | Reestruturar header para centralizar navegação |
+#### 1. Armazenar API Key como Secret
 
----
-
-### Seção Técnica
-
-#### CSS Completo (src/index.css)
-
-```css
-/* Adicionar na @layer utilities */
-.text-gradient-animated {
-  background: linear-gradient(
-    90deg,
-    #e5a74c 0%,
-    #ffffff 25%,
-    #e5a74c 50%,
-    #0c2238 75%,
-    #e5a74c 100%
-  );
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: gradient-flow 6s ease infinite;
-}
-
-@keyframes gradient-flow {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
+Adicionar o secret `LEAD_WEBHOOK_API_KEY` com valor:
+```
+1da7fdeabeba44e3bd9b6852fcd12c40715b999186ae1c1fb0c6c1cc2fec14f9
 ```
 
-#### Header Centralizado (src/pages/Index.tsx)
+#### 2. Criar Edge Function `send-lead`
+
+```typescript
+// supabase/functions/send-lead/index.ts
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const { source, full_name, email, phone, message, subject } = await req.json();
+
+    // Validação básica
+    if (!email || !source) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Email e source são obrigatórios' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Enviar para webhook externo
+    const webhookUrl = 'https://wsvafihzxxlbgfxbqqmh.supabase.co/functions/v1/lead-capture-webhook';
+    const apiKey = Deno.env.get('LEAD_WEBHOOK_API_KEY');
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        source,
+        full_name: full_name || '',
+        email,
+        phone: phone || '',
+        message: message || '',
+        subject: subject || '',
+        created_at: new Date().toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Webhook retornou ${response.status}`);
+    }
+
+    return new Response(
+      JSON.stringify({ success: true }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Erro ao enviar lead:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
+```
+
+#### 3. Atualizar Formulário Newsletter (Blog.tsx)
 
 ```tsx
-<header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
-  <div className="container mx-auto px-4">
-    <div className="flex items-center justify-center h-16 gap-8">
-      {/* Logo à esquerda com posição absoluta ou flex-grow */}
-      <Link to="/" className="flex items-center absolute left-4 md:relative md:left-0">
-        <ThemeLogo className="h-8" />
-        <span className="ml-3 font-montserrat font-bold text-xl">Risk Pro</span>
-      </Link>
-      
-      {/* Navegação centralizada */}
-      <nav className="hidden md:flex items-center gap-8">
-        <a href="#recursos">Recursos</a>
-        <a href="#beneficios">Benefícios</a>
-        <a href="#planos">Planos</a>
-      </nav>
-      
-      {/* Botões à direita */}
-      <div className="flex items-center gap-3 absolute right-4 md:relative md:right-0">
-        <Link to="/primeiro-acesso">
-          <Button variant="outline">1º acesso</Button>
-        </Link>
-        <Link to="/auth">
-          <Button variant="ghost">Entrar</Button>
-        </Link>
-      </div>
-    </div>
-  </div>
-</header>
+const [email, setEmail] = useState('');
+const [loading, setLoading] = useState(false);
+
+const handleNewsletterSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  
+  try {
+    const { error } = await supabase.functions.invoke('send-lead', {
+      body: { source: 'newsletter', email }
+    });
+    
+    if (error) throw error;
+    
+    toast({ title: 'Inscrito com sucesso!' });
+    setEmail('');
+  } catch (err) {
+    toast({ title: 'Erro ao inscrever', variant: 'destructive' });
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+#### 4. Atualizar Formulário Contato (Contato.tsx)
+
+```tsx
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  
+  try {
+    const { error } = await supabase.functions.invoke('send-lead', {
+      body: { 
+        source: 'contato',
+        full_name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        message: formData.message
+      }
+    });
+    
+    if (error) throw error;
+    
+    toast({ title: 'Mensagem enviada!' });
+    setFormData({ name: '', email: '', phone: '', message: '' });
+  } catch (err) {
+    toast({ title: 'Erro ao enviar', variant: 'destructive' });
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+#### 5. Atualizar Formulário Suporte (Suporte.tsx)
+
+```tsx
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  
+  try {
+    const { error } = await supabase.functions.invoke('send-lead', {
+      body: { 
+        source: 'suporte',
+        full_name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message
+      }
+    });
+    
+    if (error) throw error;
+    
+    toast({ title: 'Mensagem enviada!' });
+    setFormData({ name: '', email: '', subject: '', message: '' });
+  } catch (err) {
+    toast({ title: 'Erro ao enviar', variant: 'destructive' });
+  } finally {
+    setLoading(false);
+  }
+};
 ```
 
 ---
 
-### Considerações
+### Arquivos a Modificar/Criar
 
-1. **Compatibilidade** - O gradiente animado funciona em todos os navegadores modernos
-2. **Performance** - A animação CSS é leve e usa GPU
-3. **Títulos em Cards** - Para títulos dentro de cards que não devem ter gradiente, adicionar classe `text-foreground` ou criar exceção
-4. **Responsividade** - O header centralizado mantém o design em mobile com menu mobile
+| Arquivo | Ação |
+|---------|------|
+| Migração SQL | Renomear `name` para `full_name` e adicionar `cpf` na tabela `pending_orders` |
+| `supabase/functions/send-lead/index.ts` | Criar edge function para envio ao webhook |
+| `supabase/config.toml` | Adicionar configuração da nova function |
+| `src/pages/Blog.tsx` | Integrar newsletter com edge function |
+| `src/pages/Contato.tsx` | Integrar formulário com edge function |
+| `src/pages/Suporte.tsx` | Integrar formulário com edge function |
+
+---
+
+### Segurança
+
+1. **API Key como Secret** - A chave de API será armazenada como secret no backend, nunca exposta no frontend
+2. **Validação de Inputs** - Todos os dados serão validados antes do envio
+3. **CORS** - Headers configurados corretamente para acesso do frontend
+4. **Sem Autenticação** - Os formulários são públicos, não requerem login
 
