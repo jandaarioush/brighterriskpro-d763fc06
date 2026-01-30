@@ -236,6 +236,11 @@ export default function AdminUsers() {
       return;
     }
 
+    // Verify session before calling Edge Function
+    if (!await ensureSession()) {
+      return;
+    }
+
     setBulkLoading(true);
     try {
       const usersData = await parseCsvFile(csvFile);
@@ -274,9 +279,43 @@ export default function AdminUsers() {
     }
   };
 
+  // Helper function to verify and refresh session before Edge Function calls
+  const ensureSession = async (): Promise<boolean> => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Erro ao verificar sessão:', error);
+        toast.error('Erro ao verificar sessão. Tente novamente.');
+        return false;
+      }
+      
+      if (!session) {
+        // Try to refresh
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError || !refreshData.session) {
+          toast.error('Sessão expirada. Por favor, faça login novamente.');
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Erro inesperado ao verificar sessão:', err);
+      toast.error('Erro ao verificar sessão.');
+      return false;
+    }
+  };
+
   const handleCreateSingle = async () => {
     if (!newUserEmail) {
       toast.error('Preencha o email');
+      return;
+    }
+
+    // Verify session before calling Edge Function
+    if (!await ensureSession()) {
       return;
     }
 
@@ -329,6 +368,11 @@ export default function AdminUsers() {
   const handleUpdateUser = async () => {
     if (!editingUser) return;
 
+    // Verify session before calling Edge Function
+    if (!await ensureSession()) {
+      return;
+    }
+
     setEditLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('admin-manage-users', {
@@ -368,6 +412,11 @@ export default function AdminUsers() {
 
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
+
+    // Verify session before calling Edge Function
+    if (!await ensureSession()) {
+      return;
+    }
 
     setDeleteLoading(true);
     try {

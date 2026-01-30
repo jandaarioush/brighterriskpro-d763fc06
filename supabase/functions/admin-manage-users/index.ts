@@ -45,6 +45,10 @@ interface AdminRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  console.log('=== admin-manage-users called ===');
+  console.log('Method:', req.method);
+  console.log('Has Authorization:', !!req.headers.get('Authorization'));
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -57,14 +61,34 @@ const handler = async (req: Request): Promise<Response> => {
     // Verificar autenticação
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('Não autorizado');
+      console.error('Authorization header missing');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Não autorizado - token não fornecido',
+          hint: 'Verifique se você está logado e tente novamente'
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      throw new Error('Não autorizado');
+      console.error('Auth error:', authError?.message || 'User not found');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Não autorizado - token inválido',
+          hint: 'Sua sessão pode ter expirado. Faça login novamente.'
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     // Verificar se é admin
