@@ -1,87 +1,202 @@
 
 
-## Plano: Atualizar Termos de Uso e Política de Privacidade
+## Plano: Funcionalidade de Reset de Senha Administrativo
 
 ### Objetivo
 
-Substituir o conteúdo placeholder das páginas existentes pelo conteúdo oficial dos documentos PDFs fornecidos pela Brighter Inc.
+Adicionar a capacidade de administradores redefinirem senhas de usuários diretamente pelo painel de administração, sem necessidade de email ou código de verificação.
 
 ---
 
-### 1. Atualização: `src/pages/TermosDeUso.tsx`
-
-**Conteúdo do PDF: TERMOS DE USO - BRIGHTER INC**
-
-| Seção | Título |
-|-------|--------|
-| Introdução | Bem-vindo à Brighter Inc |
-| 1 | Sobre a Brighter Inc |
-| 2 | Objeto dos Serviços |
-| 3 | Perfil do Usuário |
-| 4 | Não Existe Promessa de Resultado |
-| 5 | Responsabilidade do Usuário |
-| 6 | Propriedade Intelectual |
-| 7 | Uso Indevido e Penalidades |
-| 8 | Pagamentos, Acessos e Cancelamentos |
-| 9 | Alterações dos Termos |
-| 10 | Foro |
-
-**Data de atualização:** 28/01/2026
-
----
-
-### 2. Atualização: `src/pages/PoliticaPrivacidade.tsx`
-
-**Conteúdo do PDF: POLÍTICA DE PRIVACIDADE - BRIGHTER INC & BRIGHTER SPHERE**
-
-| Seção | Título |
-|-------|--------|
-| 1 | Quem Somos |
-| 2 | Quais Dados Coletamos |
-| 3 | Como Coletamos os Dados |
-| 4 | Finalidade do Uso dos Dados |
-| 5 | Base Legal para o Tratamento |
-| 6 | Compartilhamento de Dados |
-| 7 | Armazenamento e Segurança |
-| 8 | Direitos do Titular |
-| 9 | Cookies |
-| 10 | Alterações nesta Política |
-| 11 | Contato |
-
-**Data de atualização:** 29/01/2026
-
----
-
-### Alterações nos Arquivos
+### Componentes a Modificar
 
 | Arquivo | Ação |
 |---------|------|
-| `src/pages/TermosDeUso.tsx` | Substituir conteúdo completo com 10 seções do PDF oficial |
-| `src/pages/PoliticaPrivacidade.tsx` | Substituir conteúdo completo com 11 seções do PDF oficial |
+| `supabase/functions/admin-manage-users/index.ts` | Adicionar ação `reset-password` |
+| `src/pages/AdminUsers.tsx` | Adicionar botão e dialog de reset de senha |
 
 ---
 
-### Estrutura Visual Mantida
+### 1. Atualização da Edge Function
 
-- Layout atual do Card com gradiente no hero
-- Tipografia com `font-montserrat` para títulos
-- Classes `text-muted-foreground` para parágrafos
-- Listas com `list-disc` e espaçamento adequado
-- Estrutura responsiva existente
+**Arquivo:** `supabase/functions/admin-manage-users/index.ts`
+
+Adicionar nova ação `reset-password` que:
+- Recebe `userId` e `newPassword`
+- Valida que a senha atende aos requisitos mínimos
+- Usa `supabase.auth.admin.updateUserById()` para redefinir a senha
+- Registra a ação no log de auditoria
+
+```typescript
+case 'reset-password': {
+  const { userId, newPassword } = body;
+
+  if (!userId) {
+    throw new Error('ID do usuário é obrigatório');
+  }
+
+  if (!newPassword || newPassword.length < 8) {
+    throw new Error('Senha deve ter no mínimo 8 caracteres');
+  }
+
+  // Get user email for audit log
+  const { data: targetUser } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('id', userId)
+    .single();
+
+  // Update password
+  const { error: updateError } = await supabase.auth.admin.updateUserById(
+    userId,
+    { password: newPassword }
+  );
+
+  if (updateError) {
+    throw new Error('Erro ao redefinir senha: ' + updateError.message);
+  }
+
+  // Log audit
+  await supabase.rpc('log_audit', {
+    p_actor: user.email || user.id,
+    p_action: 'admin_reset_password',
+    p_meta: { 
+      target_user_id: userId, 
+      target_email: targetUser?.email 
+    },
+  });
+
+  return new Response(
+    JSON.stringify({ success: true, message: 'Senha redefinida com sucesso' }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+```
 
 ---
 
-### Destaques do Novo Conteúdo
+### 2. Atualização do Frontend
 
-**Termos de Uso:**
-- Esclarece que a Brighter é empresa de educação financeira
-- Define claramente que não há promessa de resultados
-- Detalha propriedade intelectual e proibições
-- Foro: São Paulo
+**Arquivo:** `src/pages/AdminUsers.tsx`
 
-**Política de Privacidade:**
-- Referência direta à LGPD (Lei 13.709/2018)
-- Lista detalhada de dados coletados
-- Bases legais para tratamento
-- Direitos do titular bem definidos
+Adicionar:
+
+1. **Estados para o dialog de reset:**
+```typescript
+const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
+const [userToResetPassword, setUserToResetPassword] = useState<UserProfile | null>(null);
+const [newPassword, setNewPassword] = useState('');
+const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+```
+
+2. **Botão de reset na tabela de usuários:**
+```tsx
+<Button 
+  variant="outline" 
+  size="sm"
+  onClick={() => openResetPasswordDialog(user)}
+>
+  <Key className="w-4 h-4" />
+</Button>
+```
+
+3. **Dialog de reset de senha:**
+```tsx
+<Dialog open={showResetPasswordDialog} onOpenChange={setShowResetPasswordDialog}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Redefinir Senha</DialogTitle>
+      <DialogDescription>
+        Definir nova senha para {userToResetPassword?.email}
+      </DialogDescription>
+    </DialogHeader>
+    <div className="space-y-4">
+      <Input
+        type="password"
+        placeholder="Nova senha (mínimo 8 caracteres)"
+        value={newPassword}
+        onChange={(e) => setNewPassword(e.target.value)}
+      />
+      <ul className="text-xs text-muted-foreground">
+        <li>• Mínimo de 8 caracteres</li>
+        <li>• Pelo menos uma letra maiúscula</li>
+        <li>• Pelo menos uma letra minúscula</li>
+        <li>• Pelo menos um número</li>
+        <li>• Pelo menos um caractere especial</li>
+      </ul>
+    </div>
+    <DialogFooter>
+      <Button variant="outline" onClick={closeResetPasswordDialog}>
+        Cancelar
+      </Button>
+      <Button onClick={handleResetPassword} disabled={resetPasswordLoading}>
+        {resetPasswordLoading ? 'Redefinindo...' : 'Redefinir Senha'}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+4. **Handler de reset:**
+```typescript
+const handleResetPassword = async () => {
+  if (!userToResetPassword || !newPassword) return;
+  
+  // Validate password strength
+  if (!strongPasswordSchema.safeParse(newPassword).success) {
+    toast.error('Senha não atende aos requisitos de segurança');
+    return;
+  }
+  
+  if (!await ensureSession()) return;
+  
+  setResetPasswordLoading(true);
+  try {
+    const { data, error } = await supabase.functions.invoke('admin-manage-users', {
+      body: {
+        action: 'reset-password',
+        userId: userToResetPassword.id,
+        newPassword,
+      },
+    });
+    
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    
+    toast.success('Senha redefinida com sucesso!');
+    closeResetPasswordDialog();
+  } catch (error: any) {
+    toast.error('Erro ao redefinir senha: ' + error.message);
+  } finally {
+    setResetPasswordLoading(false);
+  }
+};
+```
+
+---
+
+### Fluxo de Uso
+
+```text
++------------------+     +-------------------+     +---------------------+
+| Admin clica em   | --> | Dialog pede nova  | --> | Edge Function       |
+| botão de reset   |     | senha             |     | redefine via Admin  |
++------------------+     +-------------------+     | API do Supabase     |
+                                                   +---------------------+
+                                                             |
+                                                             v
+                                                   +---------------------+
+                                                   | Audit log registra  |
+                                                   | a ação              |
+                                                   +---------------------+
+```
+
+---
+
+### Segurança
+
+- Validação de força de senha usando `strongPasswordSchema` (já existente no projeto)
+- Verificação de sessão admin antes da chamada
+- Log de auditoria completo
+- Endpoint protegido por JWT e verificação de role `admin`
 
