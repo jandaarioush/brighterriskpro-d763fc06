@@ -10,12 +10,14 @@ const Index = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center">
+          <div className="relative flex items-center justify-center h-16">
+            {/* Logo à esquerda */}
+            <Link to="/" className="absolute left-0 flex items-center">
               <ThemeLogo className="h-8" />
-              <span className="ml-3 font-montserrat font-bold text-xl">Risk Pro</span>
+              <span className="ml-3 font-montserrat font-bold text-xl text-foreground">Risk Pro</span>
             </Link>
             
+            {/* Navegação centralizada */}
             <nav className="hidden md:flex items-center gap-8">
               <a href="#recursos" className="text-muted-foreground hover:text-foreground transition-colors">
                 Recursos
@@ -26,19 +28,21 @@ const Index = () => {
               <a href="#planos" className="text-muted-foreground hover:text-foreground transition-colors">
                 Planos
               </a>
-              <div className="flex items-center gap-3">
-                <Link to="/primeiro-acesso">
-                  <Button variant="outline">
-                    1º acesso
-                  </Button>
-                </Link>
-                <Link to="/auth">
-                  <Button variant="ghost">
-                    Entrar
-                  </Button>
-                </Link>
-              </div>
             </nav>
+            
+            {/* Botões à direita */}
+            <div className="absolute right-0 flex items-center gap-3">
+              <Link to="/primeiro-acesso">
+                <Button variant="outline">
+                  1º acesso
+                </Button>
+              </Link>
+              <Link to="/auth">
+                <Button variant="ghost">
+                  Entrar
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
