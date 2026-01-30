@@ -799,13 +799,13 @@ export default function StockSimulator() {
                     value={[stopLossPercent]}
                     onValueChange={(v) => setStopLossPercent(v[0])}
                     min={0.1}
-                    max={10}
+                    max={20}
                     step={0.1}
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>0.1%</span>
-                    <span>10%</span>
+                    <span>20%</span>
                   </div>
                 </div>
 
