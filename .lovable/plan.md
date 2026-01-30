@@ -1,365 +1,266 @@
 
-## Plano: Implementar Lógica Matemática do Mercado Internacional com NinjaTrader
 
-### Objetivo
+## Plano: Configurar NinjaTrader como Corretora Exclusiva do Mercado Internacional
 
-Criar toda a infraestrutura do dashboard de Mercado Internacional usando NinjaTrader como corretora parceira, seguindo a mesma estrutura e lógica do mercado de ações (BTG).
+### Problema Identificado
+
+1. **Badge "BTG Pactual" errada**: A screenshot mostra "BTG Pactual" no header do Mercado Internacional, quando deveria mostrar "NinjaTrader"
+2. **Rota incorreta**: O usuário está acessando `/dashboard/7c5d7724-...` (que é o StockDashboard para ações) ao invés de `/international-dashboard/:dashboardId`
+3. **Lista de ativos incompleta**: O arquivo `ninjatraderAssets.ts` tem apenas 24 ativos, mas a NinjaTrader oferece 100+ produtos
 
 ---
 
-### Componentes a Criar/Modificar
+### Componentes a Modificar
 
 | Arquivo | Ação |
 |---------|------|
-| `src/lib/ninjatraderAssets.ts` | **CRIAR** - Lista de ativos NinjaTrader com margens |
-| `src/lib/internationalRiskCalculations.ts` | **CRIAR** - Cálculos de risco para futuros internacionais |
-| `src/components/international/BrokerSelectionDialog.tsx` | **CRIAR** - Dialog de seleção (NinjaTrader como principal) |
-| `src/components/international/InternationalRiskCalculator.tsx` | **CRIAR** - Calculadora de posição para futuros |
-| `src/components/international/InternationalTradeForm.tsx` | **CRIAR** - Formulário de trades internacionais |
-| `src/components/international/InternationalMonthHeatmap.tsx` | **CRIAR** - Heatmap mensal |
-| `src/components/international/InternationalPnLEvolutionChart.tsx` | **CRIAR** - Gráfico de evolução P&L |
-| `src/pages/InternationalDashboard.tsx` | **CRIAR** - Dashboard principal |
-| `src/App.tsx` | **MODIFICAR** - Adicionar rota do dashboard internacional |
+| `src/lib/ninjatraderAssets.ts` | **EXPANDIR** - Adicionar todos os 100+ ativos da NinjaTrader |
+| `src/pages/InternationalDashboard.tsx` | **VERIFICAR** - Garantir que mostra "NinjaTrader" corretamente |
+| `src/components/international/InternationalRiskCalculator.tsx` | **MELHORAR** - Mostrar alavancagem específica por ativo |
 
 ---
 
-### 1. Lista de Ativos NinjaTrader
+### 1. Expansão Completa da Lista de Ativos NinjaTrader
 
-**Arquivo:** `src/lib/ninjatraderAssets.ts`
+Adicionar todos os ativos do site oficial, organizados por grupo:
 
-Estrutura baseada nos dados coletados do site:
+**Micro Indices (8 ativos)**
+| Symbol | Market | Day Margin | Initial |
+|--------|--------|------------|---------|
+| MES | Micro E-mini S&P 500 | $50 | $2,498.60 |
+| MNQ | Micro E-mini NASDAQ-100 | $100 | $3,686.57 |
+| M2K | Micro E-mini Russell 2000 | $50 | $1,045.02 |
+| MYM | Micro E-mini Dow | $50 | $1,567.71 |
+| MMC | Micro E-mini S&P MidCap 400 | $50 | $2,523.08 |
+| MSC | Micro E-mini S&P SmallCap 600 | $50 | $1,294.95 |
+| MNK | Micro Nikkei Stock Average | $50 | $1,974.06 |
+
+**E-Mini Indices (4 ativos)**
+| Symbol | Market | Day Margin | Initial |
+|--------|--------|------------|---------|
+| ES | E-Mini S&P 500 | $500 | $24,985.95 |
+| NQ | E-Mini NASDAQ 100 | $1,000 | $36,865.75 |
+| RTY | E-Mini Russell 2000 | $500 | $10,450.22 |
+| YM | E-Mini Dow | $500 | $15,677.13 |
+
+**Currencies (15 ativos)**
+| Symbol | Market | Day Margin | Initial |
+|--------|--------|------------|---------|
+| 6A | Australian Dollar | $500 | $2,420 |
+| 6B | British Pound | $500 | $2,200 |
+| 6C | Canadian Dollar | $500 | $1,210 |
+| 6E | Euro FX | $500 | $3,190 |
+| 6J | Japanese Yen | $500 | $3,410 |
+| 6L | Brazilian Real | $500 | $1,210 |
+| 6M | Mexican Peso | $500 | $1,430 |
+| 6N | New Zealand Dollar | $500 | $1,540 |
+| 6S | Swiss Franc | $500 | $4,950 |
+| M6A | E-Micro Australian Dollar | $50 | $209 |
+| M6B | E-Micro British Pound | $50 | $220 |
+| M6E | E-Micro Euro | $50 | $297 |
+| MJY | E-Micro Japanese Yen | $50 | $308 |
+| MCD | E-Micro Canadian Dollar | $50 | $110 |
+| MSF | E-Micro Swiss Franc | $50 | $495 |
+
+**Energies (10 ativos)**
+| Symbol | Market | Day Margin | Initial |
+|--------|--------|------------|---------|
+| CL | Crude Oil | $1,000 | $4,687.83 |
+| MCL | Micro Crude Oil | $100 | $470.99 |
+| NG | Natural Gas | $1,000 | $12,697 |
+| MNG | Micro Henry Hub Natural Gas | $100 | $457.12 |
+| HO | Heating Oil | $1,000 | $7,050.18 |
+| RB | RBOB Gasoline | $1,000 | $5,009.33 |
+| BZ | Brent Crude Last Day | $1,000 | $4,679.82 |
+| QM | E-Mini Crude Oil | $500 | $2,354.91 |
+| QG | E-Mini Natural Gas | $500 | $1,142.78 |
+| QH | E-Mini Heating Oil | $500 | $3,529.71 |
+
+**Metals (12 ativos)**
+| Symbol | Market | Day Margin | Initial |
+|--------|--------|------------|---------|
+| GC | Gold | $2,000 | $29,169.80 |
+| MGC | E-Micro Gold | $200 | $2,917.20 |
+| SI | Silver | $4,000 | $68,464 |
+| SIL | Micro Silver | $1,000 | $13,692.80 |
+| HG | Copper | $1,000 | $11,000 |
+| MHG | Micro Copper | $200 | $1,100 |
+| PL | Platinum | $2,000 | $17,208.40 |
+| PA | Palladium | $2,000 | $31,222.40 |
+| QC | E-Mini Copper | $500 | $5,500 |
+| QO | E-Mini Gold | $500 | $14,686.10 |
+| QI | miNY Silver | $1,000 | $34,344.20 |
+| 1OZ | 1-Ounce Gold | $50 | $294.80 |
+
+**Crypto Indices (15 ativos)**
+| Symbol | Market | Day Margin | Initial |
+|--------|--------|------------|---------|
+| BTC | CME Bitcoin | $20,000 | $117,585.60 |
+| MBT | Micro Bitcoin | $100 | $2,351.80 |
+| ETH | Ether | $2,500 | $52,993.60 |
+| MET | Micro Ether | $50 | $106.70 |
+| GSOL | CME Solana | $500 | $28,944.30 |
+| MSL | Micro Solana | $50 | $1,447.60 |
+| MXP | CME Micro XRP | $50 | $2,321 |
+| GXRP | CME XRP | $1,000 | $46,415.60 |
+| BIT | Coinbase Nano Bitcoin | $25 | $379.50 |
+| ET | Coinbase Nano Ether | $25 | $162.80 |
+| SOL | Nano Solana (Coinbase) | $500 | $605 |
+| BTI | Coinbase Bitcoin Futures | $10,000 | $38,427.40 |
+| BCH | Bitcoin Cash | $50 | $356.40 |
+| DOG | Dogecoin | $50 | $1,307.90 |
+| LC | Litecoin | $50 | $302.50 |
+
+**Financials (15 ativos)**
+| Symbol | Market | Day Margin | Initial |
+|--------|--------|------------|---------|
+| ZB | US Treasury Bond | $500 | $4,070 |
+| ZN | 10-Year T-Note | $500 | $2,062.50 |
+| ZF | 5-Year T-Note | $500 | $1,375 |
+| ZT | 2-Year T-Note | $500 | $1,320 |
+| TN | Ultra 10-Year T-Note | $500 | $2,805 |
+| UB | Ultra US Treasury Bond | $1,000 | $5,665 |
+| TWE | 20yr US Treasury Bond | $500 | $4,730 |
+| 10Y | Micro 10-Year Yield | $50 | $330 |
+| 2YY | Micro 2-Year Yield | $50 | $363 |
+| 5YY | Micro 5-Year Yield | $50 | $341 |
+| 30Y | Micro 30-Year Yield | $50 | $297 |
+| MTN | Micro Ultra 10yr Note | $140.25 | $280.50 |
+| MWN | Micro Ultra T-Bond | $50 | $566.50 |
+| GE | Eurodollar | $478.50 | $957 |
+| Z3N | 3 Year US Treasury Notes | $1,000 | $2,000 |
+
+**Grains (12 ativos)**
+| Symbol | Market | Day Margin | Initial |
+|--------|--------|------------|---------|
+| ZC | Corn | $500 | $1,072.50 |
+| ZS | Soybeans | $1,000 | $2,200 |
+| ZW | Wheat | $500 | $1,815 |
+| ZL | Soybean Oil | $500 | $2,310 |
+| ZM | Soybean Meal | $1,000 | $1,705 |
+| ZO | Oats | $1,000 | $1,375 |
+| ZR | Rough Rice | $1,000 | $1,375 |
+| MZC | Micro Corn | $50 | $107.80 |
+| MZS | Micro Soybean | $50 | $220 |
+| MZW | Micro Wheat | $50 | $181.50 |
+| MZL | Micro Soybean Oil | $50 | $231 |
+| MZM | Micro Soybean Meal | $50 | $170.50 |
+
+**Softs (8 ativos)**
+| Symbol | Market | Day Margin | Initial |
+|--------|--------|------------|---------|
+| CC | Cocoa | $1,000 | $7,084 |
+| KC | Coffee | $1,000 | $9,610 |
+| CT | Cotton | $1,000 | $1,254 |
+| SB | Sugar No. 11 | $1,000 | $837 |
+| OJ | Orange Juice | $1,000 | $4,775 |
+| LBR | Lumber | $1,000 | $1,210 |
+| LBS | Random Length Lumber | $1,000 | $5,940 |
+
+**Meats (3 ativos)**
+| Symbol | Market | Day Margin | Initial |
+|--------|--------|------------|---------|
+| LE | Live Cattle | $500 | $3,410 |
+| HE | Lean Hogs | $1,000 | $1,870 |
+| GF | Feeder Cattle | $500 | $5,830 |
+
+**EUREX (EUR) (10 ativos)**
+| Symbol | Market | Day Margin | Initial |
+|--------|--------|------------|---------|
+| FDAX | DAX Index | 2000 EUR | 45030 EUR |
+| FDXM | Mini-DAX | 500 EUR | 9005 EUR |
+| FDXS | Micro DAX Index | 100 EUR | 1801 EUR |
+| FESX | Euro Stoxx 50 | 1000 EUR | 4122 EUR |
+| FSXE | Micro EURO STOXX 50 | 206 EUR | 412 EUR |
+| FGBL | Euro-Bund | 1000 EUR | 1952 EUR |
+| FGBM | Euro-Bobl | 1000 EUR | 1064 EUR |
+| FGBS | Euro-Schatz | 500 EUR | 388 EUR |
+| FGBX | Euro-Buxl | 1000 EUR | 3786 EUR |
+| FVS | VSTOXX | 1000 EUR | 284 EUR |
+
+---
+
+### 2. Estrutura Expandida do Arquivo
 
 ```typescript
 export interface NinjaTraderAsset {
-  symbol: string;           // Ex: "MES", "NQ", "CL"
-  name: string;             // Ex: "Micro E-mini S&P 500"
-  exchange: string;         // Ex: "CME", "NYMEX", "COMEX"
-  group: string;            // Ex: "Micro Indices", "E-Mini Indices", "Crypto"
-  dayMargin: number;        // Margem intradiária em USD
-  initialMargin: number;    // Margem inicial (overnight) em USD
-  tickSize: number;         // Tamanho do tick
-  tickValue: number;        // Valor por tick em USD
-  pointValue: number;       // Valor por ponto em USD
-  currency: 'USD' | 'EUR';  // Moeda base
-}
-```
-
-**Ativos Principais a Incluir:**
-
-| Símbolo | Mercado | Day Margin | Initial | Tick Size | Tick Value |
-|---------|---------|------------|---------|-----------|------------|
-| MES | Micro E-mini S&P 500 | $50 | $2,498.60 | 0.25 | $1.25 |
-| MNQ | Micro E-mini NASDAQ-100 | $100 | $3,686.57 | 0.25 | $0.50 |
-| M2K | Micro E-mini Russell 2000 | $50 | $1,045.02 | 0.10 | $0.50 |
-| MYM | Micro E-mini Dow | $50 | $1,567.71 | 1.00 | $0.50 |
-| ES | E-Mini S&P 500 | $500 | $24,985.95 | 0.25 | $12.50 |
-| NQ | E-Mini NASDAQ 100 | $1,000 | $36,865.75 | 0.25 | $5.00 |
-| RTY | E-Mini Russell 2000 | $500 | $10,450.22 | 0.10 | $5.00 |
-| MCL | Micro Crude Oil | $100 | $470.99 | 0.01 | $1.00 |
-| CL | Crude Oil | $1,000 | $4,687.83 | 0.01 | $10.00 |
-| GC | Gold | $2,000 | $29,169.80 | 0.10 | $10.00 |
-| MGC | E-Micro Gold | $200 | $2,917.20 | 0.10 | $1.00 |
-| SI | Silver | $4,000 | $68,464.00 | 0.005 | $25.00 |
-| MBT | Micro Bitcoin | $100 | $2,351.80 | 5.00 | $0.50 |
-| 6E | Euro FX | $500 | $3,190.00 | 0.00005 | $6.25 |
-| 6B | British Pound | $500 | $2,200.00 | 0.0001 | $6.25 |
-| NG | Natural Gas | $1,000 | $12,697.00 | 0.001 | $10.00 |
-
----
-
-### 2. Cálculos de Risco Internacional
-
-**Arquivo:** `src/lib/internationalRiskCalculations.ts`
-
-Lógica específica para futuros internacionais:
-
-```typescript
-// Calcular resultado de trade
-export function calculateInternationalTradeResult(
-  ticksGained: number,      // Quantidade de ticks ganhos/perdidos
-  tickValue: number,        // Valor por tick em USD
-  contracts: number,        // Número de contratos
-  commission: number = 0    // Comissão por contrato
-): { resultUSD: number; resultBRL: number } {
-  const resultUSD = (ticksGained * tickValue * contracts) - (commission * contracts);
-  // resultBRL será calculado com taxa de câmbio
-  return { resultUSD, resultBRL: resultUSD * exchangeRate };
+  symbol: string;
+  name: string;
+  exchange: string;
+  group: string;
+  dayMargin: number;
+  initialMargin: number;
+  tickSize: number;
+  tickValue: number;
+  pointValue: number;
+  currency: 'USD' | 'EUR';
 }
 
-// Calcular quantidade máxima de contratos baseado no risco
-export function calculateMaxContracts(
-  capitalUSD: number,          // Capital disponível em USD
-  dayMargin: number,           // Margem intradiária por contrato
-  stopLossValue: number,       // Valor do stop loss em USD por contrato
-  maxRiskPercent: number       // Percentual máximo de risco
-): number {
-  const maxRiskValue = capitalUSD * (maxRiskPercent / 100);
-  const contractsByMargin = Math.floor(capitalUSD / dayMargin);
-  const contractsByRisk = Math.floor(maxRiskValue / stopLossValue);
-  return Math.min(contractsByMargin, contractsByRisk);
-}
-```
-
----
-
-### 3. Dialog de Seleção de Broker
-
-**Arquivo:** `src/components/international/BrokerSelectionDialog.tsx`
-
-```typescript
-export type InternationalBrokerType = 'ninjatrader' | 'interactive_brokers' | 'tradestation' | 'outra';
-
-const brokerOptions = [
-  { 
-    value: 'ninjatrader', 
-    label: 'NinjaTrader', 
-    description: 'Margens intradiárias a partir de $50 para Micros' 
-  },
-  { 
-    value: 'interactive_brokers', 
-    label: 'Interactive Brokers', 
-    description: 'Corretora global com múltiplos mercados' 
-  },
-  { 
-    value: 'tradestation', 
-    label: 'TradeStation', 
-    description: 'Plataforma americana tradicional' 
-  },
-  { 
-    value: 'outra', 
-    label: 'Outra', 
-    description: 'Configuração manual de margens' 
-  },
+// ~100 ativos organizados por grupo
+export const NINJATRADER_ASSETS: NinjaTraderAsset[] = [
+  // Todos os ativos listados acima com tick sizes e values corretos
 ];
+
+export const NINJATRADER_ASSET_GROUPS = [
+  'Micro Indices',
+  'E-Mini Indices', 
+  'Currencies',
+  'Energies',
+  'Metals',
+  'Crypto Indices',
+  'Financials',
+  'Grains',
+  'Softs',
+  'Meats',
+  'EUREX',
+  'Other Indices',
+] as const;
 ```
 
 ---
 
-### 4. Calculadora de Posição Internacional
+### 3. Melhorias na Calculadora de Posição
 
-**Arquivo:** `src/components/international/InternationalRiskCalculator.tsx`
-
-Similar ao `StockRiskCalculator.tsx` mas com campos específicos:
-
-- **Capital em USD**: Capital total disponível
-- **Taxa de Câmbio**: USD/BRL (campo editável com valor sugerido)
-- **Stop Financeiro Máximo**: Em USD
-- **Seleção de Ativo**: Dropdown com ativos NinjaTrader
-- **Stop em Ticks**: Quantos ticks de stop
-- **Cálculo Automático**:
-  - Número máximo de contratos
-  - Margem necessária
-  - Perda máxima em USD e BRL
-  - Alavancagem efetiva
-
----
-
-### 5. Formulário de Trades Internacionais
-
-**Arquivo:** `src/components/international/InternationalTradeForm.tsx`
-
-Campos do formulário:
+Adicionar exibição de alavancagem efetiva:
 
 ```typescript
-interface InternationalTradeFormData {
-  trade_date: string;
-  symbol: string;              // MES, NQ, CL, etc.
-  trade_type: 'long' | 'short';
-  contracts: number;
-  entry_price: number;
-  exit_price: number;
-  commission: number;          // Por contrato
-  exchange_rate: number;       // USD/BRL no momento
-  resultado_usd: number;       // Calculado
-  resultado_brl: number;       // Calculado
-  risco_percentual: number;
-  setup_utilizado?: string;
-  tag?: string;
-  nota_disciplina?: number;
-  notes?: string;
-}
-```
-
-**Cálculo do Resultado:**
-```
-Ticks = (Exit Price - Entry Price) / Tick Size
-Resultado USD = Ticks × Tick Value × Contracts - Commission
-Resultado BRL = Resultado USD × Exchange Rate
-```
-
----
-
-### 6. Migração de Banco de Dados
-
-Criar tabela `international_trades`:
-
-```sql
-CREATE TABLE IF NOT EXISTS public.international_trades (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES public.profiles(id),
-  dashboard_id UUID NOT NULL REFERENCES public.dashboards(id),
-  trade_date DATE NOT NULL,
-  symbol VARCHAR(20) NOT NULL,
-  trade_type VARCHAR(10) NOT NULL DEFAULT 'long',
-  contracts INTEGER NOT NULL DEFAULT 1,
-  entry_price DECIMAL(18,6) NOT NULL,
-  exit_price DECIMAL(18,6) NOT NULL,
-  tick_size DECIMAL(18,6) NOT NULL,
-  tick_value DECIMAL(18,4) NOT NULL,
-  commission DECIMAL(10,2) DEFAULT 0,
-  exchange_rate DECIMAL(10,4) NOT NULL,
-  resultado_usd DECIMAL(18,2) NOT NULL,
-  resultado_brl DECIMAL(18,2) NOT NULL,
-  resultado_percentual DECIMAL(10,4) NOT NULL,
-  margin_used DECIMAL(18,2) NOT NULL,
-  risco_percentual DECIMAL(5,2) NOT NULL DEFAULT 8,
-  setup_utilizado VARCHAR(50),
-  tag VARCHAR(50),
-  nota_disciplina INTEGER,
-  notes TEXT,
-  screenshot_url TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- RLS
-ALTER TABLE public.international_trades ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own international trades"
-  ON public.international_trades FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own international trades"
-  ON public.international_trades FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own international trades"
-  ON public.international_trades FOR UPDATE
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own international trades"
-  ON public.international_trades FOR DELETE
-  USING (auth.uid() = user_id);
-```
-
----
-
-### 7. Dashboard Internacional
-
-**Arquivo:** `src/pages/InternationalDashboard.tsx`
-
-Layout similar ao `StockDashboard.tsx`:
-
-1. **Dialog de seleção de broker** (primeiro acesso)
-2. **Simulação Rápida** (Calculadora de Posição em destaque)
-3. **Stats Cards**:
-   - Capital Total (USD e BRL)
-   - Risco Diário Atual
-   - Resultado Acumulado (USD e BRL)
-   - Taxa de Câmbio Atual
-4. **Gráfico de Evolução P&L**
-5. **Heatmap Mensal**
-6. **Formulário de Novo Trade**
-
----
-
-### 8. Atualização de Rotas
-
-**Arquivo:** `src/App.tsx`
-
-```tsx
-import InternationalDashboard from '@/pages/InternationalDashboard';
-
-// Adicionar rota
-<Route path="/international-dashboard/:dashboardId" element={<InternationalDashboard />} />
-```
-
----
-
-### 9. Atualização do Hub
-
-Modificar `src/pages/Hub.tsx` para redirecionar corretamente:
-
-```typescript
-const handleDashboardClick = (dashboard: Dashboard) => {
-  if (dashboard.type === 'futuros') {
-    navigate('/dashboard');
-  } else if (dashboard.type === 'internacional') {
-    navigate(`/international-dashboard/${dashboard.id}`);
-  } else {
-    navigate(`/stock-dashboard/${dashboard.id}`);
-  }
+// Calcular alavancagem com base na margem
+const calculateLeverage = (asset: NinjaTraderAsset, currentPrice: number) => {
+  const contractValue = currentPrice * asset.pointValue;
+  return Math.round(contractValue / asset.dayMargin);
 };
+
+// Exemplo: MES a $5,950
+// Contract Value = 5950 * 5 = $29,750
+// Day Margin = $50
+// Leverage = 29750 / 50 = 595x (alavancagem efetiva intradiária)
 ```
+
+Exibir no card do ativo:
+- Margem Intradiária: $50
+- Margem Overnight: $2,498.60
+- Alavancagem Day Trade: ~595x
 
 ---
 
-### Resumo Visual
+### 4. Correção do Header do Dashboard Internacional
 
-```text
-+---------------------+
-|    Hub (seleção)    |
-+----------+----------+
-           |
-           v
-+---------------------+
-| Broker Selection    |  <-- NinjaTrader como primeira opção
-| Dialog              |
-+----------+----------+
-           |
-           v
-+---------------------+
-| International       |
-| Dashboard           |
-|                     |
-| +----------------+  |
-| | Risk Calculator|  |  <-- Em USD, com conversão BRL
-| +----------------+  |
-|                     |
-| +----------------+  |
-| | Stats Cards    |  |  <-- Resultado em USD/BRL
-| +----------------+  |
-|                     |
-| +----------------+  |
-| | Trade Form     |  |  <-- Campos específicos para futuros
-| +----------------+  |
-+---------------------+
+O `InternationalDashboard.tsx` já está correto (linha 184):
+```tsx
+{dashboard?.config?.broker === 'ninjatrader' ? 'NinjaTrader' : 'Futuros Internacionais'}
 ```
+
+O problema é que o usuário está acessando a rota errada (`/dashboard/:id` = StockDashboard com BTG).
+
+**Solução**: Garantir que dashboards do tipo "internacional" sempre redirecionem corretamente pelo Hub.
 
 ---
 
-### Detalhes Técnicos
+### Resumo das Mudanças
 
-**Fórmulas de Cálculo:**
+1. **Expandir `ninjatraderAssets.ts`** de 24 para ~100 ativos com margens atualizadas
+2. **Adicionar novos grupos**: Financials, Grains, Softs, Meats, EUREX
+3. **Incluir tick sizes e values** corretos para cada contrato
+4. **Melhorar calculadora** com exibição de alavancagem efetiva
+5. **Verificar navegação** para garantir que dashboards internacionais vão para a rota correta
 
-1. **Resultado por Trade:**
-```
-Ticks = (Preço Saída - Preço Entrada) / Tick Size
-P&L (USD) = Ticks × Tick Value × Contratos - Comissão
-P&L (BRL) = P&L (USD) × Taxa Câmbio
-```
-
-2. **Contratos Máximos por Risco:**
-```
-Risco Máximo = Capital × (% Risco / 100)
-Stop em USD = Stop em Ticks × Tick Value
-Contratos = Min(
-  Floor(Capital / Margem Intradiária),
-  Floor(Risco Máximo / Stop em USD)
-)
-```
-
-3. **Alavancagem Efetiva:**
-```
-Valor Nocional = Preço × Point Value × Contratos
-Alavancagem = Valor Nocional / Margem Usada
-```
-
----
-
-### Próximos Passos Após Implementação
-
-1. Integrar API de câmbio em tempo real (opcional)
-2. Adicionar mais ativos NinjaTrader
-3. Criar relatórios específicos para mercado internacional
-4. Adicionar conversão automática de timezone para horários de mercado
