@@ -127,6 +127,42 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          paid_at: string | null
+          product_id: string
+          product_name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          paid_at?: string | null
+          product_id: string
+          product_name: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          paid_at?: string | null
+          product_id?: string
+          product_name?: string
+          status?: string
+        }
+        Relationships: []
+      }
       password_reset_codes: {
         Row: {
           code: string

@@ -1,8 +1,15 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Blog = () => {
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const posts = [
     {
       title: "5 Erros Comuns na Gestão de Risco que Todo Trader Comete",
@@ -47,6 +54,35 @@ const Blog = () => {
       category: "Gestão de Risco"
     }
   ];
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-lead', {
+        body: { source: 'newsletter', email: email.trim() }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Inscrito com sucesso!",
+        description: "Você receberá nossas novidades."
+      });
+      setEmail("");
+    } catch (err) {
+      console.error('Newsletter error:', err);
+      toast({
+        title: "Erro ao inscrever",
+        description: "Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,7 +149,7 @@ const Blog = () => {
       <section className="py-20 px-4 bg-card/30">
         <div className="container mx-auto max-w-4xl">
           <Card className="p-12">
-            <div className="text-center space-y-6">
+            <form onSubmit={handleNewsletterSubmit} className="text-center space-y-6">
               <h2 className="font-montserrat text-4xl font-bold">
                 Assine Nossa Newsletter
               </h2>
@@ -124,13 +160,17 @@ const Blog = () => {
                 <input
                   type="email"
                   placeholder="Seu melhor email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="flex-1 px-4 py-3 rounded-lg border border-border bg-background"
+                  required
+                  disabled={loading}
                 />
-                <Button size="lg">
-                  Assinar
+                <Button size="lg" type="submit" disabled={loading}>
+                  {loading ? "Enviando..." : "Assinar"}
                 </Button>
               </div>
-            </div>
+            </form>
           </Card>
         </div>
       </section>
