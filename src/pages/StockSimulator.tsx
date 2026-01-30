@@ -55,9 +55,10 @@ interface SelectedAsset {
   ticker: string;
   preco: number;
   isManual?: boolean;
+  stopPercentual: number;
+  objetivoPercentual: number;
 }
 
-type Modalidade = 'daytrade' | 'swing';
 type WizardStep = 'select' | 'prices' | 'params' | 'results';
 
 export default function StockSimulator() {
@@ -71,12 +72,9 @@ export default function StockSimulator() {
   const [selectedAssets, setSelectedAssets] = useState<SelectedAsset[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modalidade, Valor Alocado e Stop Financeiro
-  const [modalidade, setModalidade] = useState<Modalidade>('daytrade');
+  // Valor Alocado e Stop Financeiro
   const [valorAlocado, setValorAlocado] = useState(1000);
   const [stopFinanceiroMax, setStopFinanceiroMax] = useState(500);
-  const [stopLossPercent, setStopLossPercent] = useState(2);
-  const [objetivoPercent, setObjetivoPercent] = useState(4);
   const [positions, setPositions] = useState<SimulatorPosition[]>([]);
 
   // Parâmetros atuais (do dashboard)
@@ -180,8 +178,28 @@ export default function StockSimulator() {
   // Add asset to selection
   const addAsset = (ticker: string, isManual: boolean = false) => {
     if (!isSelected(ticker)) {
-      setSelectedAssets(prev => [...prev, { ticker, preco: 0, isManual }]);
+      setSelectedAssets(prev => [...prev, { 
+        ticker, 
+        preco: 0, 
+        isManual,
+        stopPercentual: 2.0,
+        objetivoPercentual: 4.0
+      }]);
     }
+  };
+
+  // Update individual asset stop percentage
+  const updateAssetStopPercentual = (ticker: string, value: number) => {
+    setSelectedAssets(prev => prev.map(a => 
+      a.ticker === ticker ? { ...a, stopPercentual: value } : a
+    ));
+  };
+
+  // Update individual asset objetivo percentage
+  const updateAssetObjetivoPercentual = (ticker: string, value: number) => {
+    setSelectedAssets(prev => prev.map(a => 
+      a.ticker === ticker ? { ...a, objetivoPercentual: value } : a
+    ));
   };
 
   // Add manual asset (not in BTG list)
@@ -207,31 +225,18 @@ export default function StockSimulator() {
     ));
   };
 
-  // Obter margem por ação (considera ativos manuais)
+  // Obter margem por ação (Day Trade - considera ativos manuais)
   const getMargemPorAcao = (ticker: string, preco: number, isManual?: boolean): number => {
     // Ativos manuais: margem = preço (sem alavancagem)
-    if (isManual) {
-      return preco;
-    }
-    if (modalidade === 'swing') {
-      return preco / 5;
-    }
+    if (isManual) return preco;
     const btgAsset = getBTGAsset(ticker);
-    if (btgAsset) {
-      return btgAsset.marginPerShare;
-    }
+    if (btgAsset) return btgAsset.marginPerShare;
     return preco;
   };
 
-  // Calcular alavancagem baseado na modalidade, ticker e se é manual
+  // Calcular alavancagem (Day Trade - BTG list ou 1x para manuais)
   const getAlavancagem = (ticker: string, isManual?: boolean): number => {
-    // Ativos manuais: sempre 1x
-    if (isManual) {
-      return 1;
-    }
-    if (modalidade === 'swing') {
-      return 5;
-    }
+    if (isManual) return 1;
     const btgAsset = getBTGAsset(ticker);
     return btgAsset?.leverage || 1;
   };
@@ -308,8 +313,9 @@ export default function StockSimulator() {
       const alavancagem = getAlavancagem(asset.ticker, asset.isManual);
       const margemPorAcao = getMargemPorAcao(asset.ticker, asset.preco, asset.isManual);
       const stopAlocado = stopFinanceiroMax * (stopPercentEach / 100);
-      const stopPorAcao = asset.preco * (stopLossPercent / 100);
-      const ganhoPorAcao = asset.preco * (objetivoPercent / 100);
+      // Use individual asset stop/objetivo values
+      const stopPorAcao = asset.preco * (asset.stopPercentual / 100);
+      const ganhoPorAcao = asset.preco * (asset.objetivoPercentual / 100);
       
       const qtdMaxMargem = Math.floor(valorAlocado / margemPorAcao);
       const qtdMaxStop = stopPorAcao > 0 ? Math.floor(stopAlocado / stopPorAcao) : 0;
@@ -324,8 +330,8 @@ export default function StockSimulator() {
         id: crypto.randomUUID(),
         ticker: asset.ticker,
         precoAtivo: asset.preco,
-        stopPercentual: stopLossPercent,
-        objetivoPercentual: objetivoPercent,
+        stopPercentual: asset.stopPercentual,
+        objetivoPercentual: asset.objetivoPercentual,
         alavancagem,
         margemPorAcao,
         stopAlocadoPercent: stopPercentEach,
@@ -696,32 +702,13 @@ export default function StockSimulator() {
               </div>
               <div>
                 <h2 className="text-xl font-bold">Etapa 3: Parâmetros da Operação</h2>
-                <p className="text-sm text-muted-foreground">Defina os parâmetros de risco para todas as posições</p>
+                <p className="text-sm text-muted-foreground">Defina os parâmetros de risco para todas as posições (Day Trade)</p>
               </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-              {/* Left Column */}
+              {/* Left Column - Valor Alocado e Stop Máximo */}
               <div className="space-y-5">
-                {/* Modalidade */}
-                <div>
-                  <Label htmlFor="modalidade">Modalidade</Label>
-                  <Select value={modalidade} onValueChange={(v: Modalidade) => setModalidade(v)}>
-                    <SelectTrigger id="modalidade">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daytrade">Day Trade (BTG)</SelectItem>
-                      <SelectItem value="swing">Swing Trade (5x)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {modalidade === 'daytrade' 
-                      ? 'Alavancagem automática baseada na lista BTG (ativos manuais: 1x)' 
-                      : 'Alavancagem fixa de 5x para todos os ativos'}
-                  </p>
-                </div>
-
                 {/* Valor Alocado */}
                 <div>
                   <div className="flex items-center gap-2">
@@ -785,49 +772,6 @@ export default function StockSimulator() {
                     </p>
                   </div>
                 </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-5">
-                {/* Stop Loss % */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <Label>Stop Loss (%)</Label>
-                    <span className="text-sm font-bold text-destructive">{stopLossPercent.toFixed(1)}%</span>
-                  </div>
-                  <Slider
-                    value={[stopLossPercent]}
-                    onValueChange={(v) => setStopLossPercent(v[0])}
-                    min={0.1}
-                    max={20}
-                    step={0.1}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>0.1%</span>
-                    <span>20%</span>
-                  </div>
-                </div>
-
-                {/* Objetivo % */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <Label>Objetivo / Gain (%)</Label>
-                    <span className="text-sm font-bold text-success">{objetivoPercent.toFixed(1)}%</span>
-                  </div>
-                  <Slider
-                    value={[objetivoPercent]}
-                    onValueChange={(v) => setObjetivoPercent(v[0])}
-                    min={0.1}
-                    max={20}
-                    step={0.1}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>0.1%</span>
-                    <span>20%</span>
-                  </div>
-                </div>
 
                 {/* Summary */}
                 <div className="p-4 rounded-lg bg-muted/30 border">
@@ -839,12 +783,57 @@ export default function StockSimulator() {
                     <div className="font-medium text-destructive">
                       R$ {(stopFinanceiroMax / selectedAssets.length).toFixed(2)}
                     </div>
-                    <div className="text-muted-foreground">R/R esperado:</div>
-                    <div className="font-medium text-primary">
-                      1:{(objetivoPercent / stopLossPercent).toFixed(1)}
-                    </div>
+                    <div className="text-muted-foreground">Modo:</div>
+                    <div className="font-medium text-primary">Day Trade (BTG)</div>
                   </div>
                 </div>
+              </div>
+
+              {/* Right Column - Sliders individuais por ativo */}
+              <div className="space-y-4">
+                <Label className="text-sm font-medium">Stop e Objetivo por Ativo</Label>
+                <ScrollArea className="h-[300px] pr-2">
+                  {selectedAssets.map((asset) => (
+                    <div key={asset.ticker} className="p-4 rounded-lg border bg-card mb-3">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="font-bold">{asset.ticker}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {getAlavancagem(asset.ticker, asset.isManual)}x | R$ {asset.preco.toFixed(2)}
+                        </span>
+                      </div>
+                      
+                      {/* Stop Loss Individual */}
+                      <div className="mb-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs text-muted-foreground">Stop Loss</span>
+                          <span className="text-sm font-bold text-destructive">{asset.stopPercentual.toFixed(1)}%</span>
+                        </div>
+                        <Slider
+                          value={[asset.stopPercentual]}
+                          onValueChange={(v) => updateAssetStopPercentual(asset.ticker, v[0])}
+                          min={0.1}
+                          max={20}
+                          step={0.1}
+                        />
+                      </div>
+                      
+                      {/* Objetivo Individual */}
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs text-muted-foreground">Objetivo</span>
+                          <span className="text-sm font-bold text-success">{asset.objetivoPercentual.toFixed(1)}%</span>
+                        </div>
+                        <Slider
+                          value={[asset.objetivoPercentual]}
+                          onValueChange={(v) => updateAssetObjetivoPercentual(asset.ticker, v[0])}
+                          min={0.1}
+                          max={20}
+                          step={0.1}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </ScrollArea>
               </div>
             </div>
 
