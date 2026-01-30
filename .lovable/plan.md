@@ -1,240 +1,175 @@
 
 
-## Plano: Configurar Stop/Gain Individual por Ativo e Remover Modalidade
+## Plano: Atualizar Tipografia, Gradiente Animado nos Títulos e Centralizar Header
 
 ### O que será feito
 
-1. **Remover seleção de Modalidade** - O dropdown "Day Trade / Swing Trade" será removido da Etapa 3
-2. **Forçar Day Trade** - A modalidade será fixada como `daytrade` para que ativos BTG tenham alavancagem automática
-3. **Stop/Gain Individual por Ativo** - Quando houver múltiplos ativos selecionados, cada um terá seus próprios sliders de Stop Loss % e Objetivo %
+1. **Atualizar fontes do Google Fonts** - Adicionar pesos adicionais para Inter (700) e Montserrat (600)
+2. **Criar classe de gradiente animado** - Nova classe `.text-gradient-animated` com as cores da identidade Brighter
+3. **Aplicar gradiente em todos os títulos** - Atualizar h1-h6 para usar o gradiente animado automaticamente
+4. **Centralizar o header** - Ajustar a navegação para ficar centralizada na página
 
 ---
 
-### Interface Atualizada
+### Detalhes da Implementação
 
-**Antes (Etapa 3):**
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  Modalidade: [Day Trade ▾]                                   │
-│  Valor Alocado: [1000]                                       │
-│  Stop Financeiro: [500]                                      │
-│                                                              │
-│  Stop Loss (%): ──────●──────── 2.0%  (global)               │
-│  Objetivo (%):  ──────●──────── 4.0%  (global)               │
-└──────────────────────────────────────────────────────────────┘
+#### 1. Atualizar Google Fonts (index.html)
+
+Expandir os pesos das fontes para incluir todos os necessários:
+
+```html
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
 ```
 
-**Depois (Etapa 3 com múltiplos ativos):**
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  ❌ Modalidade removido (forçado Day Trade)                  │
-│                                                              │
-│  Valor Alocado: [1000]                                       │
-│  Stop Financeiro: [500]                                      │
-│                                                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │  PETR4 (3x) - R$ 38.50                                  │ │
-│  │  Stop: ───●───── 2.0%    Objetivo: ───●───── 4.0%       │ │
-│  ├─────────────────────────────────────────────────────────┤ │
-│  │  VALE3 (3x) - R$ 62.30                                  │ │
-│  │  Stop: ───●───── 3.0%    Objetivo: ───●───── 6.0%       │ │
-│  ├─────────────────────────────────────────────────────────┤ │
-│  │  ITUB4 (5x) - R$ 28.10                                  │ │
-│  │  Stop: ───●───── 1.5%    Objetivo: ───●───── 3.0%       │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-```
+#### 2. Nova Classe de Gradiente Animado (src/index.css)
 
----
+Adicionar a animação `gradient-flow` com as cores da paleta Brighter:
 
-### Mudanças no Código
+| Cor | Hex | Descrição |
+|-----|-----|-----------|
+| Dourado | #e5a74c | Destaque principal |
+| Branco | #ffffff | Transição suave |
+| Azul Corporativo | #0c2238 | Contraste elegante |
 
-#### 1. Atualizar Interface `SelectedAsset`
+```css
+.text-gradient-animated {
+  background: linear-gradient(
+    90deg,
+    #e5a74c 0%,
+    #ffffff 25%,
+    #e5a74c 50%,
+    #0c2238 75%,
+    #e5a74c 100%
+  );
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-flow 6s ease infinite;
+}
 
-Adicionar campos para stop e objetivo individuais:
-
-```typescript
-interface SelectedAsset {
-  ticker: string;
-  preco: number;
-  isManual?: boolean;
-  stopPercentual: number;    // NOVO
-  objetivoPercentual: number; // NOVO
+@keyframes gradient-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 ```
 
-#### 2. Remover estado `modalidade`
+#### 3. Aplicar Gradiente Automaticamente em Títulos
 
-```typescript
-// REMOVER esta linha:
-const [modalidade, setModalidade] = useState<Modalidade>('daytrade');
+Atualizar o estilo base dos títulos:
 
-// REMOVER o tipo Modalidade
-type Modalidade = 'daytrade' | 'swing';
+```css
+h1, h2, h3, h4, h5, h6 {
+  @apply font-montserrat text-gradient-animated;
+}
 ```
 
-#### 3. Atualizar função `addAsset`
+> **Nota:** Isso aplicará o gradiente em TODOS os títulos do sistema. Para títulos específicos que não devem ter gradiente (ex: dentro de cards), pode-se usar a classe `text-foreground` para sobrescrever.
 
-Inicializar com valores padrão de stop/objetivo:
+#### 4. Centralizar o Header (src/pages/Index.tsx)
 
-```typescript
-const addAsset = (ticker: string, isManual: boolean = false) => {
-  if (!isSelected(ticker)) {
-    setSelectedAssets(prev => [...prev, { 
-      ticker, 
-      preco: 0, 
-      isManual,
-      stopPercentual: 2.0,      // valor padrão
-      objetivoPercentual: 4.0   // valor padrão
-    }]);
-  }
-};
-```
+Alterar a estrutura do header para centralizar a navegação:
 
-#### 4. Adicionar funções de atualização individual
+```text
+ANTES:
+┌──────────────────────────────────────────────────────────┐
+│  [Logo Risk Pro]                     Recursos | Benefícios | Planos | [1º acesso] [Entrar]  │
+└──────────────────────────────────────────────────────────┘
 
-```typescript
-const updateAssetStopPercentual = (ticker: string, value: number) => {
-  setSelectedAssets(prev => prev.map(a => 
-    a.ticker === ticker ? { ...a, stopPercentual: value } : a
-  ));
-};
-
-const updateAssetObjetivoPercentual = (ticker: string, value: number) => {
-  setSelectedAssets(prev => prev.map(a => 
-    a.ticker === ticker ? { ...a, objetivoPercentual: value } : a
-  ));
-};
-```
-
-#### 5. Simplificar funções de alavancagem (sem modalidade)
-
-```typescript
-const getMargemPorAcao = (ticker: string, preco: number, isManual?: boolean): number => {
-  if (isManual) return preco;
-  const btgAsset = getBTGAsset(ticker);
-  if (btgAsset) return btgAsset.marginPerShare;
-  return preco;
-};
-
-const getAlavancagem = (ticker: string, isManual?: boolean): number => {
-  if (isManual) return 1;
-  const btgAsset = getBTGAsset(ticker);
-  return btgAsset?.leverage || 1;
-};
-```
-
-#### 6. Atualizar Etapa 3 (Parâmetros)
-
-Remover dropdown de Modalidade e adicionar sliders individuais:
-
-```tsx
-{/* Step 3: Global Parameters */}
-{currentStep === 'params' && (
-  <Card className="p-6 max-w-4xl mx-auto">
-    <div className="grid gap-6 md:grid-cols-2">
-      {/* Left Column - Valor Alocado e Stop Máximo */}
-      <div className="space-y-5">
-        {/* Valor Alocado */}
-        <div>...</div>
-        
-        {/* Stop Financeiro Máximo */}
-        <div>...</div>
-      </div>
-
-      {/* Right Column - Sliders individuais por ativo */}
-      <div className="space-y-4">
-        <Label className="text-sm font-medium">Stop e Objetivo por Ativo</Label>
-        <ScrollArea className="h-[300px] pr-2">
-          {selectedAssets.map((asset) => (
-            <div key={asset.ticker} className="p-4 rounded-lg border bg-card mb-3">
-              <div className="flex justify-between items-center mb-3">
-                <span className="font-bold">{asset.ticker}</span>
-                <span className="text-xs text-muted-foreground">
-                  {getAlavancagem(asset.ticker, asset.isManual)}x | R$ {asset.preco.toFixed(2)}
-                </span>
-              </div>
-              
-              {/* Stop Loss Individual */}
-              <div className="mb-3">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-muted-foreground">Stop Loss</span>
-                  <span className="text-sm font-bold text-destructive">{asset.stopPercentual.toFixed(1)}%</span>
-                </div>
-                <Slider
-                  value={[asset.stopPercentual]}
-                  onValueChange={(v) => updateAssetStopPercentual(asset.ticker, v[0])}
-                  min={0.1}
-                  max={20}
-                  step={0.1}
-                />
-              </div>
-              
-              {/* Objetivo Individual */}
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-muted-foreground">Objetivo</span>
-                  <span className="text-sm font-bold text-success">{asset.objetivoPercentual.toFixed(1)}%</span>
-                </div>
-                <Slider
-                  value={[asset.objetivoPercentual]}
-                  onValueChange={(v) => updateAssetObjetivoPercentual(asset.ticker, v[0])}
-                  min={0.1}
-                  max={20}
-                  step={0.1}
-                />
-              </div>
-            </div>
-          ))}
-        </ScrollArea>
-      </div>
-    </div>
-  </Card>
-)}
-```
-
-#### 7. Atualizar `calculateAllPositions`
-
-Usar valores individuais de cada ativo:
-
-```typescript
-const calculateAllPositions = () => {
-  const newPositions: SimulatorPosition[] = selectedAssets.map(asset => {
-    const alavancagem = getAlavancagem(asset.ticker, asset.isManual);
-    const margemPorAcao = getMargemPorAcao(asset.ticker, asset.preco, asset.isManual);
-    const stopPorAcao = asset.preco * (asset.stopPercentual / 100);  // Usar valor individual
-    const ganhoPorAcao = asset.preco * (asset.objetivoPercentual / 100);  // Usar valor individual
-    
-    // ... resto do cálculo
-    
-    return {
-      // ...
-      stopPercentual: asset.stopPercentual,        // Do ativo
-      objetivoPercentual: asset.objetivoPercentual, // Do ativo
-      // ...
-    };
-  });
-};
+DEPOIS:
+┌──────────────────────────────────────────────────────────┐
+│  [Logo]      Recursos   Benefícios   Planos      [1º acesso] [Entrar]  │
+│              ←────────── centralizado ──────────→                      │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Resumo das Alterações
-
-| Componente | Mudança |
-|------------|---------|
-| Interface `SelectedAsset` | Adicionar `stopPercentual` e `objetivoPercentual` |
-| Estado `modalidade` | Remover (forçar Day Trade) |
-| Funções `getMargemPorAcao` e `getAlavancagem` | Remover lógica de swing trade |
-| Etapa 3 | Remover dropdown Modalidade; adicionar sliders individuais por ativo |
-| `calculateAllPositions` | Usar valores individuais de stop/objetivo de cada ativo |
-| Estados globais `stopLossPercent` e `objetivoPercent` | Remover (substituídos pelos individuais) |
-
----
-
-### Arquivo a Modificar
+### Arquivos a Modificar
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/pages/StockSimulator.tsx` | Implementar todas as mudanças acima |
+| `index.html` | Atualizar link do Google Fonts com pesos adicionais |
+| `src/index.css` | Adicionar `.text-gradient-animated` e keyframes; aplicar em h1-h6 |
+| `src/pages/Index.tsx` | Reestruturar header para centralizar navegação |
+
+---
+
+### Seção Técnica
+
+#### CSS Completo (src/index.css)
+
+```css
+/* Adicionar na @layer utilities */
+.text-gradient-animated {
+  background: linear-gradient(
+    90deg,
+    #e5a74c 0%,
+    #ffffff 25%,
+    #e5a74c 50%,
+    #0c2238 75%,
+    #e5a74c 100%
+  );
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-flow 6s ease infinite;
+}
+
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+```
+
+#### Header Centralizado (src/pages/Index.tsx)
+
+```tsx
+<header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
+  <div className="container mx-auto px-4">
+    <div className="flex items-center justify-center h-16 gap-8">
+      {/* Logo à esquerda com posição absoluta ou flex-grow */}
+      <Link to="/" className="flex items-center absolute left-4 md:relative md:left-0">
+        <ThemeLogo className="h-8" />
+        <span className="ml-3 font-montserrat font-bold text-xl">Risk Pro</span>
+      </Link>
+      
+      {/* Navegação centralizada */}
+      <nav className="hidden md:flex items-center gap-8">
+        <a href="#recursos">Recursos</a>
+        <a href="#beneficios">Benefícios</a>
+        <a href="#planos">Planos</a>
+      </nav>
+      
+      {/* Botões à direita */}
+      <div className="flex items-center gap-3 absolute right-4 md:relative md:right-0">
+        <Link to="/primeiro-acesso">
+          <Button variant="outline">1º acesso</Button>
+        </Link>
+        <Link to="/auth">
+          <Button variant="ghost">Entrar</Button>
+        </Link>
+      </div>
+    </div>
+  </div>
+</header>
+```
+
+---
+
+### Considerações
+
+1. **Compatibilidade** - O gradiente animado funciona em todos os navegadores modernos
+2. **Performance** - A animação CSS é leve e usa GPU
+3. **Títulos em Cards** - Para títulos dentro de cards que não devem ter gradiente, adicionar classe `text-foreground` ou criar exceção
+4. **Responsividade** - O header centralizado mantém o design em mobile com menu mobile
 
