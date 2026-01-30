@@ -1,213 +1,240 @@
 
 
-## Plano: Corrigir Erro de Autorização ao Criar Usuário na Admin
+## Plano: Configurar Stop/Gain Individual por Ativo e Remover Modalidade
 
-### Diagnóstico do Problema
+### O que será feito
 
-O erro "Não autorizado" está ocorrendo na Edge Function `admin-manage-users` porque o header `Authorization` está chegando vazio (null).
-
-**Causa raiz identificada:**
-- A Edge Function verifica se `authHeader` existe na linha 59-61
-- Quando o `supabase.functions.invoke` é chamado, ele deveria automaticamente enviar o token de sessão
-- Se o token não está sendo enviado, significa que a sessão do cliente não está ativa/válida
-
-**Possíveis cenários:**
-1. Token de sessão expirado e não foi renovado automaticamente
-2. Problema de sincronização entre a sessão e a chamada da função
-3. Usuário acessou a página admin sem estar logado (improvável, pois AdminRoute protege)
+1. **Remover seleção de Modalidade** - O dropdown "Day Trade / Swing Trade" será removido da Etapa 3
+2. **Forçar Day Trade** - A modalidade será fixada como `daytrade` para que ativos BTG tenham alavancagem automática
+3. **Stop/Gain Individual por Ativo** - Quando houver múltiplos ativos selecionados, cada um terá seus próprios sliders de Stop Loss % e Objetivo %
 
 ---
 
-### Solução Proposta
+### Interface Atualizada
 
-#### 1. Melhorar Logging na Edge Function para Debug
-
-Adicionar logs mais detalhados para entender exatamente o que está acontecendo:
-
-```typescript
-console.log('Headers recebidos:', {
-  authorization: authHeader ? 'presente' : 'ausente',
-  contentType: req.headers.get('Content-Type'),
-});
+**Antes (Etapa 3):**
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  Modalidade: [Day Trade ▾]                                   │
+│  Valor Alocado: [1000]                                       │
+│  Stop Financeiro: [500]                                      │
+│                                                              │
+│  Stop Loss (%): ──────●──────── 2.0%  (global)               │
+│  Objetivo (%):  ──────●──────── 4.0%  (global)               │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-#### 2. Melhorar Tratamento no Frontend (AdminUsers.tsx)
-
-Verificar a sessão antes de chamar a Edge Function e fornecer feedback mais claro:
-
-```typescript
-const handleCreateSingle = async () => {
-  // Verificar sessão antes de chamar
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session) {
-    toast.error('Sessão expirada. Por favor, faça login novamente.');
-    return;
-  }
-  
-  // Resto do código...
-};
-```
-
-#### 3. Adicionar Refresh de Token Antes de Chamadas Críticas
-
-```typescript
-// Forçar refresh do token antes de chamar a função
-const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
-
-if (refreshError || !session) {
-  toast.error('Não foi possível verificar sua sessão. Faça login novamente.');
-  return;
-}
+**Depois (Etapa 3 com múltiplos ativos):**
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  ❌ Modalidade removido (forçado Day Trade)                  │
+│                                                              │
+│  Valor Alocado: [1000]                                       │
+│  Stop Financeiro: [500]                                      │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │  PETR4 (3x) - R$ 38.50                                  │ │
+│  │  Stop: ───●───── 2.0%    Objetivo: ───●───── 4.0%       │ │
+│  ├─────────────────────────────────────────────────────────┤ │
+│  │  VALE3 (3x) - R$ 62.30                                  │ │
+│  │  Stop: ───●───── 3.0%    Objetivo: ───●───── 6.0%       │ │
+│  ├─────────────────────────────────────────────────────────┤ │
+│  │  ITUB4 (5x) - R$ 28.10                                  │ │
+│  │  Stop: ───●───── 1.5%    Objetivo: ───●───── 3.0%       │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ### Mudanças no Código
 
-#### Arquivo 1: `supabase/functions/admin-manage-users/index.ts`
+#### 1. Atualizar Interface `SelectedAsset`
 
-Melhorar logging para debug:
+Adicionar campos para stop e objetivo individuais:
 
 ```typescript
-// Adicionar logging detalhado
-console.log('Request received:', {
-  method: req.method,
-  hasAuth: !!req.headers.get('Authorization'),
-});
-
-// Verificar autenticação
-const authHeader = req.headers.get('Authorization');
-if (!authHeader) {
-  console.log('Missing Authorization header');
-  throw new Error('Não autorizado - token não fornecido');
+interface SelectedAsset {
+  ticker: string;
+  preco: number;
+  isManual?: boolean;
+  stopPercentual: number;    // NOVO
+  objetivoPercentual: number; // NOVO
 }
 ```
 
-#### Arquivo 2: `src/pages/AdminUsers.tsx`
-
-Adicionar verificação de sessão antes das chamadas:
+#### 2. Remover estado `modalidade`
 
 ```typescript
-// Função auxiliar para verificar sessão
-const ensureSession = async (): Promise<boolean> => {
-  const { data: { session }, error } = await supabase.auth.getSession();
-  
-  if (error || !session) {
-    // Tentar refresh
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    
-    if (refreshError || !refreshData.session) {
-      toast.error('Sessão expirada. Por favor, faça login novamente.');
-      return false;
-    }
+// REMOVER esta linha:
+const [modalidade, setModalidade] = useState<Modalidade>('daytrade');
+
+// REMOVER o tipo Modalidade
+type Modalidade = 'daytrade' | 'swing';
+```
+
+#### 3. Atualizar função `addAsset`
+
+Inicializar com valores padrão de stop/objetivo:
+
+```typescript
+const addAsset = (ticker: string, isManual: boolean = false) => {
+  if (!isSelected(ticker)) {
+    setSelectedAssets(prev => [...prev, { 
+      ticker, 
+      preco: 0, 
+      isManual,
+      stopPercentual: 2.0,      // valor padrão
+      objetivoPercentual: 4.0   // valor padrão
+    }]);
   }
-  
-  return true;
+};
+```
+
+#### 4. Adicionar funções de atualização individual
+
+```typescript
+const updateAssetStopPercentual = (ticker: string, value: number) => {
+  setSelectedAssets(prev => prev.map(a => 
+    a.ticker === ticker ? { ...a, stopPercentual: value } : a
+  ));
 };
 
-// Usar antes de cada chamada à Edge Function
-const handleCreateSingle = async () => {
-  if (!newUserEmail) {
-    toast.error('Preencha o email');
-    return;
-  }
+const updateAssetObjetivoPercentual = (ticker: string, value: number) => {
+  setSelectedAssets(prev => prev.map(a => 
+    a.ticker === ticker ? { ...a, objetivoPercentual: value } : a
+  ));
+};
+```
 
-  if (!await ensureSession()) {
-    return;
-  }
+#### 5. Simplificar funções de alavancagem (sem modalidade)
 
-  setBulkLoading(true);
-  // ... resto do código
+```typescript
+const getMargemPorAcao = (ticker: string, preco: number, isManual?: boolean): number => {
+  if (isManual) return preco;
+  const btgAsset = getBTGAsset(ticker);
+  if (btgAsset) return btgAsset.marginPerShare;
+  return preco;
+};
+
+const getAlavancagem = (ticker: string, isManual?: boolean): number => {
+  if (isManual) return 1;
+  const btgAsset = getBTGAsset(ticker);
+  return btgAsset?.leverage || 1;
+};
+```
+
+#### 6. Atualizar Etapa 3 (Parâmetros)
+
+Remover dropdown de Modalidade e adicionar sliders individuais:
+
+```tsx
+{/* Step 3: Global Parameters */}
+{currentStep === 'params' && (
+  <Card className="p-6 max-w-4xl mx-auto">
+    <div className="grid gap-6 md:grid-cols-2">
+      {/* Left Column - Valor Alocado e Stop Máximo */}
+      <div className="space-y-5">
+        {/* Valor Alocado */}
+        <div>...</div>
+        
+        {/* Stop Financeiro Máximo */}
+        <div>...</div>
+      </div>
+
+      {/* Right Column - Sliders individuais por ativo */}
+      <div className="space-y-4">
+        <Label className="text-sm font-medium">Stop e Objetivo por Ativo</Label>
+        <ScrollArea className="h-[300px] pr-2">
+          {selectedAssets.map((asset) => (
+            <div key={asset.ticker} className="p-4 rounded-lg border bg-card mb-3">
+              <div className="flex justify-between items-center mb-3">
+                <span className="font-bold">{asset.ticker}</span>
+                <span className="text-xs text-muted-foreground">
+                  {getAlavancagem(asset.ticker, asset.isManual)}x | R$ {asset.preco.toFixed(2)}
+                </span>
+              </div>
+              
+              {/* Stop Loss Individual */}
+              <div className="mb-3">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-muted-foreground">Stop Loss</span>
+                  <span className="text-sm font-bold text-destructive">{asset.stopPercentual.toFixed(1)}%</span>
+                </div>
+                <Slider
+                  value={[asset.stopPercentual]}
+                  onValueChange={(v) => updateAssetStopPercentual(asset.ticker, v[0])}
+                  min={0.1}
+                  max={20}
+                  step={0.1}
+                />
+              </div>
+              
+              {/* Objetivo Individual */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-muted-foreground">Objetivo</span>
+                  <span className="text-sm font-bold text-success">{asset.objetivoPercentual.toFixed(1)}%</span>
+                </div>
+                <Slider
+                  value={[asset.objetivoPercentual]}
+                  onValueChange={(v) => updateAssetObjetivoPercentual(asset.ticker, v[0])}
+                  min={0.1}
+                  max={20}
+                  step={0.1}
+                />
+              </div>
+            </div>
+          ))}
+        </ScrollArea>
+      </div>
+    </div>
+  </Card>
+)}
+```
+
+#### 7. Atualizar `calculateAllPositions`
+
+Usar valores individuais de cada ativo:
+
+```typescript
+const calculateAllPositions = () => {
+  const newPositions: SimulatorPosition[] = selectedAssets.map(asset => {
+    const alavancagem = getAlavancagem(asset.ticker, asset.isManual);
+    const margemPorAcao = getMargemPorAcao(asset.ticker, asset.preco, asset.isManual);
+    const stopPorAcao = asset.preco * (asset.stopPercentual / 100);  // Usar valor individual
+    const ganhoPorAcao = asset.preco * (asset.objetivoPercentual / 100);  // Usar valor individual
+    
+    // ... resto do cálculo
+    
+    return {
+      // ...
+      stopPercentual: asset.stopPercentual,        // Do ativo
+      objetivoPercentual: asset.objetivoPercentual, // Do ativo
+      // ...
+    };
+  });
 };
 ```
 
 ---
 
-### Arquivos a Modificar
+### Resumo das Alterações
+
+| Componente | Mudança |
+|------------|---------|
+| Interface `SelectedAsset` | Adicionar `stopPercentual` e `objetivoPercentual` |
+| Estado `modalidade` | Remover (forçar Day Trade) |
+| Funções `getMargemPorAcao` e `getAlavancagem` | Remover lógica de swing trade |
+| Etapa 3 | Remover dropdown Modalidade; adicionar sliders individuais por ativo |
+| `calculateAllPositions` | Usar valores individuais de stop/objetivo de cada ativo |
+| Estados globais `stopLossPercent` e `objetivoPercent` | Remover (substituídos pelos individuais) |
+
+---
+
+### Arquivo a Modificar
 
 | Arquivo | Mudança |
 |---------|---------|
-| `supabase/functions/admin-manage-users/index.ts` | Adicionar logging detalhado para debug |
-| `src/pages/AdminUsers.tsx` | Adicionar verificação de sessão antes de chamar Edge Functions |
-
----
-
-### Seção Técnica
-
-#### Nova Função de Verificação de Sessão
-
-```typescript
-const ensureSession = async (): Promise<boolean> => {
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
-    if (error) {
-      console.error('Erro ao verificar sessão:', error);
-      toast.error('Erro ao verificar sessão. Tente novamente.');
-      return false;
-    }
-    
-    if (!session) {
-      // Tentar refresh
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      
-      if (refreshError || !refreshData.session) {
-        toast.error('Sessão expirada. Por favor, faça login novamente.');
-        return false;
-      }
-    }
-    
-    return true;
-  } catch (err) {
-    console.error('Erro inesperado ao verificar sessão:', err);
-    toast.error('Erro ao verificar sessão.');
-    return false;
-  }
-};
-```
-
-#### Melhorias na Edge Function
-
-```typescript
-const handler = async (req: Request): Promise<Response> => {
-  console.log('=== admin-manage-users called ===');
-  console.log('Method:', req.method);
-  console.log('Has Authorization:', !!req.headers.get('Authorization'));
-  
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    // ... código existente
-    
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('Authorization header missing');
-      return new Response(
-        JSON.stringify({ 
-          error: 'Não autorizado - token não fornecido',
-          hint: 'Verifique se você está logado e tente novamente'
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-    
-    // ... resto do código
-  }
-};
-```
-
----
-
-### Resultado Esperado
-
-1. **Mensagens de erro claras** - O usuário saberá se a sessão expirou
-2. **Refresh automático** - Tentativa de renovar token antes de falhar
-3. **Logging detalhado** - Facilita debug em caso de problemas futuros
-4. **Status HTTP correto** - Retorna 401 para erros de autenticação (não 400)
+| `src/pages/StockSimulator.tsx` | Implementar todas as mudanças acima |
 
