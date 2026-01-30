@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { BarChart3, TrendingUp, Globe, LayoutDashboard, ChevronLeft, ChevronRight, LogOut, Settings } from 'lucide-react';
+import { BarChart3, TrendingUp, Globe, LayoutDashboard, ChevronLeft, ChevronRight, LogOut, Settings, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,7 +41,7 @@ const dashboardConfig = {
 export default function HubSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -217,6 +217,34 @@ export default function HubSidebar() {
             })}
           </div>
         </div>
+
+        {/* Painel Administrativo - Apenas para Admins */}
+        {isAdmin && (
+          <div className="px-3 mt-4">
+            {!collapsed && (
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
+                Administração
+              </p>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={`w-full justify-start gap-3 ${
+                    location.pathname.startsWith('/admin')
+                      ? 'bg-amber-500/20 text-amber-500 border-l-2 border-amber-500'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-amber-500/10'
+                  } ${collapsed ? 'px-3' : ''}`}
+                  onClick={() => navigate('/admin')}
+                >
+                  <Shield className="h-4 w-4 flex-shrink-0" />
+                  {!collapsed && <span>Painel Administrativo</span>}
+                </Button>
+              </TooltipTrigger>
+              {collapsed && <TooltipContent side="right">Painel Administrativo</TooltipContent>}
+            </Tooltip>
+          </div>
+        )}
 
         {/* Theme Toggle, Configurações e Sair */}
         <div className="px-3 mt-4 space-y-1">
