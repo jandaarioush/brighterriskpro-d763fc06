@@ -20,11 +20,12 @@ export default function Calendar() {
   const [showRiskDialog, setShowRiskDialog] = useState(false);
   const [showTradeDialog, setShowTradeDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [futurosDashboardId, setFuturosDashboardId] = useState<string | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
     if (user) {
-      loadProfile();
+      loadFuturosDashboard();
       loadTrades();
 
       // Setup realtime subscription for trades
@@ -51,16 +52,18 @@ export default function Calendar() {
     }
   }, [user, currentMonth]);
 
-  const loadProfile = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('monthly_risk')
-      .eq('id', user?.id)
-      .single();
+  const loadFuturosDashboard = async () => {
+    const { data } = await supabase
+      .from('dashboards')
+      .select('id, monthly_risk')
+      .eq('user_id', user?.id)
+      .eq('type', 'futuros')
+      .maybeSingle();
 
     if (data) {
+      setFuturosDashboardId(data.id);
       setMonthlyRisk(data.monthly_risk);
-      if (!data.monthly_risk) {
+      if (!data.monthly_risk || data.monthly_risk === 0) {
         setShowRiskDialog(true);
       }
     }
@@ -386,9 +389,10 @@ export default function Calendar() {
 
       <MonthlyRiskDialog
         open={showRiskDialog}
+        dashboardId={futurosDashboardId || undefined}
         onClose={() => {
           setShowRiskDialog(false);
-          loadProfile();
+          loadFuturosDashboard();
         }}
       />
 
