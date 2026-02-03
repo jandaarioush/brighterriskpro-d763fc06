@@ -13,7 +13,8 @@ const Index = () => {
           <div className="relative flex items-center justify-center h-16">
             {/* Logo à esquerda */}
             <Link to="/" className="absolute left-0 flex items-center">
-              <ThemeLogo className="h-10" />
+              <ThemeLogo className="h-8" />
+              <span className="ml-3 font-montserrat font-bold text-xl text-foreground">Risk Pro</span>
             </Link>
             
             {/* Navegação centralizada */}
@@ -285,7 +286,7 @@ const Index = () => {
         <div className="container mx-auto max-w-6xl">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
-              <ThemeLogo className="h-12 mb-4" />
+              <h3 className="font-montserrat font-bold text-xl mb-4">Brighter Risk Pro</h3>
               <p className="text-muted-foreground text-sm">
                 Gestão de risco inteligente para traders profissionais
               </p>
