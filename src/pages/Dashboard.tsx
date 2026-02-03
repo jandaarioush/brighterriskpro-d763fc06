@@ -46,14 +46,15 @@ export default function Dashboard() {
 
     const fetchData = async () => {
       try {
-        // Fetch user profile to get monthly_risk
-        const { data: profile } = await supabase
-          .from('profiles')
+        // Fetch the Futuros dashboard to get monthly_risk
+        const { data: futurosDashboard } = await supabase
+          .from('dashboards')
           .select('monthly_risk')
-          .eq('id', user.id)
-          .single();
+          .eq('user_id', user.id)
+          .eq('type', 'futuros')
+          .maybeSingle();
 
-        const userMonthlyRisk = profile?.monthly_risk || 0;
+        const userMonthlyRisk = futurosDashboard?.monthly_risk || 0;
         setMonthlyRisk(userMonthlyRisk);
 
         // Fetch trades for current month

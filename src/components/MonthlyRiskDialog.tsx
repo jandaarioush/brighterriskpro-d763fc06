@@ -24,9 +24,10 @@ const monthlyRiskSchema = z.object({
 interface MonthlyRiskDialogProps {
   open: boolean;
   onClose: () => void;
+  dashboardId?: string;
 }
 
-export function MonthlyRiskDialog({ open, onClose }: MonthlyRiskDialogProps) {
+export function MonthlyRiskDialog({ open, onClose, dashboardId }: MonthlyRiskDialogProps) {
   const [monthlyRisk, setMonthlyRisk] = useState('');
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
@@ -48,12 +49,32 @@ export function MonthlyRiskDialog({ open, onClose }: MonthlyRiskDialogProps) {
         return;
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({ monthly_risk: parseFloat(monthlyRisk.trim()) })
-        .eq('id', user?.id);
+      const riskValue = parseFloat(monthlyRisk.trim());
 
-      if (error) throw error;
+      if (dashboardId) {
+        // Salvar no dashboard específico
+        const { error } = await supabase
+          .from('dashboards')
+          .update({ monthly_risk: riskValue })
+          .eq('id', dashboardId);
+        if (error) throw error;
+      } else {
+        // Fallback: buscar dashboard de futuros e atualizar
+        const { data: futurosDash } = await supabase
+          .from('dashboards')
+          .select('id')
+          .eq('user_id', user?.id)
+          .eq('type', 'futuros')
+          .maybeSingle();
+          
+        if (futurosDash) {
+          const { error } = await supabase
+            .from('dashboards')
+            .update({ monthly_risk: riskValue })
+            .eq('id', futurosDash.id);
+          if (error) throw error;
+        }
+      }
 
       toast.success('Risco mensal configurado com sucesso!');
       onClose();
