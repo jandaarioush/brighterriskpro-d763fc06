@@ -13,8 +13,7 @@ const Index = () => {
           <div className="relative flex items-center justify-center h-16">
             {/* Logo à esquerda */}
             <Link to="/" className="absolute left-0 flex items-center">
-              <ThemeLogo className="h-8" />
-              <span className="ml-3 font-montserrat font-bold text-xl text-foreground">Risk Pro</span>
+              <ThemeLogo className="h-10" />
             </Link>
             
             {/* Navegação centralizada */}

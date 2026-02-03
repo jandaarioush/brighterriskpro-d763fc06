@@ -1,13 +1,14 @@
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
-import logoBrighter from '@/assets/logo-brighter.png';
+import logoDark from '@/assets/logo-brighter-dark.png';
+import logoLight from '@/assets/logo-brighter-light.png';
 
 interface ThemeLogoProps {
   className?: string;
   alt?: string;
 }
 
-export function ThemeLogo({ className = "h-8", alt = "Brighter" }: ThemeLogoProps) {
+export function ThemeLogo({ className = "h-8", alt = "Brighter Risk Pro" }: ThemeLogoProps) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -17,19 +18,17 @@ export function ThemeLogo({ className = "h-8", alt = "Brighter" }: ThemeLogoProp
   }, []);
 
   if (!mounted) {
-    return <img src={logoBrighter} alt={alt} className={className} />;
+    return <img src={logoDark} alt={alt} className={className} />;
   }
 
-  // Usando filtro CSS para modo claro (inverte o logo)
+  // Seleciona logo baseado no tema
+  const logoSrc = resolvedTheme === 'light' ? logoLight : logoDark;
+
   return (
     <img 
-      src={logoBrighter}
+      src={logoSrc}
       alt={alt}
-      className={`${className} transition-all duration-200 ${
-        resolvedTheme === 'light' 
-          ? 'brightness-0' // Torna preto para fundo claro
-          : ''
-      }`}
+      className={`${className} transition-all duration-200`}
     />
   );
 }
