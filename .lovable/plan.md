@@ -1,44 +1,53 @@
 
-
-## Plano: Adicionar Novos Logos do Brighter Risk Pro
+## Plano: Adicionar Logos Light/Dark do Brighter Risk Pro
 
 ### Objetivo
 
-Substituir o logo atual por duas versões do novo logo oficial, configurando o sistema para usar automaticamente a versão correta baseada no tema (claro/escuro).
+Substituir o sistema atual (que usa filtros CSS) por logos oficiais específicos para cada tema, proporcionando melhor qualidade visual e identidade profissional.
 
 ---
 
-### Arquivos a Modificar
+### Arquivos Envolvidos
 
-| Arquivo | Ação |
+| Arquivo | Acao |
 |---------|------|
-| `src/assets/logo-brighter-light.png` | **CRIAR** - Copiar o logo para fundo claro |
-| `src/assets/logo-brighter-dark.png` | **CRIAR** - Copiar o logo para fundo escuro |
-| `src/components/ThemeLogo.tsx` | **MODIFICAR** - Usar logos diferentes por tema |
-| `src/pages/Index.tsx` | **VERIFICAR** - Ajustar uso do logo se necessário |
+| `src/assets/logo-brighter-light.png` | **CRIAR** - Copiar logo para tema claro |
+| `src/assets/logo-brighter-dark.png` | **CRIAR** - Copiar logo para tema escuro |
+| `src/components/ThemeLogo.tsx` | **MODIFICAR** - Alternar entre logos por tema |
+| `src/pages/Index.tsx` | **MODIFICAR** - Remover texto "Risk Pro" duplicado |
 
 ---
 
-### 1. Copiar os Logos para o Projeto
+### 1. Copiar Logos para o Projeto
 
-Copiar as duas versões dos logos enviados:
+Copiar as duas versoes enviadas anteriormente:
 
-- `user-uploads://Design_sem_nome_5.png` (fundo branco) para `src/assets/logo-brighter-light.png`
-- `user-uploads://Golden_shield_with_modern_typography.png` (fundo escuro) para `src/assets/logo-brighter-dark.png`
+```text
+user-uploads://Design_sem_nome_5.png 
+  -> src/assets/logo-brighter-light.png
+
+user-uploads://Golden_shield_with_modern_typography.png 
+  -> src/assets/logo-brighter-dark.png
+```
 
 ---
 
 ### 2. Atualizar Componente ThemeLogo
 
-Modificar o componente para usar a imagem correta baseada no tema:
-
+**Antes (atual):**
 ```typescript
-import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import logoBrighter from '@/assets/logo-brighter.png';
+
+// Usa filtro CSS para modo claro
+className={`${resolvedTheme === 'light' ? 'brightness-0' : ''}`}
+```
+
+**Depois:**
+```typescript
 import logoDark from '@/assets/logo-brighter-dark.png';
 import logoLight from '@/assets/logo-brighter-light.png';
 
-export function ThemeLogo({ className = "h-8", alt = "Brighter Risk Pro" }: ThemeLogoProps) {
+export function ThemeLogo({ className = "h-8", alt = "Brighter Risk Pro" }) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -46,11 +55,12 @@ export function ThemeLogo({ className = "h-8", alt = "Brighter Risk Pro" }: Them
     setMounted(true);
   }, []);
 
+  // Fallback para evitar hydration mismatch
   if (!mounted) {
     return <img src={logoDark} alt={alt} className={className} />;
   }
 
-  // Usa logo diferente baseado no tema
+  // Seleciona logo baseado no tema
   const logoSrc = resolvedTheme === 'light' ? logoLight : logoDark;
 
   return (
@@ -65,60 +75,49 @@ export function ThemeLogo({ className = "h-8", alt = "Brighter Risk Pro" }: Them
 
 ---
 
-### 3. Remover Texto Duplicado do Header
+### 3. Ajustar Index.tsx (Header)
 
-O header atual mostra `ThemeLogo + "Risk Pro"` como texto separado. Como o novo logo já inclui o texto "BRIGHTER RISK PRO", devemos remover o texto extra ou ajustar o layout.
+O header atual mostra o logo + texto "Risk Pro" separado. Como o novo logo já inclui o texto completo "BRIGHTER RISK PRO", o texto extra deve ser removido.
 
-**Opção A** - Usar apenas o logo completo (recomendado):
+**Antes:**
+```tsx
+<Link to="/" className="absolute left-0 flex items-center">
+  <ThemeLogo className="h-8" />
+  <span className="ml-3 font-montserrat font-bold text-xl">Risk Pro</span>
+</Link>
+```
+
+**Depois:**
 ```tsx
 <Link to="/" className="absolute left-0 flex items-center">
   <ThemeLogo className="h-10" />
 </Link>
 ```
 
-**Opção B** - Manter apenas o ícone do escudo e texto separado:
-- Criar versão do logo somente com o ícone (sem texto)
-
 ---
 
-### 4. Atualizar Footer
-
-Adicionar logo no footer também:
-
-```tsx
-<div>
-  <ThemeLogo className="h-12 mb-4" />
-  <p className="text-muted-foreground text-sm">
-    Gestão de risco inteligente para traders profissionais
-  </p>
-</div>
-```
-
----
-
-### Resumo Visual
+### 4. Resultado Visual
 
 ```text
-+---------------------------+
-|  ANTES                    |
-|  [logo-antigo] Risk Pro   |  <-- Logo + texto separado
-+---------------------------+
+TEMA ESCURO (dark):
++----------------------------------------+
+| [escudo dourado] BRIGHTER RISK PRO     |  <- logo-brighter-dark.png
+| (fundo escuro, texto claro)            |
++----------------------------------------+
 
-+---------------------------+
-|  DEPOIS                   |
-|  [BRIGHTER RISK PRO]      |  <-- Logo completo com texto integrado
-+---------------------------+
-
-Tema Claro: usa logo-brighter-light.png (fundo transparente)
-Tema Escuro: usa logo-brighter-dark.png (fundo transparente)
+TEMA CLARO (light):
++----------------------------------------+
+| [escudo dourado] BRIGHTER RISK PRO     |  <- logo-brighter-light.png
+| (fundo claro, texto escuro)            |
++----------------------------------------+
 ```
 
 ---
 
-### Benefícios
+### Beneficios
 
-1. Logo oficial integrado com texto "BRIGHTER RISK PRO"
-2. Transição suave entre temas
-3. Identidade visual mais profissional e consistente
-4. Sem necessidade de filtros CSS artificiais
-
+1. Logos oficiais de alta qualidade sem filtros CSS
+2. Texto "BRIGHTER" com cor correta para cada tema
+3. Transicao suave entre temas (200ms)
+4. Identidade visual consistente em toda a aplicacao
+5. Remocao do texto duplicado "Risk Pro" no header
