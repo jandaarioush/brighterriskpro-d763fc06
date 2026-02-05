@@ -254,7 +254,12 @@ export default function StockSimulator() {
     const stopPorAcao = pos.precoAtivo * (pos.stopPercentual / 100);
     const ganhoPorAcao = pos.precoAtivo * (pos.objetivoPercentual / 100);
     
-    const qtdMaxMargem = Math.floor(valorAlocado / pos.margemPorAcao);
+    // CORREÇÃO: Margem alocada proporcional (mesma proporção do stop)
+    const margemAlocada = valorAlocado * (pos.stopAlocadoPercent / 100);
+    
+    const qtdMaxMargem = pos.margemPorAcao > 0 
+      ? Math.floor(margemAlocada / pos.margemPorAcao) 
+      : 0;
     const qtdMaxStop = stopPorAcao > 0 ? Math.floor(stopAlocado / stopPorAcao) : 0;
     const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
     
@@ -313,11 +318,15 @@ export default function StockSimulator() {
       const alavancagem = getAlavancagem(asset.ticker, asset.isManual);
       const margemPorAcao = getMargemPorAcao(asset.ticker, asset.preco, asset.isManual);
       const stopAlocado = stopFinanceiroMax * (stopPercentEach / 100);
-      // Use individual asset stop/objetivo values
+      // CORREÇÃO: Margem alocada proporcional (mesma proporção do stop)
+      const margemAlocada = valorAlocado * (stopPercentEach / 100);
+      
       const stopPorAcao = asset.preco * (asset.stopPercentual / 100);
       const ganhoPorAcao = asset.preco * (asset.objetivoPercentual / 100);
       
-      const qtdMaxMargem = Math.floor(valorAlocado / margemPorAcao);
+      const qtdMaxMargem = margemPorAcao > 0 
+        ? Math.floor(margemAlocada / margemPorAcao) 
+        : 0;
       const qtdMaxStop = stopPorAcao > 0 ? Math.floor(stopAlocado / stopPorAcao) : 0;
       const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
       const limiteFator: 'margem' | 'stop' = qtdMaxMargem <= qtdMaxStop ? 'margem' : 'stop';
