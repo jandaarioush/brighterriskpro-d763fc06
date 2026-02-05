@@ -1,221 +1,161 @@
 
 
-## Plano: Sincronizar Risco Mensal entre MonthlyRiskDialog, Dashboard e Configurações
+## Plano: Corrigir Cálculo de Margem para Não Ultrapassar Valor Alocado
 
 ### Problema Identificado
 
-Há duas fontes de dados diferentes para o risco mensal de Futuros:
+O cálculo de margem no Simulador de Ações está incorreto. Cada posição calcula a quantidade máxima usando o **valorAlocado inteiro** em vez de uma fração proporcional.
 
-| Componente | Tabela Usada | Operação |
-|------------|--------------|----------|
-| `MonthlyRiskDialog` | `profiles.monthly_risk` | Escrita |
-| `Calendar.tsx` | `profiles.monthly_risk` | Leitura |
-| `Dashboard.tsx` | `profiles.monthly_risk` | Leitura |
-| `Settings.tsx` | `dashboards.monthly_risk` | Leitura/Escrita |
+**Código atual (linha 257):**
+```typescript
+const qtdMaxMargem = Math.floor(valorAlocado / pos.margemPorAcao);
+```
 
-Quando o usuario altera o risco no dialog (ex: R$ 5.000), ele salva em `profiles`. Mas a pagina de Configuracoes mostra/edita o valor de `dashboards`, criando inconsistencia.
-
----
-
-### Solucao Proposta
-
-Manter `dashboards.monthly_risk` como **unica fonte de verdade** para cada tipo de dashboard, e atualizar todos os componentes para usar essa tabela.
+**Exemplo do problema:**
+- Valor Alocado: R$ 1.000
+- 2 posições, cada uma com margem R$ 0.50/ação
+- Cada posição calcula: 1000 / 0.50 = 2000 ações
+- Margem por posição: 2000 × 0.50 = R$ 1.000
+- **Margem Total: R$ 2.000 (200% do valor alocado!)**
 
 ---
 
-### Arquivos a Modificar
+### Solução Proposta
 
-| Arquivo | Acao |
+Implementar alocação proporcional de margem, similar ao que já existe para o stop financeiro. Cada posição terá um percentual de margem alocada que não pode exceder 100% do total quando somadas.
+
+---
+
+### Arquivo a Modificar
+
+| Arquivo | Ação |
 |---------|------|
-| `src/components/MonthlyRiskDialog.tsx` | Receber `dashboardId` e salvar em `dashboards` |
-| `src/pages/Dashboard.tsx` | Buscar `monthly_risk` da tabela `dashboards` (type='futuros') |
-| `src/pages/Calendar.tsx` | Buscar `monthly_risk` da tabela `dashboards` (type='futuros') |
+| `src/pages/StockSimulator.tsx` | Limitar quantidade de ações para não exceder margem alocada por posição |
 
 ---
 
-### Mudancas Detalhadas
+### Mudanças Detalhadas
 
-#### 1. MonthlyRiskDialog.tsx
+#### 1. Modificar o cálculo em `recalculatePosition` (linha 252-277)
 
-Adicionar prop `dashboardId` para salvar no dashboard correto:
-
+**Lógica corrigida:**
 ```typescript
-// Antes
-interface MonthlyRiskDialogProps {
-  open: boolean;
-  onClose: () => void;
-}
-
-// Depois
-interface MonthlyRiskDialogProps {
-  open: boolean;
-  onClose: () => void;
-  dashboardId?: string; // ID do dashboard de futuros
-}
+const recalculatePosition = (pos: SimulatorPosition): SimulatorPosition => {
+  const stopAlocado = stopFinanceiroMax * (pos.stopAlocadoPercent / 100);
+  const stopPorAcao = pos.precoAtivo * (pos.stopPercentual / 100);
+  const ganhoPorAcao = pos.precoAtivo * (pos.objetivoPercentual / 100);
+  
+  // CORREÇÃO: Usar a mesma proporção do stop para margem
+  // Margem alocada para esta posição = valorAlocado × (stopAlocadoPercent / 100)
+  const margemAlocada = valorAlocado * (pos.stopAlocadoPercent / 100);
+  
+  // Quantidade máxima permitida pela margem alocada
+  const qtdMaxMargem = pos.margemPorAcao > 0 
+    ? Math.floor(margemAlocada / pos.margemPorAcao) 
+    : 0;
+  
+  // Quantidade máxima permitida pelo stop
+  const qtdMaxStop = stopPorAcao > 0 
+    ? Math.floor(stopAlocado / stopPorAcao) 
+    : 0;
+  
+  // Quantidade final: menor entre os dois limites
+  const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
+  
+  const perdaMaxima = quantidade * stopPorAcao;
+  const ganhoObjetivo = quantidade * ganhoPorAcao;
+  const margemNecessaria = quantidade * pos.margemPorAcao;
+  const limiteFator: 'margem' | 'stop' = qtdMaxMargem <= qtdMaxStop ? 'margem' : 'stop';
+  
+  return {
+    ...pos,
+    stopAlocado,
+    qtdMaxMargem,
+    qtdMaxStop,
+    quantidade,
+    perdaMaxima,
+    ganhoObjetivo,
+    margemNecessaria,
+    limiteFator,
+  };
+};
 ```
 
-Modificar a funcao de submit para salvar em `dashboards`:
+---
+
+#### 2. Modificar `calculateAllPositions` (linhas 306-350)
+
+Aplicar a mesma lógica na criação inicial das posições:
 
 ```typescript
-// Antes - linha 51-54
-const { error } = await supabase
-  .from('profiles')
-  .update({ monthly_risk: parseFloat(monthlyRisk.trim()) })
-  .eq('id', user?.id);
+const calculateAllPositions = () => {
+  if (selectedAssets.length === 0) return;
 
-// Depois
-if (dashboardId) {
-  // Salvar no dashboard especifico
-  const { error } = await supabase
-    .from('dashboards')
-    .update({ monthly_risk: parseFloat(monthlyRisk.trim()) })
-    .eq('id', dashboardId);
-  if (error) throw error;
-} else {
-  // Fallback: buscar dashboard de futuros e atualizar
-  const { data: futurosDash } = await supabase
-    .from('dashboards')
-    .select('id')
-    .eq('user_id', user?.id)
-    .eq('type', 'futuros')
-    .maybeSingle();
+  const numPositions = selectedAssets.length;
+  const stopPercentEach = 100 / numPositions;
+
+  const newPositions: SimulatorPosition[] = selectedAssets.map(asset => {
+    const alavancagem = getAlavancagem(asset.ticker, asset.isManual);
+    const margemPorAcao = getMargemPorAcao(asset.ticker, asset.preco, asset.isManual);
     
-  if (futurosDash) {
-    const { error } = await supabase
-      .from('dashboards')
-      .update({ monthly_risk: parseFloat(monthlyRisk.trim()) })
-      .eq('id', futurosDash.id);
-    if (error) throw error;
-  }
-}
-```
-
----
-
-#### 2. Dashboard.tsx
-
-Alterar leitura de `profiles` para `dashboards`:
-
-```typescript
-// Antes - linha 49-56
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('monthly_risk')
-  .eq('id', user.id)
-  .single();
-const userMonthlyRisk = profile?.monthly_risk || 0;
-
-// Depois
-const { data: futurosDashboard } = await supabase
-  .from('dashboards')
-  .select('monthly_risk')
-  .eq('user_id', user.id)
-  .eq('type', 'futuros')
-  .maybeSingle();
-const userMonthlyRisk = futurosDashboard?.monthly_risk || 0;
-```
-
----
-
-#### 3. Calendar.tsx
-
-Modificar `loadProfile` para buscar do dashboard:
-
-```typescript
-// Antes - linha 54-67
-const loadProfile = async () => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('monthly_risk')
-    .eq('id', user?.id)
-    .single();
-
-  if (data) {
-    setMonthlyRisk(data.monthly_risk);
-    if (!data.monthly_risk) {
-      setShowRiskDialog(true);
-    }
-  }
-};
-
-// Depois
-const [futurosDashboardId, setFuturosDashboardId] = useState<string | null>(null);
-
-const loadFuturosDashboard = async () => {
-  const { data } = await supabase
-    .from('dashboards')
-    .select('id, monthly_risk')
-    .eq('user_id', user?.id)
-    .eq('type', 'futuros')
-    .maybeSingle();
-
-  if (data) {
-    setFuturosDashboardId(data.id);
-    setMonthlyRisk(data.monthly_risk);
-    if (!data.monthly_risk || data.monthly_risk === 0) {
-      setShowRiskDialog(true);
-    }
-  }
+    // Alocação proporcional
+    const stopAlocado = stopFinanceiroMax * (stopPercentEach / 100);
+    const margemAlocada = valorAlocado * (stopPercentEach / 100); // CORREÇÃO
+    
+    const stopPorAcao = asset.preco * (asset.stopPercentual / 100);
+    const ganhoPorAcao = asset.preco * (asset.objetivoPercentual / 100);
+    
+    // Limitar pela margem alocada proporcional
+    const qtdMaxMargem = margemPorAcao > 0 
+      ? Math.floor(margemAlocada / margemPorAcao) 
+      : 0;
+    const qtdMaxStop = stopPorAcao > 0 
+      ? Math.floor(stopAlocado / stopPorAcao) 
+      : 0;
+    
+    const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
+    // ... resto igual
+  });
+  // ...
 };
 ```
 
-Passar o `dashboardId` para o dialog:
-
-```tsx
-<MonthlyRiskDialog
-  open={showRiskDialog}
-  dashboardId={futurosDashboardId}
-  onClose={() => {
-    setShowRiskDialog(false);
-    loadFuturosDashboard();
-  }}
-/>
-```
-
 ---
 
-### Fluxo de Dados Apos Mudanca
+### Resultado Esperado
 
 ```text
-USUARIO ALTERA RISCO NO DIALOG:
+ANTES (INCORRETO):
 +---------------------------+
-| MonthlyRiskDialog         |
-| Valor: R$ 2.000           |
-| [Salvar]                  |
+| Valor Alocado: R$ 1.000   |
+| Margem Utilizada: R$ 1999 | <- Excede!
+| Margem Disponível: -R$ 999|
 +---------------------------+
-        |
-        v
+
+DEPOIS (CORRETO):
 +---------------------------+
-| dashboards                |
-| type: 'futuros'           |
-| monthly_risk: 2000        | <- UNICA FONTE
+| Valor Alocado: R$ 1.000   |
+| Margem Utilizada: R$ 800  | <- Dentro do limite
+| Margem Disponível: R$ 200 |
 +---------------------------+
-        |
-        +--------+--------+
-        |        |        |
-        v        v        v
-   Dashboard  Calendar  Settings
-   (le 2000)  (le 2000) (le 2000)
 ```
 
----
-
-### Logica Matematica Preservada
-
-Todas as funcoes de calculo em `src/lib/riskCalculations.ts` permanecem **inalteradas**:
-- `calculateMonthData()`
-- `calculateMonthlyStats()`
-- `getWorkingDaysInMonth()`
-- `getWorkingDaysRemaining()`
-
-A unica mudanca e a **origem do valor** de `monthly_risk`, nao como ele e usado nos calculos.
+A margem nunca ultrapassará o valor alocado pois cada posição usa apenas sua fração proporcional.
 
 ---
 
-### Beneficios
+### Lógica Matemática Preservada
 
-1. Valor de risco sincronizado em todas as paginas
-2. Cada dashboard mantem seu proprio risco independente
-3. Configuracoes refletem o mesmo valor do dialog
-4. Arquitetura consistente com o sistema multi-dashboard
+- Fórmulas de perda/ganho permanecem inalteradas
+- Cálculo de alavancagem BTG permanece inalterado
+- Apenas a **restrição de margem por posição** é corrigida
+
+---
+
+### Benefícios
+
+1. Margem total nunca excede o valor alocado
+2. Distribuição proporcional automática entre posições
+3. Usuário pode redistribuir via sliders (como já funciona para stop)
+4. Operação sempre será possível de executar na corretora
 
