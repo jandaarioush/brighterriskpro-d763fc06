@@ -21,8 +21,8 @@ type Plan = "mensal" | "anual";
 const plans = {
   mensal: {
     name: "Premium Mensal",
-    price: 97,
-    priceDisplay: "R$ 97",
+    price: 147,
+    priceDisplay: "R$ 147",
     period: "/mês",
     description: "Cancele quando quiser",
     features: [
@@ -35,10 +35,10 @@ const plans = {
   },
   anual: {
     name: "Premium Anual",
-    price: 497,
-    priceDisplay: "R$ 497",
+    price: 997,
+    priceDisplay: "R$ 997",
     period: "/ano",
-    description: "Economize R$ 667 (43% off)",
+    description: "Economize R$ 767 (43% off)",
     features: [
       "Tudo do plano mensal",
       "Backup automático em nuvem",
