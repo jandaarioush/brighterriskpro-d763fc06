@@ -248,7 +248,7 @@ const Index = () => {
                 <div className="text-center space-y-6">
                   <div>
                     <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-5xl md:text-6xl font-montserrat font-bold">R$ 97</span>
+                      <span className="text-5xl md:text-6xl font-montserrat font-bold">R$ 147</span>
                       <span className="text-muted-foreground text-lg">/mês</span>
                     </div>
                   </div>
@@ -264,7 +264,7 @@ const Index = () => {
                 <div className="text-center space-y-6">
                   <div className="space-y-2">
                     <div className="flex items-baseline justify-center">
-                      <span className="text-5xl md:text-6xl font-montserrat font-bold">R$ 497</span>
+                      <span className="text-5xl md:text-6xl font-montserrat font-bold">R$ 997</span>
                     </div>
                     <p className="text-xs text-muted-foreground">acesso por 1 ano</p>
                   </div>

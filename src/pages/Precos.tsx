@@ -32,7 +32,7 @@ const Precos = () => {
               <div className="text-center mb-8">
                 <h3 className="font-montserrat text-2xl font-bold mb-2">Premium Mensal</h3>
                 <div className="mb-4">
-                  <span className="text-5xl font-montserrat font-bold">R$ 97</span>
+                  <span className="text-5xl font-montserrat font-bold">R$ 147</span>
                   <span className="text-muted-foreground">/mês</span>
                 </div>
                 <p className="text-muted-foreground">Cancele quando quiser</p>
@@ -73,9 +73,9 @@ const Precos = () => {
               <div className="text-center mb-8">
                 <h3 className="font-montserrat text-2xl font-bold mb-2">Premium Anual</h3>
                 <div className="mb-2">
-                  <span className="text-5xl font-montserrat font-bold">R$ 497</span>
+                  <span className="text-5xl font-montserrat font-bold">R$ 997</span>
                 </div>
-                <p className="text-xs text-success font-semibold mb-2">Economize R$ 667</p>
+                <p className="text-xs text-success font-semibold mb-2">Economize R$ 767</p>
                 <p className="text-muted-foreground text-sm">acesso por 1 ano</p>
               </div>
 
