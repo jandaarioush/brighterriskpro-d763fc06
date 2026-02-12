@@ -68,11 +68,11 @@ serve(async (req) => {
     // Plan configuration
     const plans = {
       mensal: {
-        price: 9700, // R$ 97,00 in cents
+        price: 14700, // R$ 147,00 in cents
         description: "Brighter Risk Pro - Premium Mensal",
       },
       anual: {
-        price: 49700, // R$ 497,00 in cents
+        price: 99700, // R$ 997,00 in cents
         description: "Brighter Risk Pro - Premium Anual",
       },
     };
