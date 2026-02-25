@@ -30,13 +30,14 @@ export default function Simulator() {
 
     const fetchData = async () => {
       try {
-        const { data: profile } = await supabase
-          .from('profiles')
+        const { data: futurosDashboard } = await supabase
+          .from('dashboards')
           .select('monthly_risk')
-          .eq('id', user.id)
-          .single();
+          .eq('user_id', user.id)
+          .eq('type', 'futuros')
+          .maybeSingle();
 
-        const userMonthlyRisk = profile?.monthly_risk || 0;
+        const userMonthlyRisk = futurosDashboard?.monthly_risk || 0;
 
         const currentMonth = new Date();
         const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -77,7 +78,7 @@ export default function Simulator() {
       const maxStop = assetType === 'indice' ? stopIndice : stopDolar;
       
       // Calculate stop loss based on daily risk divided by contracts
-      const calculatedStop = dailyRisk / (contracts * pointValue);
+      const calculatedStop = Math.round(dailyRisk / (contracts * pointValue));
       
       // Use the minimum between calculated and max available
       const finalStop = Math.min(calculatedStop, maxStop);
