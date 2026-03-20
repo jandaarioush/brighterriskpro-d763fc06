@@ -3,21 +3,20 @@ import { StockInteractiveTour } from "./StockInteractiveTour";
 
 const futuresSteps = [
   { num: "01", title: "Configure seu Risco", desc: "Defina capital e risco mensal em reais." },
-  { num: "02", title: "Defina Limites", desc: "O sistema calcula stops diários para Índice e Dólar." },
+  { num: "02", title: "Defina Limites", desc: "O sistema calcula stops diários em pontos para Índice e Dólar." },
   { num: "03", title: "Opere com Proteção", desc: "Registre trades e o risco se ajusta automaticamente." },
-  { num: "04", title: "Acompanhe no Calendário", desc: "Visualize o risco distribuído dia a dia no mês." },
+  { num: "04", title: "Acompanhe no Calendário", desc: "Visualize os stops em pontos distribuídos dia a dia." },
 ];
 
 const stockSteps = [
-  { num: "01", title: "Configure Capital e Risco %", desc: "Defina seu capital total e o percentual de risco mensal." },
-  { num: "02", title: "Veja os Limites", desc: "O sistema calcula risco diário em % e R$ automaticamente." },
-  { num: "03", title: "Registre Operações", desc: "Adicione trades com ticker, preço de entrada e saída." },
-  { num: "04", title: "Calendário de Risco", desc: "Acompanhe a distribuição de risco no mês em tempo real." },
+  { num: "01", title: "Selecione os Ativos", desc: "Escolha da lista BTG ou adicione ativos manualmente." },
+  { num: "02", title: "Defina Preços", desc: "Configure preço de entrada, stop loss e objetivo por ativo." },
+  { num: "03", title: "Configure o Risco", desc: "O sistema calcula margem, quantidade e risco automaticamente." },
 ];
 
 function StepCards({ steps }: { steps: typeof futuresSteps }) {
   return (
-    <div className="grid md:grid-cols-4 gap-6 scroll-reveal">
+    <div className={`grid gap-6 scroll-reveal ${steps.length === 3 ? "md:grid-cols-3" : "md:grid-cols-4"}`}>
       {steps.map((step, i) => (
         <div key={i} className="scroll-reveal-child text-center md:text-left">
           <span className="text-5xl font-montserrat font-bold text-gradient-gold block mb-4">{step.num}</span>

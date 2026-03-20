@@ -1,24 +1,24 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Shield, Target, DollarSign, Percent, Activity, CalendarDays, Plus, Trash2 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, getDay } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { calculateDailyStockRisk, calculateTradeResult, getWorkingDaysInMonth } from "@/lib/stockRiskCalculations";
+import { ChevronLeft, ChevronRight, Search, CheckCircle2, DollarSign, Target, Percent, Wallet } from "lucide-react";
+import { btgAssets, getBTGAsset } from "@/lib/btgAssets";
 
 const STEPS = [
-  { title: "Configure seu Risco", tooltip: "Defina seu capital e o percentual de risco mensal." },
-  { title: "Limites Calculados", tooltip: "O sistema distribui o risco em % e R$ pelos dias úteis." },
-  { title: "Registre Trades", tooltip: "Adicione trades com ticker e preços para ver o impacto." },
-  { title: "Calendário de Risco", tooltip: "Visualize o risco diário distribuído no mês." },
+  { num: 1, label: "Selecionar Ativos" },
+  { num: 2, label: "Preços" },
+  { num: 3, label: "Parâmetros" },
 ];
 
-function StepIndicators({ current, total }: { current: number; total: number }) {
-  return (
-    <div className="flex items-center gap-2">
-      {Array.from({ length: total }).map((_, i) => (
-        <div key={i} className={`h-2 rounded-full transition-all duration-300 ${i === current ? "w-8 bg-primary" : "w-2 bg-muted"}`} />
-      ))}
-    </div>
-  );
+const MOCK_ASSETS = [
+  { ticker: "PETR4", preco: 36.50, stopPercentual: 2.0, objetivoPercentual: 4.0 },
+  { ticker: "VALE3", preco: 58.20, stopPercentual: 1.5, objetivoPercentual: 3.0 },
+  { ticker: "ITUB4", preco: 34.80, stopPercentual: 2.0, objetivoPercentual: 3.5 },
+];
+
+const VALOR_ALOCADO = 5000;
+const STOP_MAX = 2500;
+
+function formatCurrency(value: number): string {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function TooltipOverlay({ text }: { text: string }) {
@@ -32,265 +32,234 @@ function TooltipOverlay({ text }: { text: string }) {
   );
 }
 
-function formatCurrency(value: number): string {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-interface SimTrade {
-  date: string;
-  ticker: string;
-  entryPrice: number;
-  exitPrice: number;
-  quantity: number;
-  resultReais: number;
-  resultPercent: number;
-}
+const TOOLTIPS = [
+  "Selecione os ativos que deseja operar da lista BTG.",
+  "Defina preços de entrada, stop loss e objetivo por ativo.",
+  "O sistema calcula margem, quantidade e risco automaticamente.",
+];
 
 export function StockInteractiveTour() {
   const [step, setStep] = useState(0);
-  const [capital, setCapital] = useState(100000);
-  const [riskPercent, setRiskPercent] = useState(8);
-  const [simulatedTrades, setSimulatedTrades] = useState<SimTrade[]>([]);
-  const [newDate, setNewDate] = useState("");
-  const [newTicker, setNewTicker] = useState("PETR4");
-  const [newEntry, setNewEntry] = useState("28.50");
-  const [newExit, setNewExit] = useState("29.20");
-  const [newQty, setNewQty] = useState("100");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const currentMonth = new Date();
-  const workingDays = useMemo(() => getWorkingDaysInMonth(currentMonth), []);
+  const filteredTickers = useMemo(() => {
+    const tickers = btgAssets.map(a => a.ticker);
+    if (!searchQuery.trim()) return tickers.slice(0, 30);
+    return tickers.filter(t => t.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 30);
+  }, [searchQuery]);
 
-  const accLossPercent = useMemo(() => {
-    return simulatedTrades.filter(t => t.resultPercent < 0).reduce((s, t) => s + Math.abs(t.resultPercent), 0);
-  }, [simulatedTrades]);
+  const positions = useMemo(() => {
+    const numPositions = MOCK_ASSETS.length;
+    const stopPercentEach = 100 / numPositions;
 
-  const dailyRisk = useMemo(() => {
-    const remaining = workingDays - simulatedTrades.length;
-    return calculateDailyStockRisk(capital, riskPercent, accLossPercent, remaining > 0 ? remaining : 1);
-  }, [capital, riskPercent, accLossPercent, workingDays, simulatedTrades.length]);
+    return MOCK_ASSETS.map(asset => {
+      const btg = getBTGAsset(asset.ticker);
+      const alavancagem = btg?.leverage || 1;
+      const margemPorAcao = btg?.marginPerShare || asset.preco;
+      const stopAlocado = STOP_MAX * (stopPercentEach / 100);
+      const margemAlocada = VALOR_ALOCADO * (stopPercentEach / 100);
 
-  const availableDates = useMemo(() => {
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
-    return eachDayOfInterval({ start, end }).filter(d => !isWeekend(d));
+      const stopPorAcao = asset.preco * (asset.stopPercentual / 100);
+      const ganhoPorAcao = asset.preco * (asset.objetivoPercentual / 100);
+
+      const qtdMaxMargem = margemPorAcao > 0 ? Math.floor(margemAlocada / margemPorAcao) : 0;
+      const qtdMaxStop = stopPorAcao > 0 ? Math.floor(stopAlocado / stopPorAcao) : 0;
+      const quantidade = Math.min(qtdMaxMargem, qtdMaxStop);
+
+      const perdaMaxima = quantidade * stopPorAcao;
+      const ganhoObjetivo = quantidade * ganhoPorAcao;
+      const margemNecessaria = quantidade * margemPorAcao;
+      const limiteFator = qtdMaxMargem <= qtdMaxStop ? "margem" : "stop";
+
+      return {
+        ticker: asset.ticker,
+        preco: asset.preco,
+        stopPercentual: asset.stopPercentual,
+        objetivoPercentual: asset.objetivoPercentual,
+        alavancagem,
+        quantidade,
+        perdaMaxima,
+        ganhoObjetivo,
+        margemNecessaria,
+        limiteFator,
+      };
+    });
   }, []);
 
-  const calendarData = useMemo(() => {
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
-    const allDays = eachDayOfInterval({ start, end });
-    let accLoss = 0;
-    let wdProcessed = 0;
+  const totalPerdaMax = positions.reduce((s, p) => s + p.perdaMaxima, 0);
+  const totalGanho = positions.reduce((s, p) => s + p.ganhoObjetivo, 0);
+  const totalMargem = positions.reduce((s, p) => s + p.margemNecessaria, 0);
 
-    return allDays.map(date => {
-      const isWknd = isWeekend(date);
-      const dateStr = format(date, "yyyy-MM-dd");
-      const dayTrades = simulatedTrades.filter(t => t.date === dateStr);
-
-      if (!isWknd) wdProcessed++;
-      const wdRemaining = workingDays - wdProcessed + 1;
-      const risk = calculateDailyStockRisk(capital, riskPercent, accLoss, wdRemaining);
-      const dayResult = dayTrades.reduce((s, t) => s + t.resultReais, 0);
-      const loss = dayTrades.filter(t => t.resultPercent < 0).reduce((s, t) => s + Math.abs(t.resultPercent), 0);
-      if (loss > 0) accLoss += loss;
-
-      return { date, dateStr, isWeekend: isWknd, risk, trades: dayTrades, dayResult };
-    });
-  }, [capital, riskPercent, simulatedTrades, workingDays]);
-
-  const addTrade = () => {
-    if (!newDate || !newEntry || !newExit || !newQty) return;
-    const entry = parseFloat(newEntry.replace(",", "."));
-    const exit = parseFloat(newExit.replace(",", "."));
-    const qty = parseInt(newQty);
-    if (isNaN(entry) || isNaN(exit) || isNaN(qty)) return;
-
-    const { resultadoReais, resultadoPercentual } = calculateTradeResult(entry, exit, qty, 1, 0);
-    setSimulatedTrades(prev => [...prev, {
-      date: newDate, ticker: newTicker.toUpperCase(), entryPrice: entry, exitPrice: exit,
-      quantity: qty, resultReais: resultadoReais, resultPercent: resultadoPercentual,
-    }]);
-    setNewExit("");
-  };
-
-  const removeTrade = (index: number) => setSimulatedTrades(prev => prev.filter((_, i) => i !== index));
   const prev = () => setStep(s => Math.max(0, s - 1));
-  const next = () => setStep(s => Math.min(3, s + 1));
+  const next = () => setStep(s => Math.min(2, s + 1));
 
   return (
     <div className="mt-16 scroll-reveal">
       <div className="bg-card border border-border rounded-2xl p-6 md:p-8 max-w-5xl mx-auto">
-        <div className="text-center mb-6">
-          <span className="text-primary text-xs font-medium tracking-widest uppercase" style={{ WebkitTextFillColor: "initial" }}>
-            Passo {step + 1} de 4
-          </span>
-          <h3 className="font-montserrat text-lg md:text-xl font-bold mt-1 text-foreground">{STEPS[step].title}</h3>
+        {/* Step Indicator */}
+        <div className="flex items-center justify-center gap-3 mb-6">
+          {STEPS.map((s, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                i === step ? "bg-primary text-primary-foreground" :
+                i < step ? "bg-primary/30 text-primary" :
+                "bg-muted text-muted-foreground"
+              }`}>
+                {i < step ? <CheckCircle2 className="w-3.5 h-3.5" /> : s.num}
+              </div>
+              <span className={`text-xs font-medium hidden sm:inline ${i === step ? "text-foreground" : "text-muted-foreground"}`}>
+                {s.label}
+              </span>
+              {i < STEPS.length - 1 && <div className={`h-px w-8 md:w-12 ${i < step ? "bg-primary" : "bg-border"}`} />}
+            </div>
+          ))}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Step 1 */}
-          <div className={`relative transition-opacity duration-500 ${step === 0 ? "opacity-100" : "opacity-20 pointer-events-none"}`}>
-            {step === 0 && <TooltipOverlay text={STEPS[0].tooltip} />}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-3">
-                <Shield className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">Configuração de Risco</span>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Capital Total (R$)</label>
-                <input
-                  type="text"
-                  value={formatCurrency(capital)}
-                  onChange={e => {
-                    const cleaned = e.target.value.replace(/[^\d]/g, "");
-                    setCapital(Number(cleaned) / 100);
-                  }}
-                  className="flex h-9 w-full rounded-md border border-border bg-background/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Risco Mensal (%)</label>
-                <input
-                  type="number"
-                  value={riskPercent}
-                  onChange={e => setRiskPercent(Number(e.target.value))}
-                  min={1}
-                  max={30}
-                  step={0.5}
-                  className="flex h-9 w-full rounded-md border border-border bg-background/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-              <div className="text-xs text-muted-foreground mt-2">
-                {workingDays} dias úteis • Risco: {formatCurrency((riskPercent / 100) * capital)}
-              </div>
-            </div>
+        {/* Step 1: Select Assets */}
+        <div className={`transition-opacity duration-500 ${step === 0 ? "block" : "hidden"}`}>
+          <div className="relative mb-4">
+            <TooltipOverlay text={TOOLTIPS[0]} />
           </div>
-
-          {/* Step 2 */}
-          <div className={`relative transition-opacity duration-500 ${step === 1 ? "opacity-100" : "opacity-20 pointer-events-none"}`}>
-            {step === 1 && <TooltipOverlay text={STEPS[1].tooltip} />}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-3">
-                <Target className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">Limites Calculados</span>
-              </div>
-              {[
-                { label: "Risco Diário (%)", value: `${dailyRisk.dailyRiskPercent.toFixed(2)}%`, icon: Percent },
-                { label: "Risco Diário (R$)", value: formatCurrency(dailyRisk.dailyRiskValue), icon: DollarSign },
-                { label: "Risco Restante (%)", value: `${(riskPercent - accLossPercent).toFixed(2)}%`, icon: Percent },
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/30">
-                  <div className="flex items-center gap-2">
-                    <item.icon className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-xs text-muted-foreground">{item.label}</span>
+          <div className="space-y-4 pt-2">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Buscar ativo..."
+                className="h-8 w-full rounded-md border border-border bg-background/50 pl-9 pr-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            {/* Grid */}
+            <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5 max-h-32 overflow-y-auto">
+              {filteredTickers.map(ticker => {
+                const isSelected = MOCK_ASSETS.some(a => a.ticker === ticker);
+                return (
+                  <div
+                    key={ticker}
+                    className={`text-[10px] font-medium px-1.5 py-1 rounded text-center cursor-default transition-colors ${
+                      isSelected
+                        ? "bg-primary/20 text-primary border border-primary/40"
+                        : "bg-muted/30 text-muted-foreground border border-transparent"
+                    }`}
+                  >
+                    {ticker}
                   </div>
-                  <span className="text-sm font-bold text-foreground">{item.value}</span>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+            {/* Selected */}
+            <div>
+              <span className="text-xs font-semibold text-foreground">Ativos Selecionados</span>
+              <div className="flex gap-2 mt-2">
+                {MOCK_ASSETS.map(a => (
+                  <div key={a.ticker} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/15 border border-primary/30 text-xs font-medium text-primary">
+                    <CheckCircle2 className="w-3 h-3" /> {a.ticker}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Step 3 */}
-          <div className={`relative transition-opacity duration-500 ${step === 2 ? "opacity-100" : "opacity-20 pointer-events-none"}`}>
-            {step === 2 && <TooltipOverlay text={STEPS[2].tooltip} />}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-3">
-                <Activity className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">Registrar Trade</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Data</label>
-                  <select value={newDate} onChange={e => setNewDate(e.target.value)} className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground">
-                    <option value="">Dia</option>
-                    {availableDates.map(d => (
-                      <option key={format(d, "yyyy-MM-dd")} value={format(d, "yyyy-MM-dd")}>{format(d, "dd/MM")}</option>
-                    ))}
-                  </select>
+        {/* Step 2: Prices */}
+        <div className={`transition-opacity duration-500 ${step === 1 ? "block" : "hidden"}`}>
+          <div className="relative mb-4">
+            <TooltipOverlay text={TOOLTIPS[1]} />
+          </div>
+          <div className="space-y-3 pt-2">
+            <div className="grid grid-cols-4 gap-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
+              <span>Ativo</span>
+              <span>Preço (R$)</span>
+              <span>Stop (%)</span>
+              <span>Objetivo (%)</span>
+            </div>
+            {MOCK_ASSETS.map(asset => (
+              <div key={asset.ticker} className="grid grid-cols-4 gap-2 items-center p-2.5 rounded-lg border border-border bg-background/30">
+                <span className="text-xs font-bold text-foreground">{asset.ticker}</span>
+                <div className="h-7 flex items-center rounded-md border border-border bg-muted/20 px-2 text-xs text-foreground">
+                  {asset.preco.toFixed(2)}
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Ticker</label>
-                  <input type="text" value={newTicker} onChange={e => setNewTicker(e.target.value)} className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground uppercase" />
+                <div className="h-7 flex items-center rounded-md border border-border bg-muted/20 px-2 text-xs text-foreground">
+                  {asset.stopPercentual.toFixed(1)}%
                 </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Entrada</label>
-                  <input type="text" value={newEntry} onChange={e => setNewEntry(e.target.value)} className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Saída</label>
-                  <input type="text" value={newExit} onChange={e => setNewExit(e.target.value)} className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Qtd</label>
-                  <input type="text" value={newQty} onChange={e => setNewQty(e.target.value)} className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground" />
+                <div className="h-7 flex items-center rounded-md border border-border bg-muted/20 px-2 text-xs text-foreground">
+                  {asset.objetivoPercentual.toFixed(1)}%
                 </div>
               </div>
-              <button onClick={addTrade} className="w-full h-8 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-1">
-                <Plus className="w-3 h-3" /> Adicionar Trade
-              </button>
-              {simulatedTrades.length > 0 && (
-                <div className="max-h-28 overflow-y-auto space-y-1">
-                  {simulatedTrades.map((t, i) => (
-                    <div key={i} className="flex items-center justify-between p-2 rounded border border-border text-xs">
-                      <span className="text-muted-foreground">{format(new Date(t.date + "T12:00:00"), "dd/MM")} • {t.ticker}</span>
-                      <div className="flex items-center gap-2">
-                        <span className={t.resultReais >= 0 ? "text-[hsl(142,71%,45%)]" : "text-[hsl(0,84%,60%)]"}>
-                          {t.resultReais >= 0 ? "+" : ""}{formatCurrency(t.resultReais)}
-                        </span>
-                        <button onClick={() => removeTrade(i)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
-                      </div>
-                    </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Step 3: Parameters & Results */}
+        <div className={`transition-opacity duration-500 ${step === 2 ? "block" : "hidden"}`}>
+          <div className="relative mb-4">
+            <TooltipOverlay text={TOOLTIPS[2]} />
+          </div>
+          <div className="space-y-4 pt-2">
+            {/* Global params */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/30">
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs text-muted-foreground">Valor Alocado</span>
+                </div>
+                <span className="text-sm font-bold text-foreground">{formatCurrency(VALOR_ALOCADO)}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/30">
+                <div className="flex items-center gap-2">
+                  <Target className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs text-muted-foreground">Stop Máximo</span>
+                </div>
+                <span className="text-sm font-bold text-foreground">{formatCurrency(STOP_MAX)}</span>
+              </div>
+            </div>
+
+            {/* Results table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 px-1 text-muted-foreground font-medium">Ativo</th>
+                    <th className="text-right py-2 px-1 text-muted-foreground font-medium">Alav.</th>
+                    <th className="text-right py-2 px-1 text-muted-foreground font-medium">Qtd</th>
+                    <th className="text-right py-2 px-1 text-muted-foreground font-medium">Margem</th>
+                    <th className="text-right py-2 px-1 text-muted-foreground font-medium">Perda Máx</th>
+                    <th className="text-right py-2 px-1 text-muted-foreground font-medium">Ganho Obj</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {positions.map(p => (
+                    <tr key={p.ticker} className="border-b border-border/50">
+                      <td className="py-2 px-1 font-bold text-foreground">{p.ticker}</td>
+                      <td className="py-2 px-1 text-right text-muted-foreground">{p.alavancagem}x</td>
+                      <td className="py-2 px-1 text-right font-semibold text-foreground">{p.quantidade}</td>
+                      <td className="py-2 px-1 text-right text-muted-foreground">{formatCurrency(p.margemNecessaria)}</td>
+                      <td className="py-2 px-1 text-right text-[hsl(0,84%,60%)] font-semibold">{formatCurrency(p.perdaMaxima)}</td>
+                      <td className="py-2 px-1 text-right text-[hsl(142,71%,45%)] font-semibold">{formatCurrency(p.ganhoObjetivo)}</td>
+                    </tr>
                   ))}
-                </div>
-              )}
+                </tbody>
+                <tfoot>
+                  <tr className="font-bold text-foreground">
+                    <td className="py-2 px-1" colSpan={3}>Total</td>
+                    <td className="py-2 px-1 text-right">{formatCurrency(totalMargem)}</td>
+                    <td className="py-2 px-1 text-right text-[hsl(0,84%,60%)]">{formatCurrency(totalPerdaMax)}</td>
+                    <td className="py-2 px-1 text-right text-[hsl(142,71%,45%)]">{formatCurrency(totalGanho)}</td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
-          </div>
 
-          {/* Step 4: Calendar */}
-          <div className={`relative transition-opacity duration-500 ${step === 3 ? "opacity-100" : "opacity-20 pointer-events-none"}`}>
-            {step === 3 && <TooltipOverlay text={STEPS[3].tooltip} />}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-3">
-                <CalendarDays className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">
-                  {format(currentMonth, "MMMM yyyy", { locale: ptBR }).replace(/^\w/, c => c.toUpperCase())}
-                </span>
+            {/* Summary badges */}
+            <div className="flex flex-wrap gap-2 text-[10px]">
+              <div className="px-2 py-1 rounded-full bg-muted/30 border border-border text-muted-foreground">
+                Margem: {((totalMargem / VALOR_ALOCADO) * 100).toFixed(0)}% utilizada
               </div>
-              <div className="grid grid-cols-7 gap-1 text-center">
-                {["D", "S", "T", "Q", "Q", "S", "S"].map((d, i) => (
-                  <div key={i} className="text-[10px] text-muted-foreground font-medium py-1">{d}</div>
-                ))}
-                {Array.from({ length: getDay(startOfMonth(currentMonth)) }).map((_, i) => (
-                  <div key={`e${i}`} />
-                ))}
-                {calendarData.map(day => {
-                  const hasTrades = day.trades.length > 0;
-                  const isPositive = day.dayResult > 0;
-                  return (
-                    <div
-                      key={day.dateStr}
-                      className={`rounded-sm p-0.5 text-center ${
-                        day.isWeekend
-                          ? "bg-muted/20 text-muted-foreground/40"
-                          : hasTrades
-                          ? isPositive
-                            ? "bg-[hsl(142,71%,45%,0.2)] border border-[hsl(142,71%,45%,0.4)]"
-                            : "bg-[hsl(0,84%,60%,0.2)] border border-[hsl(0,84%,60%,0.4)]"
-                          : "bg-background/30 border border-border/50"
-                      }`}
-                      title={day.isWeekend ? "Fim de semana" : `Risco: ${day.risk.dailyRiskPercent.toFixed(2)}% (${formatCurrency(day.risk.dailyRiskValue)})`}
-                    >
-                      <div className="text-[10px] text-foreground/70">{format(day.date, "d")}</div>
-                      {!day.isWeekend && (
-                        <div className="text-[8px] text-muted-foreground truncate">
-                          {hasTrades ? (isPositive ? "+" : "") + formatCurrency(day.dayResult) : `${day.risk.dailyRiskPercent.toFixed(1)}%`}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="px-2 py-1 rounded-full bg-muted/30 border border-border text-muted-foreground">
+                Stop: {((totalPerdaMax / STOP_MAX) * 100).toFixed(0)}% do máximo
               </div>
             </div>
           </div>
@@ -301,8 +270,12 @@ export function StockInteractiveTour() {
           <button onClick={prev} disabled={step === 0} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
             <ChevronLeft className="w-4 h-4" /> Anterior
           </button>
-          <StepIndicators current={step} total={4} />
-          <button onClick={next} disabled={step === 3} className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-medium">
+          <div className="flex items-center gap-2">
+            {STEPS.map((_, i) => (
+              <div key={i} className={`h-2 rounded-full transition-all duration-300 ${i === step ? "w-8 bg-primary" : "w-2 bg-muted"}`} />
+            ))}
+          </div>
+          <button onClick={next} disabled={step === 2} className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-medium">
             Próximo <ChevronRight className="w-4 h-4" />
           </button>
         </div>
