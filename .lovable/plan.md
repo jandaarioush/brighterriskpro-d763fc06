@@ -1,46 +1,77 @@
 
 
-## Plano: Tour Guiado Interativo na Seção "Como Funciona"
+## Plano: Simuladores Interativos com Input Real — Futuros e Ações
 
-Criar um mini-dashboard visual com dados mock dentro da seção "Como Funciona", onde o usuário clica "Próximo" para navegar pelos 4 passos. A cada passo, o dashboard destaca a funcionalidade correspondente com tooltips/overlays explicativos.
+Transformar a seção "Como Funciona" em duas seções separadas com simuladores interativos onde o usuário insere dados reais e vê os cálculos em tempo real, incluindo um calendário mensal.
 
-### Componente Novo
+### Estrutura Final
 
-| Arquivo | Descrição |
-|---------|-----------|
-| `src/components/landing/InteractiveTour.tsx` | Tour guiado com mini-dashboard e 4 steps |
+```text
+┌─────────────────────────────────────────┐
+│ COMO FUNCIONA — ÍNDICE E DÓLAR         │
+│ 4 steps numerados                       │
+│ Simulador Interativo (inputs reais)     │
+│ ├─ Capital + Risco Mensal (editáveis)   │
+│ ├─ Limites calculados em tempo real     │
+│ ├─ Registro de trade simulado           │
+│ └─ Calendário mensal com risco/dia      │
+├─────────────────────────────────────────┤
+│ COMO FUNCIONA — AÇÕES                   │
+│ 4 steps numerados (lógica de ações)     │
+│ Simulador Interativo (inputs reais)     │
+│ ├─ Capital + Risco % Mensal (editáveis) │
+│ ├─ Limites calculados (% e R$)          │
+│ ├─ Registro de trade (ticker, preços)   │
+│ └─ Calendário mensal com risco/dia      │
+└─────────────────────────────────────────┘
+```
 
-### Arquivo a Modificar
+### Arquivos
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/landing/HowItWorks.tsx` | Integrar o InteractiveTour abaixo dos steps |
+| `src/components/landing/InteractiveTour.tsx` | Reescrita completa — inputs editáveis, cálculos reais via `riskCalculations.ts`, calendário mensal interativo |
+| `src/components/landing/StockInteractiveTour.tsx` | **Novo** — Simulador para Ações com lógica de `stockRiskCalculations.ts` |
+| `src/components/landing/HowItWorks.tsx` | Separar em duas seções (Futuros + Ações), cada uma com seu simulador |
 
-### Como Funciona
+### Detalhes Técnicos
 
-**Layout**: Abaixo dos 4 cards numerados atuais, aparece um bloco visual representando um mini-dashboard com dados fictícios. O usuário navega entre os 4 passos com botões "Anterior" / "Próximo".
+**InteractiveTour.tsx (Futuros — Índice e Dólar)**
 
-**Cada step destaca uma área diferente do mini-dashboard:**
+- Step 1: Inputs editáveis para Capital (R$) e Risco Mensal (R$) com formatação monetária
+- Step 2: Cálculos em tempo real usando `calculateDailyRisk()` e `calculateStopPoints()` do `riskCalculations.ts`. Mostra Risco Diário, Stop Índice, Stop Dólar baseados nos dias úteis do mês atual
+- Step 3: Usuário adiciona trades simulados (seleciona ativo índice/dólar, insere resultado). Os valores de risco recalculam automaticamente
+- Step 4: **Calendário mensal** — grid de dias do mês atual mostrando risco diário calculado para cada dia útil. Dias com trades simulados mostram resultado (verde/vermelho). O calendário reflete os trades adicionados no step 3, recalculando o risco restante
 
-1. **Configure seu Risco** — Formulário mock com campos "Capital" (R$ 50.000) e "Risco Mensal" (R$ 3.000) com um botão "Calcular". Tooltip: "Defina seu capital e quanto aceita perder por mês."
+**StockInteractiveTour.tsx (Ações)**
 
-2. **Defina Limites** — Cards de Risco Diário (R$ 136,36), Stop Índice (682 pts) e Stop Dólar (13,6 pts) aparecem calculados. Tooltip: "O sistema distribui o risco automaticamente pelos dias úteis."
+- Step 1: Inputs para Capital Total (R$) e Risco Mensal (%) — usa `calculateDailyStockRisk()`
+- Step 2: Mostra Risco Diário (%), Risco Diário (R$), baseados no capital e % definidos
+- Step 3: Registro de trade com Ticker, Preço Entrada, Preço Saída, Quantidade — calcula resultado usando `calculateTradeResult()`
+- Step 4: Calendário mensal idêntico ao de futuros mas com valores em % e R$
 
-3. **Opere com Proteção** — Mini formulário de registro de trade com resultado preenchido. O card de Risco Diário recalcula mostrando o ajuste. Tooltip: "Cada trade registrado ajusta seu risco em tempo real."
+**Calendário (ambos)**
 
-4. **Acompanhe Resultados** — Mini gráfico de barras (dados mock) + heatmap simplificado com cores verde/vermelho. Tooltip: "Visualize sua performance com gráficos e heatmaps."
+- Grid mostrando todos os dias do mês atual
+- Dias úteis com valor de risco diário calculado
+- Fins de semana em cinza/desabilitados
+- Dias com trades adicionados mostram cor verde (lucro) ou vermelho (perda)
+- Ao adicionar trades no step 3, o calendário recalcula automaticamente a distribuição de risco nos dias restantes
 
-**Visual**:
-- Container com `bg-[#1b1c1e] border border-white/10 rounded-2xl` (glass style)
-- Overlay/tooltip dourado com seta apontando para o elemento destacado
-- Área não-ativa com opacity reduzida (0.3) para guiar o foco
-- Transição suave entre steps (fade-in)
-- Step indicators (dots dourados) + botões Anterior/Próximo
-- Responsivo: em mobile, o dashboard fica empilhado verticalmente
+**Estado compartilhado dentro de cada tour:**
 
-**Dados mock hardcoded** (sem Supabase, sem auth):
-- Capital: R$ 50.000
-- Risco mensal: R$ 3.000
-- 22 dias úteis
-- Trades fictícios com mix de ganhos e perdas
+```typescript
+const [capital, setCapital] = useState(50000);
+const [monthlyRisk, setMonthlyRisk] = useState(3000);
+const [simulatedTrades, setSimulatedTrades] = useState<Trade[]>([]);
+// Cálculos derivados via useMemo usando as funções existentes
+```
+
+### Seção HowItWorks
+
+Dividida em dois blocos visuais:
+- **"Índice e Dólar"** — com steps adaptados e `<InteractiveTour />`
+- **"Ações"** — com steps adaptados (capital %, ticker, etc.) e `<StockInteractiveTour />`
+
+Separados por um divisor visual sutil.
 
