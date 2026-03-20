@@ -1,48 +1,46 @@
 
 
-## Plano: Criar GoldenParticles.tsx
+## Plano: Tour Guiado Interativo na Seção "Como Funciona"
 
-### Arquivo Novo
+Criar um mini-dashboard visual com dados mock dentro da seção "Como Funciona", onde o usuário clica "Próximo" para navegar pelos 4 passos. A cada passo, o dashboard destaca a funcionalidade correspondente com tooltips/overlays explicativos.
+
+### Componente Novo
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `src/components/landing/GoldenParticles.tsx` | Canvas fullscreen com partículas douradas animadas |
+| `src/components/landing/InteractiveTour.tsx` | Tour guiado com mini-dashboard e 4 steps |
 
 ### Arquivo a Modificar
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/pages/Index.tsx` | Adicionar `<GoldenParticles />` como `fixed inset-0` antes de todo o conteúdo |
+| `src/components/landing/HowItWorks.tsx` | Integrar o InteractiveTour abaixo dos steps |
 
-### Detalhes do Componente
+### Como Funciona
 
-**GoldenParticles.tsx** — Canvas HTML5 com `requestAnimationFrame`:
+**Layout**: Abaixo dos 4 cards numerados atuais, aparece um bloco visual representando um mini-dashboard com dados fictícios. O usuário navega entre os 4 passos com botões "Anterior" / "Próximo".
 
-- **Posicionamento**: `fixed inset-0 pointer-events-none z-0` cobrindo todo o site
-- **3 camadas de partículas**:
-  - Small (60%): raio 0.5–1.5px, opacidade 15–30%, sem glow
-  - Medium (30%): raio 1.5–3px, opacidade 30–60%, blur 8px
-  - Highlight (10%): raio 3–5px, opacidade 60–90%, blur 20px
-- **Cores**: `#d99516`, `#f4b942`, `#ffd166`
+**Cada step destaca uma área diferente do mini-dashboard:**
 
-**Comportamentos animados**:
-- Orbital: cada partícula orbita em torno do ponto base com ângulo e raio individuais
-- Drift: movimento linear lento com wrap-around nas bordas do canvas
-- Fade pulsante: opacidade varia com `sin(time * fadeSpeed + offset)`
-- Scroll boost: `window scroll delta` aumenta velocidade temporariamente, decai com `*= 0.95`
-- Center beam (desktop only, `width > 768`): faixa vertical pulsante no centro com gradiente `transparent → gold → transparent`
+1. **Configure seu Risco** — Formulário mock com campos "Capital" (R$ 50.000) e "Risco Mensal" (R$ 3.000) com um botão "Calcular". Tooltip: "Defina seu capital e quanto aceita perder por mês."
 
-**Performance**:
-- ~150 partículas em desktop, ~80 em mobile
-- Canvas resize via `ResizeObserver`
-- Cleanup no unmount (cancelAnimationFrame + disconnect observer)
+2. **Defina Limites** — Cards de Risco Diário (R$ 136,36), Stop Índice (682 pts) e Stop Dólar (13,6 pts) aparecem calculados. Tooltip: "O sistema distribui o risco automaticamente pelos dias úteis."
 
-**Integração no Index.tsx**:
-```tsx
-<GoldenParticles />
-<LandingHeader />
-<LandingHero />
-...
-```
-Conteúdo existente recebe `relative z-10` para ficar acima das partículas.
+3. **Opere com Proteção** — Mini formulário de registro de trade com resultado preenchido. O card de Risco Diário recalcula mostrando o ajuste. Tooltip: "Cada trade registrado ajusta seu risco em tempo real."
+
+4. **Acompanhe Resultados** — Mini gráfico de barras (dados mock) + heatmap simplificado com cores verde/vermelho. Tooltip: "Visualize sua performance com gráficos e heatmaps."
+
+**Visual**:
+- Container com `bg-[#1b1c1e] border border-white/10 rounded-2xl` (glass style)
+- Overlay/tooltip dourado com seta apontando para o elemento destacado
+- Área não-ativa com opacity reduzida (0.3) para guiar o foco
+- Transição suave entre steps (fade-in)
+- Step indicators (dots dourados) + botões Anterior/Próximo
+- Responsivo: em mobile, o dashboard fica empilhado verticalmente
+
+**Dados mock hardcoded** (sem Supabase, sem auth):
+- Capital: R$ 50.000
+- Risco mensal: R$ 3.000
+- 22 dias úteis
+- Trades fictícios com mix de ganhos e perdas
 
