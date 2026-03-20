@@ -57,7 +57,7 @@ const Index = () => {
             <img 
               src={logoHero} 
               alt="Brighter Risk Pro" 
-              className="h-32 md:h-40 mx-auto drop-shadow-lg"
+              className="h-48 md:h-64 mx-auto drop-shadow-lg"
             />
             <h1 className="font-montserrat text-5xl md:text-7xl font-bold tracking-tight">
               Domine seus Trades com
