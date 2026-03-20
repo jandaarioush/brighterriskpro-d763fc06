@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowRight, Shield, BarChart3, FileText, Star, TrendingUp, Target, Zap, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ThemeLogo } from "@/components/ThemeLogo";
+import logoHero from "@/assets/logo-hero.png";
 
 const Index = () => {
   return (
