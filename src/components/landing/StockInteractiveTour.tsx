@@ -1,13 +1,13 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Shield, Target, DollarSign, TrendingDown, Activity, CalendarDays, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Shield, Target, DollarSign, Percent, Activity, CalendarDays, Plus, Trash2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { calculateDailyRisk, calculateStopPoints, getWorkingDaysInMonth, type Trade } from "@/lib/riskCalculations";
+import { calculateDailyStockRisk, calculateTradeResult, getWorkingDaysInMonth } from "@/lib/stockRiskCalculations";
 
 const STEPS = [
-  { title: "Configure seu Risco", tooltip: "Defina seu capital e quanto aceita perder por mês." },
-  { title: "Limites Calculados", tooltip: "O sistema distribui o risco automaticamente pelos dias úteis." },
-  { title: "Registre Trades", tooltip: "Adicione trades e veja o risco se ajustar em tempo real." },
+  { title: "Configure seu Risco", tooltip: "Defina seu capital e o percentual de risco mensal." },
+  { title: "Limites Calculados", tooltip: "O sistema distribui o risco em % e R$ pelos dias úteis." },
+  { title: "Registre Trades", tooltip: "Adicione trades com ticker e preços para ver o impacto." },
   { title: "Calendário de Risco", tooltip: "Visualize o risco diário distribuído no mês." },
 ];
 
@@ -36,35 +36,45 @@ function formatCurrency(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function parseCurrencyInput(value: string): number {
-  const cleaned = value.replace(/[^\d]/g, "");
-  return Number(cleaned) / 100;
+interface SimTrade {
+  date: string;
+  ticker: string;
+  entryPrice: number;
+  exitPrice: number;
+  quantity: number;
+  resultReais: number;
+  resultPercent: number;
 }
 
-export function InteractiveTour() {
+export function StockInteractiveTour() {
   const [step, setStep] = useState(0);
-  const [capital, setCapital] = useState(50000);
-  const [monthlyRisk, setMonthlyRisk] = useState(3000);
-  const [simulatedTrades, setSimulatedTrades] = useState<{ date: string; asset: "indice" | "dolar"; result: number }[]>([]);
-  const [newTradeDate, setNewTradeDate] = useState("");
-  const [newTradeAsset, setNewTradeAsset] = useState<"indice" | "dolar">("indice");
-  const [newTradeResult, setNewTradeResult] = useState("");
+  const [capital, setCapital] = useState(100000);
+  const [riskPercent, setRiskPercent] = useState(8);
+  const [simulatedTrades, setSimulatedTrades] = useState<SimTrade[]>([]);
+  const [newDate, setNewDate] = useState("");
+  const [newTicker, setNewTicker] = useState("PETR4");
+  const [newEntry, setNewEntry] = useState("28.50");
+  const [newExit, setNewExit] = useState("29.20");
+  const [newQty, setNewQty] = useState("100");
 
   const currentMonth = new Date();
   const workingDays = useMemo(() => getWorkingDaysInMonth(currentMonth), []);
 
-  const accumulatedLoss = useMemo(() => {
-    return simulatedTrades.filter(t => t.result < 0).reduce((sum, t) => sum + Math.abs(t.result), 0);
+  const accLossPercent = useMemo(() => {
+    return simulatedTrades.filter(t => t.resultPercent < 0).reduce((s, t) => s + Math.abs(t.resultPercent), 0);
   }, [simulatedTrades]);
 
   const dailyRisk = useMemo(() => {
     const remaining = workingDays - simulatedTrades.length;
-    return calculateDailyRisk(monthlyRisk, accumulatedLoss, remaining > 0 ? remaining : 1);
-  }, [monthlyRisk, accumulatedLoss, workingDays, simulatedTrades.length]);
+    return calculateDailyStockRisk(capital, riskPercent, accLossPercent, remaining > 0 ? remaining : 1);
+  }, [capital, riskPercent, accLossPercent, workingDays, simulatedTrades.length]);
 
-  const stops = useMemo(() => calculateStopPoints(dailyRisk), [dailyRisk]);
+  const availableDates = useMemo(() => {
+    const start = startOfMonth(currentMonth);
+    const end = endOfMonth(currentMonth);
+    return eachDayOfInterval({ start, end }).filter(d => !isWeekend(d));
+  }, []);
 
-  // Calendar data
   const calendarData = useMemo(() => {
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
@@ -79,36 +89,31 @@ export function InteractiveTour() {
 
       if (!isWknd) wdProcessed++;
       const wdRemaining = workingDays - wdProcessed + 1;
-      const risk = calculateDailyRisk(monthlyRisk, accLoss, wdRemaining);
-      const stopsCalc = calculateStopPoints(risk);
-
-      const dayResult = dayTrades.reduce((s, t) => s + t.result, 0);
-      const loss = dayTrades.filter(t => t.result < 0).reduce((s, t) => s + Math.abs(t.result), 0);
+      const risk = calculateDailyStockRisk(capital, riskPercent, accLoss, wdRemaining);
+      const dayResult = dayTrades.reduce((s, t) => s + t.resultReais, 0);
+      const loss = dayTrades.filter(t => t.resultPercent < 0).reduce((s, t) => s + Math.abs(t.resultPercent), 0);
       if (loss > 0) accLoss += loss;
 
-      return { date, dateStr, isWeekend: isWknd, risk, stops: stopsCalc, trades: dayTrades, dayResult };
+      return { date, dateStr, isWeekend: isWknd, risk, trades: dayTrades, dayResult };
     });
-  }, [monthlyRisk, simulatedTrades, workingDays]);
+  }, [capital, riskPercent, simulatedTrades, workingDays]);
 
   const addTrade = () => {
-    if (!newTradeDate || !newTradeResult) return;
-    const result = parseFloat(newTradeResult.replace(",", "."));
-    if (isNaN(result)) return;
-    setSimulatedTrades(prev => [...prev, { date: newTradeDate, asset: newTradeAsset, result }]);
-    setNewTradeResult("");
+    if (!newDate || !newEntry || !newExit || !newQty) return;
+    const entry = parseFloat(newEntry.replace(",", "."));
+    const exit = parseFloat(newExit.replace(",", "."));
+    const qty = parseInt(newQty);
+    if (isNaN(entry) || isNaN(exit) || isNaN(qty)) return;
+
+    const { resultadoReais, resultadoPercentual } = calculateTradeResult(entry, exit, qty, 1, 0);
+    setSimulatedTrades(prev => [...prev, {
+      date: newDate, ticker: newTicker.toUpperCase(), entryPrice: entry, exitPrice: exit,
+      quantity: qty, resultReais: resultadoReais, resultPercent: resultadoPercentual,
+    }]);
+    setNewExit("");
   };
 
-  const removeTrade = (index: number) => {
-    setSimulatedTrades(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Get available working days for trade input
-  const availableDates = useMemo(() => {
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
-    return eachDayOfInterval({ start, end }).filter(d => !isWeekend(d));
-  }, []);
-
+  const removeTrade = (index: number) => setSimulatedTrades(prev => prev.filter((_, i) => i !== index));
   const prev = () => setStep(s => Math.max(0, s - 1));
   const next = () => setStep(s => Math.min(3, s + 1));
 
@@ -123,7 +128,7 @@ export function InteractiveTour() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Step 1: Configure */}
+          {/* Step 1 */}
           <div className={`relative transition-opacity duration-500 ${step === 0 ? "opacity-100" : "opacity-20 pointer-events-none"}`}>
             {step === 0 && <TooltipOverlay text={STEPS[0].tooltip} />}
             <div className="space-y-3">
@@ -132,30 +137,36 @@ export function InteractiveTour() {
                 <span className="text-sm font-semibold text-foreground">Configuração de Risco</span>
               </div>
               <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Capital</label>
+                <label className="text-xs text-muted-foreground">Capital Total (R$)</label>
                 <input
                   type="text"
                   value={formatCurrency(capital)}
-                  onChange={e => setCapital(parseCurrencyInput(e.target.value))}
+                  onChange={e => {
+                    const cleaned = e.target.value.replace(/[^\d]/g, "");
+                    setCapital(Number(cleaned) / 100);
+                  }}
                   className="flex h-9 w-full rounded-md border border-border bg-background/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Risco Mensal</label>
+                <label className="text-xs text-muted-foreground">Risco Mensal (%)</label>
                 <input
-                  type="text"
-                  value={formatCurrency(monthlyRisk)}
-                  onChange={e => setMonthlyRisk(parseCurrencyInput(e.target.value))}
+                  type="number"
+                  value={riskPercent}
+                  onChange={e => setRiskPercent(Number(e.target.value))}
+                  min={1}
+                  max={30}
+                  step={0.5}
                   className="flex h-9 w-full rounded-md border border-border bg-background/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
               <div className="text-xs text-muted-foreground mt-2">
-                {workingDays} dias úteis no mês • {((monthlyRisk / capital) * 100).toFixed(1)}% do capital
+                {workingDays} dias úteis • Risco: {formatCurrency((riskPercent / 100) * capital)}
               </div>
             </div>
           </div>
 
-          {/* Step 2: Limits */}
+          {/* Step 2 */}
           <div className={`relative transition-opacity duration-500 ${step === 1 ? "opacity-100" : "opacity-20 pointer-events-none"}`}>
             {step === 1 && <TooltipOverlay text={STEPS[1].tooltip} />}
             <div className="space-y-3">
@@ -164,9 +175,9 @@ export function InteractiveTour() {
                 <span className="text-sm font-semibold text-foreground">Limites Calculados</span>
               </div>
               {[
-                { label: "Risco Diário", value: formatCurrency(dailyRisk), icon: DollarSign },
-                { label: "Stop Índice", value: `${stops.indice.toFixed(0)} pts`, icon: TrendingDown },
-                { label: "Stop Dólar", value: `${stops.dolar.toFixed(1)} pts`, icon: TrendingDown },
+                { label: "Risco Diário (%)", value: `${dailyRisk.dailyRiskPercent.toFixed(2)}%`, icon: Percent },
+                { label: "Risco Diário (R$)", value: formatCurrency(dailyRisk.dailyRiskValue), icon: DollarSign },
+                { label: "Risco Restante (%)", value: `${(riskPercent - accLossPercent).toFixed(2)}%`, icon: Percent },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/30">
                   <div className="flex items-center gap-2">
@@ -176,13 +187,10 @@ export function InteractiveTour() {
                   <span className="text-sm font-bold text-foreground">{item.value}</span>
                 </div>
               ))}
-              <div className="text-xs text-muted-foreground">
-                Risco restante: {formatCurrency(monthlyRisk - accumulatedLoss)}
-              </div>
             </div>
           </div>
 
-          {/* Step 3: Trades */}
+          {/* Step 3 */}
           <div className={`relative transition-opacity duration-500 ${step === 2 ? "opacity-100" : "opacity-20 pointer-events-none"}`}>
             {step === 2 && <TooltipOverlay text={STEPS[2].tooltip} />}
             <div className="space-y-3">
@@ -190,62 +198,48 @@ export function InteractiveTour() {
                 <Activity className="w-4 h-4 text-primary" />
                 <span className="text-sm font-semibold text-foreground">Registrar Trade</span>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">Data</label>
-                  <select
-                    value={newTradeDate}
-                    onChange={e => setNewTradeDate(e.target.value)}
-                    className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground"
-                  >
+                  <select value={newDate} onChange={e => setNewDate(e.target.value)} className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground">
                     <option value="">Dia</option>
                     {availableDates.map(d => (
-                      <option key={format(d, "yyyy-MM-dd")} value={format(d, "yyyy-MM-dd")}>
-                        {format(d, "dd/MM")}
-                      </option>
+                      <option key={format(d, "yyyy-MM-dd")} value={format(d, "yyyy-MM-dd")}>{format(d, "dd/MM")}</option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Ativo</label>
-                  <select
-                    value={newTradeAsset}
-                    onChange={e => setNewTradeAsset(e.target.value as "indice" | "dolar")}
-                    className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground"
-                  >
-                    <option value="indice">Índice</option>
-                    <option value="dolar">Dólar</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Resultado (R$)</label>
-                  <input
-                    type="text"
-                    value={newTradeResult}
-                    onChange={e => setNewTradeResult(e.target.value)}
-                    placeholder="-150 ou 300"
-                    className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground"
-                  />
+                  <label className="text-xs text-muted-foreground">Ticker</label>
+                  <input type="text" value={newTicker} onChange={e => setNewTicker(e.target.value)} className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground uppercase" />
                 </div>
               </div>
-              <button
-                onClick={addTrade}
-                className="w-full h-8 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-1"
-              >
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Entrada</label>
+                  <input type="text" value={newEntry} onChange={e => setNewEntry(e.target.value)} className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Saída</label>
+                  <input type="text" value={newExit} onChange={e => setNewExit(e.target.value)} className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Qtd</label>
+                  <input type="text" value={newQty} onChange={e => setNewQty(e.target.value)} className="h-8 w-full rounded-md border border-border bg-background/50 px-2 text-xs text-foreground" />
+                </div>
+              </div>
+              <button onClick={addTrade} className="w-full h-8 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-1">
                 <Plus className="w-3 h-3" /> Adicionar Trade
               </button>
               {simulatedTrades.length > 0 && (
                 <div className="max-h-28 overflow-y-auto space-y-1">
                   {simulatedTrades.map((t, i) => (
                     <div key={i} className="flex items-center justify-between p-2 rounded border border-border text-xs">
-                      <span className="text-muted-foreground">{format(new Date(t.date + "T12:00:00"), "dd/MM")} • {t.asset === "indice" ? "Índice" : "Dólar"}</span>
+                      <span className="text-muted-foreground">{format(new Date(t.date + "T12:00:00"), "dd/MM")} • {t.ticker}</span>
                       <div className="flex items-center gap-2">
-                        <span className={t.result >= 0 ? "text-[hsl(142,71%,45%)]" : "text-[hsl(0,84%,60%)]"}>
-                          {t.result >= 0 ? "+" : ""}{formatCurrency(t.result)}
+                        <span className={t.resultReais >= 0 ? "text-[hsl(142,71%,45%)]" : "text-[hsl(0,84%,60%)]"}>
+                          {t.resultReais >= 0 ? "+" : ""}{formatCurrency(t.resultReais)}
                         </span>
-                        <button onClick={() => removeTrade(i)} className="text-muted-foreground hover:text-destructive">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        <button onClick={() => removeTrade(i)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                   ))}
@@ -268,14 +262,12 @@ export function InteractiveTour() {
                 {["D", "S", "T", "Q", "Q", "S", "S"].map((d, i) => (
                   <div key={i} className="text-[10px] text-muted-foreground font-medium py-1">{d}</div>
                 ))}
-                {/* Empty cells for first day offset */}
                 {Array.from({ length: getDay(startOfMonth(currentMonth)) }).map((_, i) => (
                   <div key={`e${i}`} />
                 ))}
                 {calendarData.map(day => {
                   const hasTrades = day.trades.length > 0;
                   const isPositive = day.dayResult > 0;
-                  const isNegative = day.dayResult < 0;
                   return (
                     <div
                       key={day.dateStr}
@@ -288,12 +280,12 @@ export function InteractiveTour() {
                             : "bg-[hsl(0,84%,60%,0.2)] border border-[hsl(0,84%,60%,0.4)]"
                           : "bg-background/30 border border-border/50"
                       }`}
-                      title={day.isWeekend ? "Fim de semana" : `Risco: ${formatCurrency(day.risk)} | Stop Índ: ${day.stops.indice.toFixed(0)}pts | Stop Dól: ${day.stops.dolar.toFixed(1)}pts`}
+                      title={day.isWeekend ? "Fim de semana" : `Risco: ${day.risk.dailyRiskPercent.toFixed(2)}% (${formatCurrency(day.risk.dailyRiskValue)})`}
                     >
                       <div className="text-[10px] text-foreground/70">{format(day.date, "d")}</div>
                       {!day.isWeekend && (
                         <div className="text-[8px] text-muted-foreground truncate">
-                          {hasTrades ? (isPositive ? "+" : "") + formatCurrency(day.dayResult) : formatCurrency(day.risk)}
+                          {hasTrades ? (isPositive ? "+" : "") + formatCurrency(day.dayResult) : `${day.risk.dailyRiskPercent.toFixed(1)}%`}
                         </div>
                       )}
                     </div>
