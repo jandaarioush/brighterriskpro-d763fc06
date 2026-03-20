@@ -1,3 +1,5 @@
+import { InteractiveTour } from "./InteractiveTour";
+
 const steps = [
   { num: "01", title: "Configure seu Risco", desc: "Defina capital, risco mensal e perfil operacional." },
   { num: "02", title: "Defina Limites", desc: "O sistema calcula stops diários para Índice e Dólar." },
@@ -30,6 +32,8 @@ export const HowItWorks = () => (
           </div>
         ))}
       </div>
+
+      <InteractiveTour />
     </div>
   </section>
 );
