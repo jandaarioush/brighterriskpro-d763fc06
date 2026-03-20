@@ -57,6 +57,7 @@ const Index = () => {
       <PricingSection />
       <FinalCTA />
       <LandingFooter />
+      </div>
     </div>
   );
 };
