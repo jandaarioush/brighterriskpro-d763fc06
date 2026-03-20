@@ -53,7 +53,7 @@ const Index = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,hsl(217_91%_60%/0.1),transparent)]" />
         
         <div className="container relative mx-auto max-w-6xl">
-          <div className="text-center space-y-8 animate-fade-in">
+          <div className="text-center space-y-4 animate-fade-in">
             <img 
               src={logoHero} 
               alt="Brighter Risk Pro" 
