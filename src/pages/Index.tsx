@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ThemeLogo } from "@/components/ThemeLogo";
 import logoHero from "@/assets/logo-hero.png";
+import { GoldenParticles } from "@/components/landing/GoldenParticles";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingHero } from "@/components/landing/LandingHero";
 import { ValueProposition } from "@/components/landing/ValueProposition";
