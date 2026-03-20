@@ -1,22 +1,20 @@
 
 
-## Plano: Aumentar Logo do Hero
+## Plano: Ajustar classes do logo no Hero
 
 ### Arquivo a Modificar
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/pages/Index.tsx` | Aumentar classes de altura do logo de `h-32 md:h-40` para `h-48 md:h-64` |
+| `src/pages/Index.tsx` | Trocar classes do logo de `h-48 md:h-64` para `w-80 md:w-[26rem] lg:w-[32rem] h-auto object-contain mix-blend-lighten` + drop-shadow gold |
 
 ### Mudança (linha 60)
 
 ```tsx
 // De:
-className="h-32 md:h-40 mx-auto drop-shadow-lg"
+className="h-48 md:h-64 mx-auto drop-shadow-lg"
 
 // Para:
-className="h-48 md:h-64 mx-auto drop-shadow-lg"
+className="w-80 md:w-[26rem] lg:w-[32rem] h-auto object-contain mix-blend-lighten mx-auto drop-shadow-[0_0_30px_rgba(217,149,22,0.3)]"
 ```
-
-Isso dobra aproximadamente o tamanho do logo (de 128/160px para 192/256px).
 
