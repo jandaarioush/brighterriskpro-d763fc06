@@ -46,6 +46,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-[hsl(220,15%,5%)] text-[hsl(0,0%,92%)] font-inter overflow-x-hidden">
+      <GoldenParticles />
+      <div className="relative z-10">
       <LandingHeader />
       <LandingHero />
       <ValueProposition />
