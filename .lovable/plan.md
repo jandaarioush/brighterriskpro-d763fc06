@@ -1,77 +1,42 @@
 
 
-## Plano: Simuladores Interativos com Input Real — Futuros e Ações
+## Plano: Simuladores Mock + Calendário em Pontos + Simulador de Ações Completo
 
-Transformar a seção "Como Funciona" em duas seções separadas com simuladores interativos onde o usuário insere dados reais e vê os cálculos em tempo real, incluindo um calendário mensal.
+### Resumo
 
-### Estrutura Final
-
-```text
-┌─────────────────────────────────────────┐
-│ COMO FUNCIONA — ÍNDICE E DÓLAR         │
-│ 4 steps numerados                       │
-│ Simulador Interativo (inputs reais)     │
-│ ├─ Capital + Risco Mensal (editáveis)   │
-│ ├─ Limites calculados em tempo real     │
-│ ├─ Registro de trade simulado           │
-│ └─ Calendário mensal com risco/dia      │
-├─────────────────────────────────────────┤
-│ COMO FUNCIONA — AÇÕES                   │
-│ 4 steps numerados (lógica de ações)     │
-│ Simulador Interativo (inputs reais)     │
-│ ├─ Capital + Risco % Mensal (editáveis) │
-│ ├─ Limites calculados (% e R$)          │
-│ ├─ Registro de trade (ticker, preços)   │
-│ └─ Calendário mensal com risco/dia      │
-└─────────────────────────────────────────┘
-```
+Três mudanças principais:
+1. **InteractiveTour.tsx** — Reverter para dados mock (sem inputs editáveis) e mostrar risco em **pontos** no calendário (Stop Índice / Stop Dólar)
+2. **StockInteractiveTour.tsx** — Substituir pelo simulador completo de ações em 3 etapas (Selecionar Ativos → Preços → Parâmetros) com dados mock, usando a lista BTG existente
+3. **HowItWorks.tsx** — Ajustar steps descritivos para refletir as mudanças
 
 ### Arquivos
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/landing/InteractiveTour.tsx` | Reescrita completa — inputs editáveis, cálculos reais via `riskCalculations.ts`, calendário mensal interativo |
-| `src/components/landing/StockInteractiveTour.tsx` | **Novo** — Simulador para Ações com lógica de `stockRiskCalculations.ts` |
-| `src/components/landing/HowItWorks.tsx` | Separar em duas seções (Futuros + Ações), cada uma com seu simulador |
+| `src/components/landing/InteractiveTour.tsx` | Mock data fixo, calendário mostra pontos (Índice/Dólar) em vez de R$ |
+| `src/components/landing/StockInteractiveTour.tsx` | Reescrita completa — wizard 3 etapas com ativos BTG mock |
+| `src/components/landing/HowItWorks.tsx` | Atualizar steps do bloco Ações para refletir as 3 etapas do wizard |
 
-### Detalhes Técnicos
+### Detalhes
 
-**InteractiveTour.tsx (Futuros — Índice e Dólar)**
+**InteractiveTour.tsx (Futuros — Mock)**
+- Capital fixo R$ 50.000, Risco Mensal R$ 3.000 (não editáveis, apenas exibidos)
+- Trades mock pré-definidos (ex: dia 5 = +R$200, dia 10 = -R$150, dia 15 = +R$350)
+- Calendário mostra risco em **pontos**: cada dia útil exibe `Stop Índ: Xpts` ou `Stop Dól: Xpts` usando `calculateStopPoints()`
+- Dias com trades mock mostram resultado em R$ (verde/vermelho)
+- 4 steps com navegação Anterior/Próximo como hoje
 
-- Step 1: Inputs editáveis para Capital (R$) e Risco Mensal (R$) com formatação monetária
-- Step 2: Cálculos em tempo real usando `calculateDailyRisk()` e `calculateStopPoints()` do `riskCalculations.ts`. Mostra Risco Diário, Stop Índice, Stop Dólar baseados nos dias úteis do mês atual
-- Step 3: Usuário adiciona trades simulados (seleciona ativo índice/dólar, insere resultado). Os valores de risco recalculam automaticamente
-- Step 4: **Calendário mensal** — grid de dias do mês atual mostrando risco diário calculado para cada dia útil. Dias com trades simulados mostram resultado (verde/vermelho). O calendário reflete os trades adicionados no step 3, recalculando o risco restante
+**StockInteractiveTour.tsx (Ações — Wizard 3 etapas)**
 
-**StockInteractiveTour.tsx (Ações)**
+Replica visualmente o simulador real (`StockSimulator.tsx`) com dados mock:
 
-- Step 1: Inputs para Capital Total (R$) e Risco Mensal (%) — usa `calculateDailyStockRisk()`
-- Step 2: Mostra Risco Diário (%), Risco Diário (R$), baseados no capital e % definidos
-- Step 3: Registro de trade com Ticker, Preço Entrada, Preço Saída, Quantidade — calcula resultado usando `calculateTradeResult()`
-- Step 4: Calendário mensal idêntico ao de futuros mas com valores em % e R$
+- **Etapa 1 — Selecionar Ativos**: Grid de badges com tickers BTG (usando `btgAssets` existente), barra de busca/filtro, área "Ativos Selecionados" abaixo. Pré-seleciona 3 ativos mock (PETR4, VALE3, ITUB4). Não permite edição — apenas visualização
+- **Etapa 2 — Preços**: Tabela com os ativos selecionados mostrando preço mock, Stop Loss (%) e Objetivo/Gain (%) com valores fixos. Inputs desabilitados
+- **Etapa 3 — Parâmetros**: Valor Alocado (R$ 5.000) e Stop Financeiro Máximo (R$ 2.500) fixos. Tabela de resultado com: Margem, Quantidade, Perda Máxima, Ganho Objetivo por ativo. Valores calculados com as funções reais mas inputs mock
 
-**Calendário (ambos)**
+Wizard step indicator no topo (1 → 2 → 3) com linha conectora dourada, navegação Anterior/Próximo.
 
-- Grid mostrando todos os dias do mês atual
-- Dias úteis com valor de risco diário calculado
-- Fins de semana em cinza/desabilitados
-- Dias com trades adicionados mostram cor verde (lucro) ou vermelho (perda)
-- Ao adicionar trades no step 3, o calendário recalcula automaticamente a distribuição de risco nos dias restantes
-
-**Estado compartilhado dentro de cada tour:**
-
-```typescript
-const [capital, setCapital] = useState(50000);
-const [monthlyRisk, setMonthlyRisk] = useState(3000);
-const [simulatedTrades, setSimulatedTrades] = useState<Trade[]>([]);
-// Cálculos derivados via useMemo usando as funções existentes
-```
-
-### Seção HowItWorks
-
-Dividida em dois blocos visuais:
-- **"Índice e Dólar"** — com steps adaptados e `<InteractiveTour />`
-- **"Ações"** — com steps adaptados (capital %, ticker, etc.) e `<StockInteractiveTour />`
-
-Separados por um divisor visual sutil.
+**HowItWorks.tsx**
+- Bloco Ações: ajustar de 4 steps para 3 steps (Selecionar Ativos, Definir Preços, Configurar Risco)
+- Bloco Futuros: manter 4 steps, ajustar descrição do calendário para mencionar "pontos"
 
