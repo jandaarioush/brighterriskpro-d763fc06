@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ThemeLogo } from "@/components/ThemeLogo";
 import logoHero from "@/assets/logo-hero.png";
+import { GoldenParticles } from "@/components/landing/GoldenParticles";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingHero } from "@/components/landing/LandingHero";
 import { ValueProposition } from "@/components/landing/ValueProposition";
@@ -45,6 +46,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-[hsl(220,15%,5%)] text-[hsl(0,0%,92%)] font-inter overflow-x-hidden">
+      <GoldenParticles />
+      <div className="relative z-10">
       <LandingHeader />
       <LandingHero />
       <ValueProposition />
@@ -54,6 +57,7 @@ const Index = () => {
       <PricingSection />
       <FinalCTA />
       <LandingFooter />
+      </div>
     </div>
   );
 };
