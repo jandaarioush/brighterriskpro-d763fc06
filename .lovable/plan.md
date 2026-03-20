@@ -1,27 +1,17 @@
 
 
-## Plano: Reduzir espaço entre logo e título no Hero
+## Plano: Substituir logo do Hero pela nova imagem
 
-O problema não é a imagem em si — é o `space-y-8` (32px) entre os elementos do hero. Em vez de cortar a imagem (o que perderia qualidade), basta reduzir o gap CSS.
-
-### Arquivo a Modificar
+### Arquivos a Modificar
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/pages/Index.tsx` | Reduzir espaçamento vertical entre logo e título |
+| `src/assets/logo-hero.png` | Substituir pelo novo arquivo uploaded |
+| `src/pages/Index.tsx` | Nenhuma mudança necessária (já importa `logo-hero.png`) |
 
-### Mudanças
+### Mudança
 
-1. **Linha 56**: Trocar `space-y-8` por `space-y-4` no container do hero (reduz gap de 32px para 16px)
-2. **Linha 57-61**: Adicionar margem negativa no logo `mb-0` ou reduzir padding interno caso necessário
+1. **Copiar** `user-uploads://Cópia_de_Sem_nome_2560_x_1440_px.png` para `src/assets/logo-hero.png`, sobrescrevendo o arquivo atual
 
-```tsx
-// De:
-<div className="text-center space-y-8 animate-fade-in">
-
-// Para:
-<div className="text-center space-y-4 animate-fade-in">
-```
-
-Se ainda precisar de mais proximidade, pode-se também reduzir o `py-20 md:py-32` da section para `py-12 md:py-20`.
+As classes CSS e o import já estão configurados corretamente, então basta trocar o arquivo.
 
