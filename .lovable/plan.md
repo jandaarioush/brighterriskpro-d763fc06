@@ -1,46 +1,33 @@
 
 
-## Plano: Sincronizar Stop Loss do Simulador com o Dashboard
-
-### Problema
-
-O Simulador busca `monthly_risk` da tabela `profiles`, enquanto o Dashboard busca da tabela `dashboards` (tipo futuros). Isso gera valores diferentes de stop. Além disso, o valor auto do stop loss mostra decimais longos (4133,333...) em vez de valores inteiros como no dashboard (3300 pts).
+## Plano: Adicionar Logo Centralizado no Hero
 
 ### Arquivo a Modificar
 
 | Arquivo | Mudança |
-|---------|------|
-| `src/pages/Simulator.tsx` | Buscar monthly_risk da tabela dashboards (futuros) e arredondar valores |
+|---------|---------|
+| `src/pages/Index.tsx` | Copiar logo uploaded para assets, adicionar imagem acima do título no hero |
 
 ### Mudanças
 
-1. **Alterar a query** (linhas 33-37): Buscar de `dashboards` com `type = 'futuros'` em vez de `profiles.monthly_risk`
-2. **Arredondar o stop auto** (linha 80): Aplicar `Math.round()` ao valor calculado para eliminar decimais longos
-3. **Usar stopIndice/stopDolar como teto**: O stop máximo no simulador será exatamente o mesmo valor exibido no dashboard
+1. **Copiar a imagem** `Design_sem_nome_5-3.png` para `src/assets/logo-hero.png`
 
-### Código Proposto
+2. **Modificar o hero** (linhas 55-59): Adicionar o logo centralizado antes do h1, com o título abaixo
 
-```typescript
-// Substituir query de profiles por dashboards (como faz o Dashboard.tsx)
-const { data: futurosDashboard } = await supabase
-  .from('dashboards')
-  .select('monthly_risk')
-  .eq('user_id', user.id)
-  .eq('type', 'futuros')
-  .maybeSingle();
-
-const userMonthlyRisk = futurosDashboard?.monthly_risk || 0;
+```tsx
+<div className="text-center space-y-8 animate-fade-in">
+  {/* Logo centralizado */}
+  <img 
+    src={logoHero} 
+    alt="Brighter Risk Pro" 
+    className="h-32 md:h-40 mx-auto drop-shadow-lg"
+  />
+  <h1 className="font-montserrat text-5xl md:text-7xl font-bold tracking-tight">
+    Domine seus Trades com
+    <span className="block mt-2">Gestão de Risco Inteligente</span>
+  </h1>
+  ...
 ```
 
-```typescript
-// Auto stop arredondado e limitado ao stop do dashboard
-const calculatedStop = Math.round(dailyRisk / (contracts * pointValue));
-const finalStop = Math.min(calculatedStop, maxStop);
-```
-
-### Resultado
-
-- Stop Loss máximo no simulador = Stop Índice/Dólar do dashboard (valores inteiros)
-- Sem mais decimais longos como "4133,333333333333"
-- Mesma fonte de dados (tabela dashboards) para ambas as telas
+3. **Adicionar import** no topo: `import logoHero from '@/assets/logo-hero.png';`
 
