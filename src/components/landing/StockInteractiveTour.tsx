@@ -40,6 +40,7 @@ const TOOLTIPS = [
 
 export function StockInteractiveTour() {
   const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState<"left" | "right">("right");
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredTickers = useMemo(() => {
@@ -90,8 +91,14 @@ export function StockInteractiveTour() {
   const totalGanho = positions.reduce((s, p) => s + p.ganhoObjetivo, 0);
   const totalMargem = positions.reduce((s, p) => s + p.margemNecessaria, 0);
 
-  const prev = () => setStep(s => Math.max(0, s - 1));
-  const next = () => setStep(s => Math.min(2, s + 1));
+  const prev = () => { setDirection("left"); setStep(s => Math.max(0, s - 1)); };
+  const next = () => { setDirection("right"); setStep(s => Math.min(2, s + 1)); };
+
+  const getSlideClass = (index: number) => {
+    if (index === step) return "translate-x-0 opacity-100";
+    if (index < step) return "-translate-x-full opacity-0";
+    return "translate-x-full opacity-0";
+  };
 
   return (
     <div className="mt-16 scroll-reveal">
@@ -115,151 +122,147 @@ export function StockInteractiveTour() {
           ))}
         </div>
 
-        {/* Step 1: Select Assets */}
-        <div className={`transition-opacity duration-500 ${step === 0 ? "block" : "hidden"}`}>
-          <div className="relative mb-4">
-            <TooltipOverlay text={TOOLTIPS[0]} />
-          </div>
-          <div className="space-y-4 pt-2">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Buscar ativo..."
-                className="h-8 w-full rounded-md border border-border bg-background/50 pl-9 pr-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
+        <div className="relative overflow-hidden" style={{ minHeight: "300px" }}>
+          {/* Step 1: Select Assets */}
+          <div className={`absolute inset-0 transition-all duration-500 ease-in-out ${getSlideClass(0)}`}>
+            <div className="relative mb-4">
+              <TooltipOverlay text={TOOLTIPS[0]} />
             </div>
-            {/* Grid */}
-            <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5 max-h-32 overflow-y-auto">
-              {filteredTickers.map(ticker => {
-                const isSelected = MOCK_ASSETS.some(a => a.ticker === ticker);
-                return (
-                  <div
-                    key={ticker}
-                    className={`text-[10px] font-medium px-1.5 py-1 rounded text-center cursor-default transition-colors ${
-                      isSelected
-                        ? "bg-primary/20 text-primary border border-primary/40"
-                        : "bg-muted/30 text-muted-foreground border border-transparent"
-                    }`}
-                  >
-                    {ticker}
-                  </div>
-                );
-              })}
-            </div>
-            {/* Selected */}
-            <div>
-              <span className="text-xs font-semibold text-foreground">Ativos Selecionados</span>
-              <div className="flex gap-2 mt-2">
-                {MOCK_ASSETS.map(a => (
-                  <div key={a.ticker} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/15 border border-primary/30 text-xs font-medium text-primary">
-                    <CheckCircle2 className="w-3 h-3" /> {a.ticker}
-                  </div>
-                ))}
+            <div className="space-y-4 pt-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Buscar ativo..."
+                  className="h-8 w-full rounded-md border border-border bg-background/50 pl-9 pr-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Step 2: Prices */}
-        <div className={`transition-opacity duration-500 ${step === 1 ? "block" : "hidden"}`}>
-          <div className="relative mb-4">
-            <TooltipOverlay text={TOOLTIPS[1]} />
-          </div>
-          <div className="space-y-3 pt-2">
-            <div className="grid grid-cols-4 gap-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
-              <span>Ativo</span>
-              <span>Preço (R$)</span>
-              <span>Stop (%)</span>
-              <span>Objetivo (%)</span>
-            </div>
-            {MOCK_ASSETS.map(asset => (
-              <div key={asset.ticker} className="grid grid-cols-4 gap-2 items-center p-2.5 rounded-lg border border-border bg-background/30">
-                <span className="text-xs font-bold text-foreground">{asset.ticker}</span>
-                <div className="h-7 flex items-center rounded-md border border-border bg-muted/20 px-2 text-xs text-foreground">
-                  {asset.preco.toFixed(2)}
-                </div>
-                <div className="h-7 flex items-center rounded-md border border-border bg-muted/20 px-2 text-xs text-foreground">
-                  {asset.stopPercentual.toFixed(1)}%
-                </div>
-                <div className="h-7 flex items-center rounded-md border border-border bg-muted/20 px-2 text-xs text-foreground">
-                  {asset.objetivoPercentual.toFixed(1)}%
-                </div>
+              <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5 max-h-32 overflow-y-auto">
+                {filteredTickers.map(ticker => {
+                  const isSelected = MOCK_ASSETS.some(a => a.ticker === ticker);
+                  return (
+                    <div
+                      key={ticker}
+                      className={`text-[10px] font-medium px-1.5 py-1 rounded text-center cursor-default transition-colors ${
+                        isSelected
+                          ? "bg-primary/20 text-primary border border-primary/40"
+                          : "bg-muted/30 text-muted-foreground border border-transparent"
+                      }`}
+                    >
+                      {ticker}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Step 3: Parameters & Results */}
-        <div className={`transition-opacity duration-500 ${step === 2 ? "block" : "hidden"}`}>
-          <div className="relative mb-4">
-            <TooltipOverlay text={TOOLTIPS[2]} />
-          </div>
-          <div className="space-y-4 pt-2">
-            {/* Global params */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/30">
-                <div className="flex items-center gap-2">
-                  <Wallet className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-xs text-muted-foreground">Valor Alocado</span>
-                </div>
-                <span className="text-sm font-bold text-foreground">{formatCurrency(VALOR_ALOCADO)}</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/30">
-                <div className="flex items-center gap-2">
-                  <Target className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-xs text-muted-foreground">Stop Máximo</span>
-                </div>
-                <span className="text-sm font-bold text-foreground">{formatCurrency(STOP_MAX)}</span>
-              </div>
-            </div>
-
-            {/* Results table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-1 text-muted-foreground font-medium">Ativo</th>
-                    <th className="text-right py-2 px-1 text-muted-foreground font-medium">Alav.</th>
-                    <th className="text-right py-2 px-1 text-muted-foreground font-medium">Qtd</th>
-                    <th className="text-right py-2 px-1 text-muted-foreground font-medium">Margem</th>
-                    <th className="text-right py-2 px-1 text-muted-foreground font-medium">Perda Máx</th>
-                    <th className="text-right py-2 px-1 text-muted-foreground font-medium">Ganho Obj</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {positions.map(p => (
-                    <tr key={p.ticker} className="border-b border-border/50">
-                      <td className="py-2 px-1 font-bold text-foreground">{p.ticker}</td>
-                      <td className="py-2 px-1 text-right text-muted-foreground">{p.alavancagem}x</td>
-                      <td className="py-2 px-1 text-right font-semibold text-foreground">{p.quantidade}</td>
-                      <td className="py-2 px-1 text-right text-muted-foreground">{formatCurrency(p.margemNecessaria)}</td>
-                      <td className="py-2 px-1 text-right text-[hsl(0,84%,60%)] font-semibold">{formatCurrency(p.perdaMaxima)}</td>
-                      <td className="py-2 px-1 text-right text-[hsl(142,71%,45%)] font-semibold">{formatCurrency(p.ganhoObjetivo)}</td>
-                    </tr>
+              <div>
+                <span className="text-xs font-semibold text-foreground">Ativos Selecionados</span>
+                <div className="flex gap-2 mt-2">
+                  {MOCK_ASSETS.map(a => (
+                    <div key={a.ticker} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/15 border border-primary/30 text-xs font-medium text-primary">
+                      <CheckCircle2 className="w-3 h-3" /> {a.ticker}
+                    </div>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr className="font-bold text-foreground">
-                    <td className="py-2 px-1" colSpan={3}>Total</td>
-                    <td className="py-2 px-1 text-right">{formatCurrency(totalMargem)}</td>
-                    <td className="py-2 px-1 text-right text-[hsl(0,84%,60%)]">{formatCurrency(totalPerdaMax)}</td>
-                    <td className="py-2 px-1 text-right text-[hsl(142,71%,45%)]">{formatCurrency(totalGanho)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            {/* Summary badges */}
-            <div className="flex flex-wrap gap-2 text-[10px]">
-              <div className="px-2 py-1 rounded-full bg-muted/30 border border-border text-muted-foreground">
-                Margem: {((totalMargem / VALOR_ALOCADO) * 100).toFixed(0)}% utilizada
+                </div>
               </div>
-              <div className="px-2 py-1 rounded-full bg-muted/30 border border-border text-muted-foreground">
-                Stop: {((totalPerdaMax / STOP_MAX) * 100).toFixed(0)}% do máximo
+            </div>
+          </div>
+
+          {/* Step 2: Prices */}
+          <div className={`absolute inset-0 transition-all duration-500 ease-in-out ${getSlideClass(1)}`}>
+            <div className="relative mb-4">
+              <TooltipOverlay text={TOOLTIPS[1]} />
+            </div>
+            <div className="space-y-3 pt-2">
+              <div className="grid grid-cols-4 gap-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                <span>Ativo</span>
+                <span>Preço (R$)</span>
+                <span>Stop (%)</span>
+                <span>Objetivo (%)</span>
+              </div>
+              {MOCK_ASSETS.map(asset => (
+                <div key={asset.ticker} className="grid grid-cols-4 gap-2 items-center p-2.5 rounded-lg border border-border bg-background/30">
+                  <span className="text-xs font-bold text-foreground">{asset.ticker}</span>
+                  <div className="h-7 flex items-center rounded-md border border-border bg-muted/20 px-2 text-xs text-foreground">
+                    {asset.preco.toFixed(2)}
+                  </div>
+                  <div className="h-7 flex items-center rounded-md border border-border bg-muted/20 px-2 text-xs text-foreground">
+                    {asset.stopPercentual.toFixed(1)}%
+                  </div>
+                  <div className="h-7 flex items-center rounded-md border border-border bg-muted/20 px-2 text-xs text-foreground">
+                    {asset.objetivoPercentual.toFixed(1)}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Step 3: Parameters & Results */}
+          <div className={`absolute inset-0 transition-all duration-500 ease-in-out ${getSlideClass(2)}`}>
+            <div className="relative mb-4">
+              <TooltipOverlay text={TOOLTIPS[2]} />
+            </div>
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/30">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs text-muted-foreground">Valor Alocado</span>
+                  </div>
+                  <span className="text-sm font-bold text-foreground">{formatCurrency(VALOR_ALOCADO)}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/30">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs text-muted-foreground">Stop Máximo</span>
+                  </div>
+                  <span className="text-sm font-bold text-foreground">{formatCurrency(STOP_MAX)}</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 px-1 text-muted-foreground font-medium">Ativo</th>
+                      <th className="text-right py-2 px-1 text-muted-foreground font-medium">Alav.</th>
+                      <th className="text-right py-2 px-1 text-muted-foreground font-medium">Qtd</th>
+                      <th className="text-right py-2 px-1 text-muted-foreground font-medium">Margem</th>
+                      <th className="text-right py-2 px-1 text-muted-foreground font-medium">Perda Máx</th>
+                      <th className="text-right py-2 px-1 text-muted-foreground font-medium">Ganho Obj</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {positions.map(p => (
+                      <tr key={p.ticker} className="border-b border-border/50">
+                        <td className="py-2 px-1 font-bold text-foreground">{p.ticker}</td>
+                        <td className="py-2 px-1 text-right text-muted-foreground">{p.alavancagem}x</td>
+                        <td className="py-2 px-1 text-right font-semibold text-foreground">{p.quantidade}</td>
+                        <td className="py-2 px-1 text-right text-muted-foreground">{formatCurrency(p.margemNecessaria)}</td>
+                        <td className="py-2 px-1 text-right text-[hsl(0,84%,60%)] font-semibold">{formatCurrency(p.perdaMaxima)}</td>
+                        <td className="py-2 px-1 text-right text-[hsl(142,71%,45%)] font-semibold">{formatCurrency(p.ganhoObjetivo)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-bold text-foreground">
+                      <td className="py-2 px-1" colSpan={3}>Total</td>
+                      <td className="py-2 px-1 text-right">{formatCurrency(totalMargem)}</td>
+                      <td className="py-2 px-1 text-right text-[hsl(0,84%,60%)]">{formatCurrency(totalPerdaMax)}</td>
+                      <td className="py-2 px-1 text-right text-[hsl(142,71%,45%)]">{formatCurrency(totalGanho)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <div className="flex flex-wrap gap-2 text-[10px]">
+                <div className="px-2 py-1 rounded-full bg-muted/30 border border-border text-muted-foreground">
+                  Margem: {((totalMargem / VALOR_ALOCADO) * 100).toFixed(0)}% utilizada
+                </div>
+                <div className="px-2 py-1 rounded-full bg-muted/30 border border-border text-muted-foreground">
+                  Stop: {((totalPerdaMax / STOP_MAX) * 100).toFixed(0)}% do máximo
+                </div>
               </div>
             </div>
           </div>

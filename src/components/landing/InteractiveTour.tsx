@@ -48,6 +48,7 @@ function formatCurrency(value: number): string {
 
 export function InteractiveTour() {
   const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState<"left" | "right">("right");
 
   const currentMonth = new Date();
   const workingDays = useMemo(() => getWorkingDaysInMonth(currentMonth), []);
@@ -88,8 +89,14 @@ export function InteractiveTour() {
     });
   }, [workingDays]);
 
-  const prev = () => setStep(s => Math.max(0, s - 1));
-  const next = () => setStep(s => Math.min(3, s + 1));
+  const prev = () => { setDirection("left"); setStep(s => Math.max(0, s - 1)); };
+  const next = () => { setDirection("right"); setStep(s => Math.min(3, s + 1)); };
+
+  const getSlideClass = (index: number) => {
+    if (index === step) return "translate-x-0 opacity-100";
+    if (index < step) return "-translate-x-full opacity-0";
+    return "translate-x-full opacity-0";
+  };
 
   return (
     <div className="mt-16 scroll-reveal">
@@ -101,11 +108,13 @@ export function InteractiveTour() {
           <h3 className="font-montserrat text-lg md:text-xl font-bold mt-1 text-foreground">{STEPS[step].title}</h3>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Step 1: Config (read-only) */}
-          <div className={`relative transition-opacity duration-500 ${step === 0 ? "opacity-100" : "opacity-20 pointer-events-none"}`}>
-            {step === 0 && <TooltipOverlay text={STEPS[0].tooltip} />}
-            <div className="space-y-3">
+        <div className="relative overflow-hidden" style={{ minHeight: "320px" }}>
+          {/* Step 1: Config */}
+          <div className={`absolute inset-0 transition-all duration-500 ease-in-out ${getSlideClass(0)}`}>
+            <div className="relative">
+              <TooltipOverlay text={STEPS[0].tooltip} />
+            </div>
+            <div className="space-y-3 pt-8 max-w-md mx-auto">
               <div className="flex items-center gap-2 mb-3">
                 <Shield className="w-4 h-4 text-primary" />
                 <span className="text-sm font-semibold text-foreground">Configuração de Risco</span>
@@ -124,10 +133,12 @@ export function InteractiveTour() {
             </div>
           </div>
 
-          {/* Step 2: Limits in points */}
-          <div className={`relative transition-opacity duration-500 ${step === 1 ? "opacity-100" : "opacity-20 pointer-events-none"}`}>
-            {step === 1 && <TooltipOverlay text={STEPS[1].tooltip} />}
-            <div className="space-y-3">
+          {/* Step 2: Limits */}
+          <div className={`absolute inset-0 transition-all duration-500 ease-in-out ${getSlideClass(1)}`}>
+            <div className="relative">
+              <TooltipOverlay text={STEPS[1].tooltip} />
+            </div>
+            <div className="space-y-3 pt-8 max-w-md mx-auto">
               <div className="flex items-center gap-2 mb-3">
                 <Target className="w-4 h-4 text-primary" />
                 <span className="text-sm font-semibold text-foreground">Limites Calculados</span>
@@ -151,10 +162,12 @@ export function InteractiveTour() {
             </div>
           </div>
 
-          {/* Step 3: Mock Trades */}
-          <div className={`relative transition-opacity duration-500 ${step === 2 ? "opacity-100" : "opacity-20 pointer-events-none"}`}>
-            {step === 2 && <TooltipOverlay text={STEPS[2].tooltip} />}
-            <div className="space-y-3">
+          {/* Step 3: Trades */}
+          <div className={`absolute inset-0 transition-all duration-500 ease-in-out ${getSlideClass(2)}`}>
+            <div className="relative">
+              <TooltipOverlay text={STEPS[2].tooltip} />
+            </div>
+            <div className="space-y-3 pt-8 max-w-md mx-auto">
               <div className="flex items-center gap-2 mb-3">
                 <Activity className="w-4 h-4 text-primary" />
                 <span className="text-sm font-semibold text-foreground">Trades Registrados</span>
@@ -175,10 +188,12 @@ export function InteractiveTour() {
             </div>
           </div>
 
-          {/* Step 4: Calendar showing points */}
-          <div className={`relative transition-opacity duration-500 ${step === 3 ? "opacity-100" : "opacity-20 pointer-events-none"}`}>
-            {step === 3 && <TooltipOverlay text={STEPS[3].tooltip} />}
-            <div className="space-y-3">
+          {/* Step 4: Calendar */}
+          <div className={`absolute inset-0 transition-all duration-500 ease-in-out ${getSlideClass(3)}`}>
+            <div className="relative">
+              <TooltipOverlay text={STEPS[3].tooltip} />
+            </div>
+            <div className="space-y-3 pt-8 max-w-lg mx-auto">
               <div className="flex items-center gap-2 mb-3">
                 <CalendarDays className="w-4 h-4 text-primary" />
                 <span className="text-sm font-semibold text-foreground">
