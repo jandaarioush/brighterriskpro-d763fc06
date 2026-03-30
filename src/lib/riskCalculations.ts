@@ -18,6 +18,9 @@ export interface DayRiskData {
   dailyRisk: number;
   stopIndice: number;
   stopDolar: number;
+  dailyGoal: number;
+  goalIndice: number;
+  goalDolar: number;
   trades: Trade[];
   isWeekend: boolean;
 }
