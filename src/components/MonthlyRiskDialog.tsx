@@ -29,6 +29,7 @@ interface MonthlyRiskDialogProps {
 
 export function MonthlyRiskDialog({ open, onClose, dashboardId }: MonthlyRiskDialogProps) {
   const [monthlyRisk, setMonthlyRisk] = useState('');
+  const [monthlyGoal, setMonthlyGoal] = useState('');
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
@@ -37,29 +38,31 @@ export function MonthlyRiskDialog({ open, onClose, dashboardId }: MonthlyRiskDia
     setLoading(true);
 
     try {
-      // Validate input
-      const validationResult = monthlyRiskSchema.safeParse({
-        monthlyRisk,
-      });
-
+      const validationResult = monthlyRiskSchema.safeParse({ monthlyRisk });
       if (!validationResult.success) {
-        const firstError = validationResult.error.errors[0];
-        toast.error(firstError.message);
+        toast.error(validationResult.error.errors[0].message);
         setLoading(false);
         return;
       }
 
       const riskValue = parseFloat(monthlyRisk.trim());
+      const goalValue = monthlyGoal.trim() ? parseFloat(monthlyGoal.trim()) : null;
+
+      if (goalValue !== null && (isNaN(goalValue) || goalValue < 0)) {
+        toast.error('Valor de objetivo inválido');
+        setLoading(false);
+        return;
+      }
+
+      const updateData: any = { monthly_risk: riskValue, monthly_goal: goalValue };
 
       if (dashboardId) {
-        // Salvar no dashboard específico
         const { error } = await supabase
           .from('dashboards')
-          .update({ monthly_risk: riskValue })
+          .update(updateData)
           .eq('id', dashboardId);
         if (error) throw error;
       } else {
-        // Fallback: buscar dashboard de futuros e atualizar
         const { data: futurosDash } = await supabase
           .from('dashboards')
           .select('id')
@@ -70,16 +73,16 @@ export function MonthlyRiskDialog({ open, onClose, dashboardId }: MonthlyRiskDia
         if (futurosDash) {
           const { error } = await supabase
             .from('dashboards')
-            .update({ monthly_risk: riskValue })
+            .update(updateData)
             .eq('id', futurosDash.id);
           if (error) throw error;
         }
       }
 
-      toast.success('Risco mensal configurado com sucesso!');
+      toast.success('Configurações salvas com sucesso!');
       onClose();
     } catch (error) {
-      toast.error('Erro ao salvar risco mensal');
+      toast.error('Erro ao salvar configurações');
     } finally {
       setLoading(false);
     }
@@ -89,16 +92,16 @@ export function MonthlyRiskDialog({ open, onClose, dashboardId }: MonthlyRiskDia
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-montserrat text-2xl">Configurar Risco Mensal</DialogTitle>
+          <DialogTitle className="font-montserrat text-2xl">Configurar Risco e Objetivo</DialogTitle>
           <DialogDescription>
-            Quanto você pode perder no mês? Este valor será usado para calcular seu risco diário.
+            Configure seu risco mensal e objetivo financeiro para o mês.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div>
             <label htmlFor="monthlyRisk" className="text-sm font-medium">
-              Valor em R$
+              Risco Mensal (R$)
             </label>
             <Input
               id="monthlyRisk"
@@ -109,6 +112,22 @@ export function MonthlyRiskDialog({ open, onClose, dashboardId }: MonthlyRiskDia
               required
               placeholder="5000.00"
             />
+            <p className="text-xs text-muted-foreground mt-1">Quanto você pode perder no mês</p>
+          </div>
+
+          <div>
+            <label htmlFor="monthlyGoal" className="text-sm font-medium">
+              Objetivo Mensal (R$) <span className="text-muted-foreground">(opcional)</span>
+            </label>
+            <Input
+              id="monthlyGoal"
+              type="number"
+              step="0.01"
+              value={monthlyGoal}
+              onChange={(e) => setMonthlyGoal(e.target.value)}
+              placeholder="3000.00"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Meta de ganho que deseja atingir</p>
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>

@@ -1,0 +1,1 @@
+ALTER TABLE public.dashboards ADD COLUMN monthly_goal numeric DEFAULT null;

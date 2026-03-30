@@ -18,6 +18,9 @@ export interface DayRiskData {
   dailyRisk: number;
   stopIndice: number;
   stopDolar: number;
+  dailyGoal: number;
+  goalIndice: number;
+  goalDolar: number;
   trades: Trade[];
   isWeekend: boolean;
 }
@@ -53,10 +56,28 @@ export function calculateStopPoints(dailyRisk: number): { indice: number; dolar:
   };
 }
 
+export function calculateDailyGoal(
+  monthlyGoal: number,
+  accumulatedProfit: number,
+  workingDaysRemaining: number
+): number {
+  if (workingDaysRemaining === 0) return 0;
+  const goalRemaining = monthlyGoal - accumulatedProfit;
+  return Math.max(0, goalRemaining / workingDaysRemaining);
+}
+
+export function calculateGoalPoints(dailyGoal: number): { indice: number; dolar: number } {
+  return {
+    indice: dailyGoal / 0.2,
+    dolar: dailyGoal / 10,
+  };
+}
+
 export function calculateMonthData(
   monthlyRisk: number,
   trades: Trade[],
-  currentMonth: Date
+  currentMonth: Date,
+  monthlyGoal: number = 0
 ): DayRiskData[] {
   const start = startOfMonth(currentMonth);
   const end = endOfMonth(currentMonth);
@@ -66,6 +87,7 @@ export function calculateMonthData(
   const dayDataArray: DayRiskData[] = [];
   
   let accumulatedLoss = 0;
+  let accumulatedProfit = 0;
   let workingDaysProcessed = 0;
 
   allDays.forEach((date, index) => {
@@ -80,6 +102,9 @@ export function calculateMonthData(
     const workingDaysRemaining = workingDaysInMonth - workingDaysProcessed + 1;
     const dailyRisk = calculateDailyRisk(monthlyRisk, accumulatedLoss, workingDaysRemaining);
     const stops = calculateStopPoints(dailyRisk);
+    
+    const dailyGoal = monthlyGoal > 0 ? calculateDailyGoal(monthlyGoal, accumulatedProfit, workingDaysRemaining) : 0;
+    const goalPts = calculateGoalPoints(dailyGoal);
 
     dayDataArray.push({
       date,
@@ -87,24 +112,34 @@ export function calculateMonthData(
       dailyRisk,
       stopIndice: stops.indice,
       stopDolar: stops.dolar,
+      dailyGoal,
+      goalIndice: goalPts.indice,
+      goalDolar: goalPts.dolar,
       trades: dayTrades,
       isWeekend: isWeekendDay,
     });
 
-    // Update accumulated loss for next day - sum all losses from the day
+    // Update accumulated loss for next day
     const dayLoss = dayTrades
       .filter(t => t.result_reais < 0)
       .reduce((sum, t) => sum + Math.abs(t.result_reais), 0);
-    
     if (dayLoss > 0) {
       accumulatedLoss += dayLoss;
+    }
+
+    // Update accumulated profit for goal tracking
+    const dayProfit = dayTrades
+      .filter(t => t.result_reais > 0)
+      .reduce((sum, t) => sum + t.result_reais, 0);
+    if (dayProfit > 0) {
+      accumulatedProfit += dayProfit;
     }
   });
 
   return dayDataArray;
 }
 
-export function calculateMonthlyStats(trades: Trade[], monthlyRisk: number) {
+export function calculateMonthlyStats(trades: Trade[], monthlyRisk: number, monthlyGoal: number = 0) {
   const totalResult = trades.reduce((sum, t) => sum + t.result_reais, 0);
   const wins = trades.filter(t => t.result_reais > 0).length;
   const losses = trades.filter(t => t.result_reais < 0).length;
@@ -114,9 +149,17 @@ export function calculateMonthlyStats(trades: Trade[], monthlyRisk: number) {
     .filter(t => t.result_reais < 0)
     .reduce((sum, t) => sum + Math.abs(t.result_reais), 0);
   
+  const totalProfit = trades
+    .filter(t => t.result_reais > 0)
+    .reduce((sum, t) => sum + t.result_reais, 0);
+  
   const riskUsed = totalLoss;
   const riskUsedPercent = monthlyRisk > 0 ? (riskUsed / monthlyRisk) * 100 : 0;
   const riskRemaining = monthlyRisk - riskUsed;
+
+  const goalUsed = totalProfit;
+  const goalUsedPercent = monthlyGoal > 0 ? (goalUsed / monthlyGoal) * 100 : 0;
+  const goalRemaining = monthlyGoal - goalUsed;
 
   return {
     totalResult,
@@ -127,5 +170,9 @@ export function calculateMonthlyStats(trades: Trade[], monthlyRisk: number) {
     riskUsed,
     riskUsedPercent,
     riskRemaining,
+    goalUsed,
+    goalUsedPercent,
+    goalRemaining,
+    monthlyGoal,
   };
 }

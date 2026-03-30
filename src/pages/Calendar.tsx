@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 export default function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [monthlyRisk, setMonthlyRisk] = useState<number | null>(null);
+  const [monthlyGoal, setMonthlyGoal] = useState<number | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [showRiskDialog, setShowRiskDialog] = useState(false);
   const [showTradeDialog, setShowTradeDialog] = useState(false);
@@ -55,7 +56,7 @@ export default function Calendar() {
   const loadFuturosDashboard = async () => {
     const { data } = await supabase
       .from('dashboards')
-      .select('id, monthly_risk')
+      .select('id, monthly_risk, monthly_goal')
       .eq('user_id', user?.id)
       .eq('type', 'futuros')
       .maybeSingle();
@@ -63,6 +64,7 @@ export default function Calendar() {
     if (data) {
       setFuturosDashboardId(data.id);
       setMonthlyRisk(data.monthly_risk);
+      setMonthlyGoal((data as any).monthly_goal ?? null);
       if (!data.monthly_risk || data.monthly_risk === 0) {
         setShowRiskDialog(true);
       }
@@ -85,8 +87,8 @@ export default function Calendar() {
     }
   };
 
-  const monthData = monthlyRisk ? calculateMonthData(monthlyRisk, trades, currentMonth) : [];
-  const stats = monthlyRisk ? calculateMonthlyStats(trades, monthlyRisk) : null;
+  const monthData = monthlyRisk ? calculateMonthData(monthlyRisk, trades, currentMonth, monthlyGoal || 0) : [];
+  const stats = monthlyRisk ? calculateMonthlyStats(trades, monthlyRisk, monthlyGoal || 0) : null;
 
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
@@ -168,7 +170,7 @@ export default function Calendar() {
         </div>
 
         {/* Top Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className={`grid grid-cols-1 ${monthlyGoal && monthlyGoal > 0 ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-6 mb-8`}>
           <Card className="p-6 bg-gradient-to-br from-green-500/10 to-background border-green-500/30">
             <div className="flex items-center justify-between">
               <div>
@@ -203,6 +205,21 @@ export default function Calendar() {
               <DollarSign className="w-8 h-8 text-primary" />
             </div>
           </Card>
+
+          {monthlyGoal && monthlyGoal > 0 && (
+            <Card className="p-6 bg-gradient-to-br from-yellow-500/10 to-background border-yellow-500/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Objetivo Mensal</p>
+                  <p className="text-3xl font-bold">{stats?.goalUsedPercent.toFixed(1) || 0}%</p>
+                  <p className="text-sm text-yellow-500">
+                    R$ {stats?.goalUsed.toFixed(2) || '0.00'} de R$ {monthlyGoal.toFixed(2)}
+                  </p>
+                </div>
+                <Target className="w-8 h-8 text-yellow-500" />
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* Evolution Charts */}
@@ -238,6 +255,27 @@ export default function Calendar() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">{stats?.riskUsedPercent.toFixed(1)}% utilizado</p>
+              
+              {monthlyGoal && monthlyGoal > 0 && stats && (
+                <>
+                  <div className="flex justify-between pt-2 border-t border-border">
+                    <span className="text-muted-foreground">Objetivo Mensal</span>
+                    <span className="font-semibold text-yellow-500">R$ {monthlyGoal.toFixed(2)}</span>
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-2">
+                    <div
+                      className="bg-yellow-500 h-2 rounded-full transition-all"
+                      style={{ width: `${Math.min(stats.goalUsedPercent, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">{stats.goalUsedPercent.toFixed(1)}% atingido</p>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Falta</span>
+                    <span className="font-semibold text-yellow-500">R$ {Math.max(0, stats.goalRemaining).toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+
               <div className="flex justify-between pt-2 border-t border-border">
                 <span className="text-muted-foreground">Risco Restante</span>
                 <span className="font-semibold">R$ {stats?.riskRemaining.toFixed(2) || '0.00'}</span>
@@ -358,6 +396,16 @@ export default function Calendar() {
                       <p className="text-muted-foreground">
                         Stop Dólar: <span className="font-medium">{dayData.stopDolar.toFixed(0)} pts/contrato</span>
                       </p>
+                      {monthlyGoal && monthlyGoal > 0 && (
+                        <>
+                          <p className="text-yellow-500">
+                            Meta Índ: <span className="font-medium">{dayData.goalIndice.toFixed(0)} pts/contrato</span>
+                          </p>
+                          <p className="text-yellow-500">
+                            Meta Dól: <span className="font-medium">{dayData.goalDolar.toFixed(0)} pts/contrato</span>
+                          </p>
+                        </>
+                      )}
                       {dayData.trades.length > 0 && (
                         <>
                           {dayData.trades.length === 1 ? (

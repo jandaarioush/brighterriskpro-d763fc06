@@ -22,6 +22,7 @@ interface Dashboard {
   name: string;
   type: 'futuros' | 'acoes' | 'internacional';
   monthly_risk: number;
+  monthly_goal: number | null;
 }
 
 export default function Settings() {
@@ -33,6 +34,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(false);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [dashboardRisks, setDashboardRisks] = useState<Record<string, string>>({});
+  const [dashboardGoals, setDashboardGoals] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadProfile();
@@ -57,17 +59,20 @@ export default function Settings() {
   const loadDashboards = async () => {
     const { data } = await supabase
       .from('dashboards')
-      .select('id, name, type, monthly_risk')
+      .select('id, name, type, monthly_risk, monthly_goal')
       .eq('user_id', user?.id)
       .order('created_at', { ascending: true });
 
     if (data) {
-      setDashboards(data as Dashboard[]);
+      setDashboards(data.map(d => ({ ...d, monthly_goal: (d as any).monthly_goal ?? null })) as Dashboard[]);
       const risks: Record<string, string> = {};
+      const goals: Record<string, string> = {};
       data.forEach(d => {
         risks[d.id] = d.monthly_risk?.toString() || '';
+        goals[d.id] = (d as any).monthly_goal?.toString() || '';
       });
       setDashboardRisks(risks);
+      setDashboardGoals(goals);
     }
   };
 
@@ -107,6 +112,7 @@ export default function Settings() {
   const handleSaveDashboardRisk = async (dashboardId: string) => {
     const riskValue = dashboardRisks[dashboardId];
     const numValue = parseFloat(riskValue);
+    const dashboard = dashboards.find(d => d.id === dashboardId);
 
     if (isNaN(numValue) || numValue < 0) {
       toast.error('Valor inválido');
@@ -114,13 +120,26 @@ export default function Settings() {
     }
 
     try {
+      const updateData: any = { monthly_risk: numValue };
+      
+      // Save goal for futuros dashboards
+      if (dashboard?.type === 'futuros') {
+        const goalValue = dashboardGoals[dashboardId];
+        const numGoal = goalValue ? parseFloat(goalValue) : null;
+        if (numGoal !== null && (isNaN(numGoal) || numGoal < 0)) {
+          toast.error('Valor de objetivo inválido');
+          return;
+        }
+        updateData.monthly_goal = numGoal;
+      }
+
       const { error } = await supabase
         .from('dashboards')
-        .update({ monthly_risk: numValue })
+        .update(updateData)
         .eq('id', dashboardId);
 
       if (error) throw error;
-      toast.success('Risco atualizado!');
+      toast.success('Configurações atualizadas!');
     } catch (error) {
       toast.error('Erro ao salvar');
     }
@@ -201,28 +220,56 @@ export default function Settings() {
                   <h3 className="text-lg font-semibold">{dashboard.name}</h3>
                 </div>
                 
-                <div className="flex gap-4 items-end">
-                  <div className="flex-1">
-                    <Label htmlFor={`risk-${dashboard.id}`}>
-                      {isFuturos ? 'Risco Mensal (R$)' : 'Capital Total (R$)'}
-                    </Label>
-                    <Input
-                      id={`risk-${dashboard.id}`}
-                      type="number"
-                      step="0.01"
-                      value={dashboardRisks[dashboard.id] || ''}
-                      onChange={(e) => setDashboardRisks(prev => ({ ...prev, [dashboard.id]: e.target.value }))}
-                      placeholder={isFuturos ? '5000.00' : '100000.00'}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {isFuturos 
-                        ? 'Valor máximo que você pode perder no mês' 
-                        : 'Capital total para cálculo de % de risco'}
-                    </p>
+                <div className="flex flex-col gap-4">
+                  <div className="flex gap-4 items-end">
+                    <div className="flex-1">
+                      <Label htmlFor={`risk-${dashboard.id}`}>
+                        {isFuturos ? 'Risco Mensal (R$)' : 'Capital Total (R$)'}
+                      </Label>
+                      <Input
+                        id={`risk-${dashboard.id}`}
+                        type="number"
+                        step="0.01"
+                        value={dashboardRisks[dashboard.id] || ''}
+                        onChange={(e) => setDashboardRisks(prev => ({ ...prev, [dashboard.id]: e.target.value }))}
+                        placeholder={isFuturos ? '5000.00' : '100000.00'}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {isFuturos 
+                          ? 'Valor máximo que você pode perder no mês' 
+                          : 'Capital total para cálculo de % de risco'}
+                      </p>
+                    </div>
+                    {!isFuturos && (
+                      <Button onClick={() => handleSaveDashboardRisk(dashboard.id)} variant="outline">
+                        Salvar
+                      </Button>
+                    )}
                   </div>
-                  <Button onClick={() => handleSaveDashboardRisk(dashboard.id)} variant="outline">
-                    Salvar
-                  </Button>
+                  
+                  {isFuturos && (
+                    <div className="flex gap-4 items-end">
+                      <div className="flex-1">
+                        <Label htmlFor={`goal-${dashboard.id}`}>
+                          Objetivo Mensal (R$)
+                        </Label>
+                        <Input
+                          id={`goal-${dashboard.id}`}
+                          type="number"
+                          step="0.01"
+                          value={dashboardGoals[dashboard.id] || ''}
+                          onChange={(e) => setDashboardGoals(prev => ({ ...prev, [dashboard.id]: e.target.value }))}
+                          placeholder="3000.00"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Meta de ganho que você deseja atingir no mês
+                        </p>
+                      </div>
+                      <Button onClick={() => handleSaveDashboardRisk(dashboard.id)} variant="outline">
+                        Salvar
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </Card>
             );
