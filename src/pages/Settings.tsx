@@ -34,6 +34,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(false);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [dashboardRisks, setDashboardRisks] = useState<Record<string, string>>({});
+  const [dashboardGoals, setDashboardGoals] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadProfile();
