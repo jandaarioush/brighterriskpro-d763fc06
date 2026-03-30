@@ -19,22 +19,16 @@ const dashboardConfig = {
     label: 'Futuros',
     icon: BarChart3,
     color: 'bg-blue-500',
-    hoverColor: 'hover:bg-blue-500/10',
-    activeColor: 'bg-blue-500/20 border-l-2 border-blue-500',
   },
   acoes: {
     label: 'Ações',
     icon: TrendingUp,
     color: 'bg-green-500',
-    hoverColor: 'hover:bg-green-500/10',
-    activeColor: 'bg-green-500/20 border-l-2 border-green-500',
   },
   internacional: {
     label: 'Mercado Internacional',
     icon: Globe,
     color: 'bg-orange-500',
-    hoverColor: 'hover:bg-orange-500/10',
-    activeColor: 'bg-orange-500/20 border-l-2 border-orange-500',
   },
 };
 
@@ -125,21 +119,21 @@ export default function HubSidebar() {
     <aside
       className={`${
         collapsed ? 'w-16' : 'w-64'
-      } min-h-screen bg-card border-r border-border flex flex-col transition-all duration-300`}
+      } min-h-screen bg-card/50 border-r border-border/50 flex flex-col transition-all duration-300`}
     >
       {/* Header */}
-      <div className="p-4 border-b border-border flex items-center justify-between">
+      <div className="p-4 border-b border-border/50 flex items-center justify-between">
         {!collapsed && (
           <div className="flex items-center gap-2">
             <ThemeLogo className="h-6" />
-            <span className="font-montserrat font-bold text-sm">Risk Pro</span>
+            <span className="font-montserrat font-bold text-sm tracking-wide">Risk Pro</span>
           </div>
         )}
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setCollapsed(!collapsed)}
-          className={collapsed ? 'mx-auto' : ''}
+          className={`${collapsed ? 'mx-auto' : ''} text-muted-foreground hover:text-primary transition-colors`}
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />
@@ -154,7 +148,7 @@ export default function HubSidebar() {
         {/* Visão Geral */}
         <div className="px-3 mb-4">
           {!collapsed && (
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em] mb-2 px-2">
               Visão Geral
             </p>
           )}
@@ -162,14 +156,14 @@ export default function HubSidebar() {
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 ${
+                className={`w-full justify-start gap-3 group transition-all ${
                   isActive('/hub')
-                    ? 'bg-primary/10 text-primary border-l-2 border-primary'
-                    : 'hover:bg-accent'
+                    ? 'sidebar-active-bar bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 } ${collapsed ? 'px-3' : ''}`}
                 onClick={() => navigate('/hub')}
               >
-                <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
+                <LayoutDashboard className="h-4 w-4 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
                 {!collapsed && <span>Dashboard Principal</span>}
               </Button>
             </TooltipTrigger>
@@ -182,7 +176,7 @@ export default function HubSidebar() {
         {/* Meus Dashboards */}
         <div className="px-3">
           {!collapsed && (
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em] mb-2 px-2">
               Meus Dashboards
             </p>
           )}
@@ -197,14 +191,16 @@ export default function HubSidebar() {
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
-                      className={`w-full justify-start gap-3 ${
-                        active ? config.activeColor : config.hoverColor
+                      className={`w-full justify-start gap-3 group transition-all ${
+                        active
+                          ? 'sidebar-active-bar bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                       } ${collapsed ? 'px-3' : ''}`}
                       onClick={() => handleDashboardClick(dashboard)}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${config.color} flex-shrink-0`} />
-                        <IconComponent className="h-4 w-4 flex-shrink-0" />
+                        <div className={`w-1.5 h-1.5 rounded-full ${config.color} flex-shrink-0`} />
+                        <IconComponent className="h-4 w-4 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
                       </div>
                       {!collapsed && <span>{dashboard.name}</span>}
                     </Button>
@@ -218,11 +214,11 @@ export default function HubSidebar() {
           </div>
         </div>
 
-        {/* Painel Administrativo - Apenas para Admins */}
+        {/* Admin */}
         {isAdmin && (
           <div className="px-3 mt-4">
             {!collapsed && (
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em] mb-2 px-2">
                 Administração
               </p>
             )}
@@ -230,14 +226,14 @@ export default function HubSidebar() {
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  className={`w-full justify-start gap-3 ${
+                  className={`w-full justify-start gap-3 group transition-all ${
                     location.pathname.startsWith('/admin')
-                      ? 'bg-amber-500/20 text-amber-500 border-l-2 border-amber-500'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-amber-500/10'
+                      ? 'sidebar-active-bar bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                   } ${collapsed ? 'px-3' : ''}`}
                   onClick={() => navigate('/admin')}
                 >
-                  <Shield className="h-4 w-4 flex-shrink-0" />
+                  <Shield className="h-4 w-4 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
                   {!collapsed && <span>Painel Administrativo</span>}
                 </Button>
               </TooltipTrigger>
@@ -246,9 +242,8 @@ export default function HubSidebar() {
           </div>
         )}
 
-        {/* Theme Toggle, Configurações e Sair */}
+        {/* Bottom actions */}
         <div className="px-3 mt-4 space-y-1">
-          {/* Theme Toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
               <div className={`${collapsed ? 'flex justify-center' : 'px-2'}`}>
@@ -262,14 +257,14 @@ export default function HubSidebar() {
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 ${
+                className={`w-full justify-start gap-3 group transition-all ${
                   isActive('/settings')
-                    ? 'bg-primary/10 text-primary border-l-2 border-primary'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'sidebar-active-bar bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 } ${collapsed ? 'px-3' : ''}`}
                 onClick={() => navigate('/settings')}
               >
-                <Settings className="h-4 w-4 flex-shrink-0" />
+                <Settings className="h-4 w-4 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
                 {!collapsed && <span>Configurações</span>}
               </Button>
             </TooltipTrigger>
@@ -280,12 +275,12 @@ export default function HubSidebar() {
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 text-muted-foreground hover:text-foreground ${
+                className={`w-full justify-start gap-3 group text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all ${
                   collapsed ? 'px-3' : ''
                 }`}
                 onClick={signOut}
               >
-                <LogOut className="h-4 w-4 flex-shrink-0" />
+                <LogOut className="h-4 w-4 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
                 {!collapsed && <span>Sair</span>}
               </Button>
             </TooltipTrigger>
