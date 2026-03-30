@@ -220,28 +220,56 @@ export default function Settings() {
                   <h3 className="text-lg font-semibold">{dashboard.name}</h3>
                 </div>
                 
-                <div className="flex gap-4 items-end">
-                  <div className="flex-1">
-                    <Label htmlFor={`risk-${dashboard.id}`}>
-                      {isFuturos ? 'Risco Mensal (R$)' : 'Capital Total (R$)'}
-                    </Label>
-                    <Input
-                      id={`risk-${dashboard.id}`}
-                      type="number"
-                      step="0.01"
-                      value={dashboardRisks[dashboard.id] || ''}
-                      onChange={(e) => setDashboardRisks(prev => ({ ...prev, [dashboard.id]: e.target.value }))}
-                      placeholder={isFuturos ? '5000.00' : '100000.00'}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {isFuturos 
-                        ? 'Valor máximo que você pode perder no mês' 
-                        : 'Capital total para cálculo de % de risco'}
-                    </p>
+                <div className="flex flex-col gap-4">
+                  <div className="flex gap-4 items-end">
+                    <div className="flex-1">
+                      <Label htmlFor={`risk-${dashboard.id}`}>
+                        {isFuturos ? 'Risco Mensal (R$)' : 'Capital Total (R$)'}
+                      </Label>
+                      <Input
+                        id={`risk-${dashboard.id}`}
+                        type="number"
+                        step="0.01"
+                        value={dashboardRisks[dashboard.id] || ''}
+                        onChange={(e) => setDashboardRisks(prev => ({ ...prev, [dashboard.id]: e.target.value }))}
+                        placeholder={isFuturos ? '5000.00' : '100000.00'}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {isFuturos 
+                          ? 'Valor máximo que você pode perder no mês' 
+                          : 'Capital total para cálculo de % de risco'}
+                      </p>
+                    </div>
+                    {!isFuturos && (
+                      <Button onClick={() => handleSaveDashboardRisk(dashboard.id)} variant="outline">
+                        Salvar
+                      </Button>
+                    )}
                   </div>
-                  <Button onClick={() => handleSaveDashboardRisk(dashboard.id)} variant="outline">
-                    Salvar
-                  </Button>
+                  
+                  {isFuturos && (
+                    <div className="flex gap-4 items-end">
+                      <div className="flex-1">
+                        <Label htmlFor={`goal-${dashboard.id}`}>
+                          Objetivo Mensal (R$)
+                        </Label>
+                        <Input
+                          id={`goal-${dashboard.id}`}
+                          type="number"
+                          step="0.01"
+                          value={dashboardGoals[dashboard.id] || ''}
+                          onChange={(e) => setDashboardGoals(prev => ({ ...prev, [dashboard.id]: e.target.value }))}
+                          placeholder="3000.00"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Meta de ganho que você deseja atingir no mês
+                        </p>
+                      </div>
+                      <Button onClick={() => handleSaveDashboardRisk(dashboard.id)} variant="outline">
+                        Salvar
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </Card>
             );

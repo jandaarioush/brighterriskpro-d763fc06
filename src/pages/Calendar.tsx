@@ -396,6 +396,16 @@ export default function Calendar() {
                       <p className="text-muted-foreground">
                         Stop Dólar: <span className="font-medium">{dayData.stopDolar.toFixed(0)} pts/contrato</span>
                       </p>
+                      {monthlyGoal && monthlyGoal > 0 && (
+                        <>
+                          <p className="text-yellow-500">
+                            Meta Índ: <span className="font-medium">{dayData.goalIndice.toFixed(0)} pts/contrato</span>
+                          </p>
+                          <p className="text-yellow-500">
+                            Meta Dól: <span className="font-medium">{dayData.goalDolar.toFixed(0)} pts/contrato</span>
+                          </p>
+                        </>
+                      )}
                       {dayData.trades.length > 0 && (
                         <>
                           {dayData.trades.length === 1 ? (
