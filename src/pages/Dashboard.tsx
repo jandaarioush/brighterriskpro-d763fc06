@@ -157,7 +157,7 @@ export default function Dashboard() {
             <span className={`text-sm font-medium ${insight.color}`}>{insight.text}</span>
             {dailyGoalValue > 0 && (
               <span className="ml-auto text-xs text-muted-foreground">
-                Você precisa fazer <span className="font-mono-trading font-semibold text-primary">{goalPoints?.goalIndice.toFixed(0)} pts/dia</span> para bater sua meta
+                Você precisa fazer <span className="font-mono-trading font-semibold text-primary">{goalPoints?.indice.toFixed(0)} pts/dia</span> para bater sua meta
               </span>
             )}
           </Card>
