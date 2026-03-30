@@ -112,6 +112,7 @@ export default function Settings() {
   const handleSaveDashboardRisk = async (dashboardId: string) => {
     const riskValue = dashboardRisks[dashboardId];
     const numValue = parseFloat(riskValue);
+    const dashboard = dashboards.find(d => d.id === dashboardId);
 
     if (isNaN(numValue) || numValue < 0) {
       toast.error('Valor inválido');
@@ -119,13 +120,26 @@ export default function Settings() {
     }
 
     try {
+      const updateData: any = { monthly_risk: numValue };
+      
+      // Save goal for futuros dashboards
+      if (dashboard?.type === 'futuros') {
+        const goalValue = dashboardGoals[dashboardId];
+        const numGoal = goalValue ? parseFloat(goalValue) : null;
+        if (numGoal !== null && (isNaN(numGoal) || numGoal < 0)) {
+          toast.error('Valor de objetivo inválido');
+          return;
+        }
+        updateData.monthly_goal = numGoal;
+      }
+
       const { error } = await supabase
         .from('dashboards')
-        .update({ monthly_risk: numValue })
+        .update(updateData)
         .eq('id', dashboardId);
 
       if (error) throw error;
-      toast.success('Risco atualizado!');
+      toast.success('Configurações atualizadas!');
     } catch (error) {
       toast.error('Erro ao salvar');
     }
