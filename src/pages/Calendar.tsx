@@ -87,8 +87,8 @@ export default function Calendar() {
     }
   };
 
-  const monthData = monthlyRisk ? calculateMonthData(monthlyRisk, trades, currentMonth) : [];
-  const stats = monthlyRisk ? calculateMonthlyStats(trades, monthlyRisk) : null;
+  const monthData = monthlyRisk ? calculateMonthData(monthlyRisk, trades, currentMonth, monthlyGoal || 0) : [];
+  const stats = monthlyRisk ? calculateMonthlyStats(trades, monthlyRisk, monthlyGoal || 0) : null;
 
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
