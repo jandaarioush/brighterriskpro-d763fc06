@@ -44,6 +44,7 @@ export type Database = {
           created_at: string
           icon: string | null
           id: string
+          monthly_goal: number | null
           monthly_risk: number | null
           name: string
           type: string
@@ -55,6 +56,7 @@ export type Database = {
           created_at?: string
           icon?: string | null
           id?: string
+          monthly_goal?: number | null
           monthly_risk?: number | null
           name: string
           type: string
@@ -66,6 +68,7 @@ export type Database = {
           created_at?: string
           icon?: string | null
           id?: string
+          monthly_goal?: number | null
           monthly_risk?: number | null
           name?: string
           type?: string
