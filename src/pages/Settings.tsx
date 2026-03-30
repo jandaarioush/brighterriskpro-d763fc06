@@ -59,17 +59,20 @@ export default function Settings() {
   const loadDashboards = async () => {
     const { data } = await supabase
       .from('dashboards')
-      .select('id, name, type, monthly_risk')
+      .select('id, name, type, monthly_risk, monthly_goal')
       .eq('user_id', user?.id)
       .order('created_at', { ascending: true });
 
     if (data) {
-      setDashboards(data as Dashboard[]);
+      setDashboards(data.map(d => ({ ...d, monthly_goal: (d as any).monthly_goal ?? null })) as Dashboard[]);
       const risks: Record<string, string> = {};
+      const goals: Record<string, string> = {};
       data.forEach(d => {
         risks[d.id] = d.monthly_risk?.toString() || '';
+        goals[d.id] = (d as any).monthly_goal?.toString() || '';
       });
       setDashboardRisks(risks);
+      setDashboardGoals(goals);
     }
   };
 
