@@ -22,6 +22,7 @@ interface Dashboard {
   name: string;
   type: 'futuros' | 'acoes' | 'internacional';
   monthly_risk: number;
+  monthly_goal: number | null;
 }
 
 export default function Settings() {
