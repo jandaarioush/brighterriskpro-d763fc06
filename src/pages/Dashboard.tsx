@@ -139,7 +139,7 @@ export default function Dashboard() {
           user={profile} 
           monthlyGoal={monthlyGoal}
           accumulatedResult={accumulatedResult}
-          dailyGoalPoints={goalPoints?.goalIndice || 0}
+          dailyGoalPoints={goalPoints?.indice || 0}
         />
         <DashboardTabs dashboardType="futuros" />
         
