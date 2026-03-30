@@ -255,6 +255,27 @@ export default function Calendar() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">{stats?.riskUsedPercent.toFixed(1)}% utilizado</p>
+              
+              {monthlyGoal && monthlyGoal > 0 && stats && (
+                <>
+                  <div className="flex justify-between pt-2 border-t border-border">
+                    <span className="text-muted-foreground">Objetivo Mensal</span>
+                    <span className="font-semibold text-yellow-500">R$ {monthlyGoal.toFixed(2)}</span>
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-2">
+                    <div
+                      className="bg-yellow-500 h-2 rounded-full transition-all"
+                      style={{ width: `${Math.min(stats.goalUsedPercent, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">{stats.goalUsedPercent.toFixed(1)}% atingido</p>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Falta</span>
+                    <span className="font-semibold text-yellow-500">R$ {Math.max(0, stats.goalRemaining).toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+
               <div className="flex justify-between pt-2 border-t border-border">
                 <span className="text-muted-foreground">Risco Restante</span>
                 <span className="font-semibold">R$ {stats?.riskRemaining.toFixed(2) || '0.00'}</span>
