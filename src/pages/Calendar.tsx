@@ -56,7 +56,7 @@ export default function Calendar() {
   const loadFuturosDashboard = async () => {
     const { data } = await supabase
       .from('dashboards')
-      .select('id, monthly_risk')
+      .select('id, monthly_risk, monthly_goal')
       .eq('user_id', user?.id)
       .eq('type', 'futuros')
       .maybeSingle();
@@ -64,6 +64,7 @@ export default function Calendar() {
     if (data) {
       setFuturosDashboardId(data.id);
       setMonthlyRisk(data.monthly_risk);
+      setMonthlyGoal((data as any).monthly_goal ?? null);
       if (!data.monthly_risk || data.monthly_risk === 0) {
         setShowRiskDialog(true);
       }
