@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 export default function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [monthlyRisk, setMonthlyRisk] = useState<number | null>(null);
+  const [monthlyGoal, setMonthlyGoal] = useState<number | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [showRiskDialog, setShowRiskDialog] = useState(false);
   const [showTradeDialog, setShowTradeDialog] = useState(false);
