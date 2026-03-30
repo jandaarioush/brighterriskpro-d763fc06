@@ -139,7 +139,7 @@ export function calculateMonthData(
   return dayDataArray;
 }
 
-export function calculateMonthlyStats(trades: Trade[], monthlyRisk: number) {
+export function calculateMonthlyStats(trades: Trade[], monthlyRisk: number, monthlyGoal: number = 0) {
   const totalResult = trades.reduce((sum, t) => sum + t.result_reais, 0);
   const wins = trades.filter(t => t.result_reais > 0).length;
   const losses = trades.filter(t => t.result_reais < 0).length;
@@ -149,9 +149,17 @@ export function calculateMonthlyStats(trades: Trade[], monthlyRisk: number) {
     .filter(t => t.result_reais < 0)
     .reduce((sum, t) => sum + Math.abs(t.result_reais), 0);
   
+  const totalProfit = trades
+    .filter(t => t.result_reais > 0)
+    .reduce((sum, t) => sum + t.result_reais, 0);
+  
   const riskUsed = totalLoss;
   const riskUsedPercent = monthlyRisk > 0 ? (riskUsed / monthlyRisk) * 100 : 0;
   const riskRemaining = monthlyRisk - riskUsed;
+
+  const goalUsed = totalProfit;
+  const goalUsedPercent = monthlyGoal > 0 ? (goalUsed / monthlyGoal) * 100 : 0;
+  const goalRemaining = monthlyGoal - goalUsed;
 
   return {
     totalResult,
@@ -162,5 +170,9 @@ export function calculateMonthlyStats(trades: Trade[], monthlyRisk: number) {
     riskUsed,
     riskUsedPercent,
     riskRemaining,
+    goalUsed,
+    goalUsedPercent,
+    goalRemaining,
+    monthlyGoal,
   };
 }
