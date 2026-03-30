@@ -41,19 +41,16 @@ export function MonthHeatmap({ trades }: MonthHeatmapProps) {
   });
 
   const getColorClass = (totalResult: number, isWeekend: boolean, tradesCount: number) => {
-    // Days without trades or weekends have no background
-    if (tradesCount === 0 || isWeekend) return "bg-transparent border border-border/30";
-    
-    // Color based on profit/loss intensity
-    if (totalResult > 200) return "bg-success hover:bg-success/90";
-    if (totalResult > 0) return "bg-success/60 hover:bg-success/70";
-    if (totalResult < -200) return "bg-danger hover:bg-danger/90";
-    if (totalResult < 0) return "bg-danger/60 hover:bg-danger/70";
-    return "bg-muted hover:bg-muted/80";
+    if (tradesCount === 0 || isWeekend) return "bg-secondary/30 border border-border/20";
+    if (totalResult > 200) return "bg-success/20 border border-success/40 shadow-[0_0_8px_hsl(var(--success)/0.15)]";
+    if (totalResult > 0) return "bg-success/10 border border-success/25";
+    if (totalResult < -200) return "bg-danger/20 border border-danger/40 shadow-[0_0_8px_hsl(var(--danger)/0.15)]";
+    if (totalResult < 0) return "bg-danger/10 border border-danger/25";
+    return "bg-muted/50 border border-border/30";
   };
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 card-glow">
       <div className="flex items-center gap-2 mb-4">
         <Calendar className="w-5 h-5 text-primary" />
         <h3 className="text-lg font-semibold">Consistência Mensal</h3>
@@ -65,7 +62,8 @@ export function MonthHeatmap({ trades }: MonthHeatmapProps) {
             key={day.day}
             className={`
               aspect-square rounded-md flex items-center justify-center
-              text-sm font-medium transition-all cursor-pointer
+              text-sm font-mono-trading font-medium transition-all cursor-pointer
+              hover:scale-105
               ${getColorClass(day.totalResult, day.isWeekend, day.tradesCount)}
             `}
             title={
@@ -81,19 +79,19 @@ export function MonthHeatmap({ trades }: MonthHeatmapProps) {
 
       <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-success" />
+          <div className="w-3 h-3 rounded bg-success/20 border border-success/40" />
           <span>Lucro alto</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-success/60" />
+          <div className="w-3 h-3 rounded bg-success/10 border border-success/25" />
           <span>Lucro</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-danger/60" />
+          <div className="w-3 h-3 rounded bg-danger/10 border border-danger/25" />
           <span>Perda</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-danger" />
+          <div className="w-3 h-3 rounded bg-danger/20 border border-danger/40" />
           <span>Perda alta</span>
         </div>
       </div>

@@ -10,7 +10,8 @@ import {
   AlertTriangle, 
   Target,
   Shield,
-  Activity
+  Activity,
+  Zap
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useEffect, useState } from "react";
@@ -21,6 +22,8 @@ import {
   getWorkingDaysRemaining, 
   calculateMonthData,
   calculateMonthlyStats,
+  calculateDailyGoal,
+  calculateGoalPoints,
   Trade 
 } from "@/lib/riskCalculations";
 import { format } from "date-fns";
@@ -30,6 +33,7 @@ import DashboardTabs from "@/components/DashboardTabs";
 export default function Dashboard() {
   const { user, profile } = useAuth();
   const [monthlyRisk, setMonthlyRisk] = useState(0);
+  const [monthlyGoal, setMonthlyGoal] = useState(0);
   const [workingDaysInMonth, setWorkingDaysInMonth] = useState(0);
   const [workingDaysRemaining, setWorkingDaysRemaining] = useState(0);
   const [dailyRisk, setDailyRisk] = useState(0);
@@ -40,24 +44,25 @@ export default function Dashboard() {
   const [monthlyResultPercent, setMonthlyResultPercent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [currentMonthTrades, setCurrentMonthTrades] = useState<Trade[]>([]);
+  const [winRate, setWinRate] = useState(0);
 
   useEffect(() => {
     if (!user) return;
 
     const fetchData = async () => {
       try {
-        // Fetch the Futuros dashboard to get monthly_risk
         const { data: futurosDashboard } = await supabase
           .from('dashboards')
-          .select('monthly_risk')
+          .select('monthly_risk, monthly_goal')
           .eq('user_id', user.id)
           .eq('type', 'futuros')
           .maybeSingle();
 
         const userMonthlyRisk = futurosDashboard?.monthly_risk || 0;
+        const userMonthlyGoal = (futurosDashboard as any)?.monthly_goal || 0;
         setMonthlyRisk(userMonthlyRisk);
+        setMonthlyGoal(userMonthlyGoal);
 
-        // Fetch trades for current month
         const currentMonth = new Date();
         const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
         const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
@@ -72,14 +77,12 @@ export default function Dashboard() {
         const monthTrades = (trades as Trade[]) || [];
         setCurrentMonthTrades(monthTrades);
 
-        // Calculate working days
         const totalWorkingDays = getWorkingDaysInMonth(currentMonth);
         const remainingWorkingDays = getWorkingDaysRemaining(currentMonth);
         setWorkingDaysInMonth(totalWorkingDays);
         setWorkingDaysRemaining(remainingWorkingDays);
 
-        // Calculate month data to get today's risk and stops
-        const monthData = calculateMonthData(userMonthlyRisk, monthTrades, currentMonth);
+        const monthData = calculateMonthData(userMonthlyRisk, monthTrades, currentMonth, userMonthlyGoal);
         const today = format(new Date(), 'yyyy-MM-dd');
         const todayData = monthData.find(d => format(d.date, 'yyyy-MM-dd') === today);
 
@@ -89,17 +92,15 @@ export default function Dashboard() {
           setStopDolar(todayData.stopDolar);
         }
 
-        // Calculate monthly stats
-        const stats = calculateMonthlyStats(monthTrades, userMonthlyRisk);
+        const stats = calculateMonthlyStats(monthTrades, userMonthlyRisk, userMonthlyGoal);
         setAccumulatedResult(stats.totalResult);
-        
-        // Calculate drawdown (accumulated losses)
+        setWinRate(stats.winRate);
+
         const totalLoss = monthTrades
           .filter(t => t.result_reais < 0)
           .reduce((sum, t) => sum + t.result_reais, 0);
         setAccumulatedDrawdown(totalLoss);
 
-        // Calculate percentage
         const resultPercent = userMonthlyRisk > 0 ? (stats.totalResult / userMonthlyRisk) * 100 : 0;
         setMonthlyResultPercent(resultPercent);
 
@@ -113,10 +114,33 @@ export default function Dashboard() {
     fetchData();
   }, [user]);
 
+  // Calculate daily goal in points for the banner
+  const dailyGoalValue = monthlyGoal > 0
+    ? calculateDailyGoal(monthlyGoal, accumulatedResult, getWorkingDaysRemaining(new Date()))
+    : 0;
+  const goalPoints = dailyGoalValue > 0 ? calculateGoalPoints(dailyGoalValue) : null;
+
+  // Insight do mês
+  const getMonthInsight = () => {
+    if (monthlyGoal <= 0) return null;
+    const progress = (accumulatedResult / monthlyGoal) * 100;
+    if (progress >= 95) return { text: "🎯 Meta praticamente batida!", color: "text-success" };
+    if (progress >= 60) return { text: "📈 Acima da média do mês", color: "text-success" };
+    if (progress >= 30) return { text: "💪 Ritmo constante", color: "text-primary" };
+    return { text: "⚡ Precisa acelerar o ritmo", color: "text-primary" };
+  };
+
+  const insight = getMonthInsight();
+
   return (
     <DashboardLayoutWrapper>
       <div className="container mx-auto px-4 py-8">
-        <GreetingBanner user={profile} />
+        <GreetingBanner 
+          user={profile} 
+          monthlyGoal={monthlyGoal}
+          accumulatedResult={accumulatedResult}
+          dailyGoalPoints={goalPoints?.indice || 0}
+        />
         <DashboardTabs dashboardType="futuros" />
         
         <div className="mb-8">
@@ -125,6 +149,19 @@ export default function Dashboard() {
             Gestão de risco e performance em tempo real
           </p>
         </div>
+
+        {/* Status Insight Card */}
+        {insight && (
+          <Card className="card-glow card-glow-primary p-4 mb-6 flex items-center gap-3">
+            <Zap className="w-5 h-5 text-primary" />
+            <span className={`text-sm font-medium ${insight.color}`}>{insight.text}</span>
+            {dailyGoalValue > 0 && (
+              <span className="ml-auto text-xs text-muted-foreground">
+                Você precisa fazer <span className="font-mono-trading font-semibold text-primary">{goalPoints?.indice.toFixed(0)} pts/dia</span> para bater sua meta
+              </span>
+            )}
+          </Card>
+        )}
 
         {/* Top Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

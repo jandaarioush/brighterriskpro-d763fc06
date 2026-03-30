@@ -26,10 +26,10 @@ export function DailyWeeklyCharts({ trades, currentMonth, monthlyRisk }: DailyWe
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-semibold mb-1">{data.dateLabel}</p>
+        <div className="tooltip-glass rounded-lg p-3">
+          <p className="font-semibold mb-1 text-foreground">{data.dateLabel}</p>
           <p className="text-sm">
-            Resultado: <span className={data.dailyResult >= 0 ? "text-success" : "text-destructive"}>
+            Resultado: <span className={`font-mono-trading font-medium ${data.dailyResult >= 0 ? "text-success" : "text-destructive"}`}>
               {formatCurrency(data.dailyResult)}
             </span>
           </p>
@@ -43,17 +43,15 @@ export function DailyWeeklyCharts({ trades, currentMonth, monthlyRisk }: DailyWe
   };
 
   const getBarColor = (value: number) => {
-    if (value > 0) return "hsl(var(--chart-2))"; // Green
-    if (value < 0) return "hsl(var(--chart-1))"; // Red
+    if (value > 0) return "hsl(var(--chart-2))";
+    if (value < 0) return "hsl(var(--chart-1))";
     return "hsl(var(--muted))";
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Evolução Diária</CardTitle>
-        </CardHeader>
+    <div className="grid gap-6 md:grid-cols-2 mb-8">
+      <Card className="card-glow">
+        <CardHeader><CardTitle>Evolução Diária</CardTitle></CardHeader>
         <CardContent>
           {dailyData.length === 0 ? (
             <div className="flex items-center justify-center h-[250px] text-muted-foreground">
@@ -62,24 +60,12 @@ export function DailyWeeklyCharts({ trades, currentMonth, monthlyRisk }: DailyWe
           ) : (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis 
-                  dataKey="dateLabel" 
-                  className="text-xs"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                  interval="preserveStartEnd"
-                />
-                <YAxis 
-                  tickFormatter={(value) => `R$ ${value}`}
-                  className="text-xs"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="dateLabel" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} interval="preserveStartEnd" />
+                <YAxis tickFormatter={(value) => `R$ ${value}`} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-                <Bar
-                  dataKey="dailyResult"
-                  radius={[4, 4, 0, 0]}
-                >
+                <Bar dataKey="dailyResult" radius={[4, 4, 0, 0]} animationBegin={200}>
                   {dailyData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={getBarColor(entry.dailyResult)} />
                   ))}
@@ -90,10 +76,8 @@ export function DailyWeeklyCharts({ trades, currentMonth, monthlyRisk }: DailyWe
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Evolução Semanal</CardTitle>
-        </CardHeader>
+      <Card className="card-glow">
+        <CardHeader><CardTitle>Evolução Semanal</CardTitle></CardHeader>
         <CardContent>
           {weeklyData.length === 0 ? (
             <div className="flex items-center justify-center h-[250px] text-muted-foreground">
@@ -102,23 +86,12 @@ export function DailyWeeklyCharts({ trades, currentMonth, monthlyRisk }: DailyWe
           ) : (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis 
-                  dataKey="dateLabel" 
-                  className="text-xs"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                />
-                <YAxis 
-                  tickFormatter={(value) => `R$ ${value}`}
-                  className="text-xs"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="dateLabel" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                <YAxis tickFormatter={(value) => `R$ ${value}`} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-                <Bar
-                  dataKey="dailyResult"
-                  radius={[4, 4, 0, 0]}
-                >
+                <Bar dataKey="dailyResult" radius={[4, 4, 0, 0]} animationBegin={200}>
                   {weeklyData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={getBarColor(entry.dailyResult)} />
                   ))}
