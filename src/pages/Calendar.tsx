@@ -170,7 +170,7 @@ export default function Calendar() {
         </div>
 
         {/* Top Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className={`grid grid-cols-1 ${monthlyGoal && monthlyGoal > 0 ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-6 mb-8`}>
           <Card className="p-6 bg-gradient-to-br from-green-500/10 to-background border-green-500/30">
             <div className="flex items-center justify-between">
               <div>
@@ -205,6 +205,21 @@ export default function Calendar() {
               <DollarSign className="w-8 h-8 text-primary" />
             </div>
           </Card>
+
+          {monthlyGoal && monthlyGoal > 0 && (
+            <Card className="p-6 bg-gradient-to-br from-yellow-500/10 to-background border-yellow-500/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Objetivo Mensal</p>
+                  <p className="text-3xl font-bold">{stats?.goalUsedPercent.toFixed(1) || 0}%</p>
+                  <p className="text-sm text-yellow-500">
+                    R$ {stats?.goalUsed.toFixed(2) || '0.00'} de R$ {monthlyGoal.toFixed(2)}
+                  </p>
+                </div>
+                <Target className="w-8 h-8 text-yellow-500" />
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* Evolution Charts */}
