@@ -56,6 +56,23 @@ export function calculateStopPoints(dailyRisk: number): { indice: number; dolar:
   };
 }
 
+export function calculateDailyGoal(
+  monthlyGoal: number,
+  accumulatedProfit: number,
+  workingDaysRemaining: number
+): number {
+  if (workingDaysRemaining === 0) return 0;
+  const goalRemaining = monthlyGoal - accumulatedProfit;
+  return Math.max(0, goalRemaining / workingDaysRemaining);
+}
+
+export function calculateGoalPoints(dailyGoal: number): { indice: number; dolar: number } {
+  return {
+    indice: dailyGoal / 0.2,
+    dolar: dailyGoal / 10,
+  };
+}
+
 export function calculateMonthData(
   monthlyRisk: number,
   trades: Trade[],
