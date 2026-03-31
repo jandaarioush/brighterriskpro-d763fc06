@@ -54,3 +54,26 @@ export function formatCurrency(value: number): string {
     currency: 'BRL',
   }).format(value);
 }
+
+export function formatNumberBR(value: number, decimals = 0): string {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+}
+
+export function formatCurrencyBR(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+  }).format(value);
+}
+
+export function splitValueUnit(formatted: string): { number: string; unit: string } {
+  const match = formatted.trim().match(/^([\d.,\-\s]+)\s*(.*)$/);
+  if (match) {
+    return { number: match[1].trim(), unit: match[2].trim() };
+  }
+  return { number: formatted, unit: '' };
+}

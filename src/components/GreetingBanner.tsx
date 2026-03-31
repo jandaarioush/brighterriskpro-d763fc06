@@ -1,5 +1,6 @@
 import { useLocalClock } from "@/hooks/useLocalClock";
-import { getGreeting, firstNameFrom, formatDateTimePtBR } from "@/lib/formatting";
+import { getGreeting, firstNameFrom, formatDateTimePtBR, formatNumberBR, formatCurrencyBR } from "@/lib/formatting";
+import { KpiValue } from "@/components/KpiValue";
 
 type Props = {
   user: { name?: string; email?: string } | null;
@@ -70,21 +71,17 @@ export default function GreetingBanner({
         {dailyGoalPoints && dailyGoalPoints > 0 && (
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Meta diária</p>
-            <p className="text-xl font-bold font-mono-trading text-primary">
-              {dailyGoalPoints.toFixed(0)} pts
-            </p>
+            <KpiValue value={dailyGoalPoints} unit="pts" variant="primary" size="md" decimals={0} animated />
           </div>
         )}
       </div>
 
       {/* Risk availability */}
       {monthlyRisk > 0 && (
-        <p className="text-sm text-muted-foreground mt-3">
+        <p className="text-sm text-muted-foreground mt-3 flex items-baseline gap-1 flex-wrap">
           Você ainda tem{' '}
-          <span className="font-mono-trading font-semibold text-primary">
-            R$ {riskAvailable.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </span>{' '}
-          disponíveis · <span className={`font-medium ${riskStatus.color}`}>{riskStatus.label}</span>
+          <KpiValue value={riskAvailable} prefix="R$" variant="primary" size="sm" decimals={2} animated />
+          {' '}disponíveis · <span className={`font-medium ${riskStatus.color}`}>{riskStatus.label}</span>
         </p>
       )}
 
@@ -92,11 +89,11 @@ export default function GreetingBanner({
         <div className="mt-4 space-y-2">
           <div className="flex justify-between items-center text-xs">
             <span className="text-muted-foreground">
-              Progresso da meta: <span className="font-mono-trading font-medium text-foreground">{goalProgress.toFixed(1)}%</span>
+              Progresso da meta: <span className="kpi-number text-sm">{formatNumberBR(goalProgress, 1)}%</span>
             </span>
             {goalRemaining !== null && (
-              <span className="text-muted-foreground">
-                Falta <span className="font-mono-trading font-medium text-primary">R$ {goalRemaining.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span className="text-muted-foreground flex items-baseline gap-1">
+                Falta <KpiValue value={goalRemaining} prefix="R$" variant="primary" size="sm" decimals={2} />
               </span>
             )}
           </div>
