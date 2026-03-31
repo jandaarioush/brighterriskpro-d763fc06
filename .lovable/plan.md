@@ -1,120 +1,126 @@
 
 
-## Plano: Redesign Completo UI — Estilo Trading Terminal Premium
+## Plano: Redesign Completo — Trading Terminal Premium
 
-### Visao Geral
+### Resumo
 
-Transformar o dashboard de "SaaS generico" para "cockpit financeiro premium" com estetica Brighter (preto profundo, dourado, glow, tipografia mono para numeros, microinteracoes). O redesign toca 10+ arquivos e sera dividido em blocos logicos.
+Redesign profundo do Hub e Dashboard para parecer um cockpit de trader profissional. Atualiza tipografia global (Plus Jakarta Sans), refina tema light/dark, transforma o ThemeToggle em pill, redesenha o Hero/Hub com painel de controle, melhora cards de dashboards com dados de risco, e adiciona background com textura sutil.
 
 ---
 
-### Bloco 1 — Design System (Fundacao)
+### Bloco 1 — Tipografia e Design System
 
-**`src/index.css`**
-- Dark mode background mais profundo: `220 20% 4%` (quase #050505)
-- Cards com gradiente sutil: `from-[hsl(220,14%,8%)] to-[hsl(220,14%,6%)]`
-- Novas utility classes:
-  - `.card-glow` — border glow dourado sutil + hover elevacao
-  - `.card-glow-success` / `.card-glow-danger` — variantes verde/vermelho
-  - `.font-mono-trading` — font-family monospace para numeros
-  - `.counting-up` — animacao CSS para numeros aparecendo
-  - `.progress-glow` — barra de progresso com glow
+**`index.html`**
+- Substituir JetBrains Mono + Montserrat + Inter por **Plus Jakarta Sans** (pesos 400-700) + manter **JetBrains Mono** para numeros
 
 **`tailwind.config.ts`**
-- Adicionar keyframes: `count-up`, `glow-pulse`, `slide-up-fade`
-- Adicionar font-family `mono-trading`: `['JetBrains Mono', 'Fira Code', 'monospace']`
+- Substituir `font-montserrat` e `font-inter` por `font-sans: ['Plus Jakarta Sans', ...]`
+- Manter `font-mono-trading` para numeros
+
+**`src/index.css`**
+- Light mode: background `0 0% 98%` (~#FAFAFA), cards brancos com sombra suave
+- Dark mode: manter #050505 atual
+- `.card-glow` light mode: background branco, sombra leve em vez de gradiente escuro
+- Adicionar `.bg-grain` — textura noise sutil via SVG data URI + gradiente radial
+- Body: aplicar `font-sans` (Plus Jakarta Sans) em tudo
 
 ---
 
-### Bloco 2 — StatCard Premium
+### Bloco 2 — ThemeToggle Pill
 
-**`src/components/StatCard.tsx`** — Reescrita completa
-- Background: gradiente escuro com borda glow colorida (variant-based)
-- Hover: `translateY(-2px)` + intensifica glow
-- Numeros: fonte mono, tamanho maior (`text-4xl`), animacao counting-up ao montar
-- Icone: menor, discreto, no canto com opacity 0.6
-- Sparkline mini opcional (prop `sparklineData?: number[]`) usando SVG inline simples
-- Subtitulo com tipografia menor e mais respiro
-
----
-
-### Bloco 3 — Dashboard Principal
-
-**`src/pages/Dashboard.tsx`** — Reestruturacao do layout
-
-Novo layout de cima para baixo:
-
-1. **Greeting Banner** atualizado → "PAINEL DE CONTROLE" com insight:
-   - "Voce precisa fazer X pts/dia para bater sua meta"
-   - Barra de progresso da meta horizontal no topo com % e quanto falta
-
-2. **Cards principais** (3 cols) — usando StatCard premium:
-   - Resultado Acumulado (com sparkline)
-   - Risco Diario Atual
-   - Taxa de Acerto
-
-3. **Status do Mes** — Card com insight automatico:
-   - Calcula ritmo atual vs meta
-   - Frases como "Acima da media", "Precisa acelerar", "Meta praticamente batida"
-
-4. **Graficos** (2 cols) — PnL Evolution + Risk Calculator
-
-5. **Heatmap + TradeForm** (2 cols)
-
-**`src/components/GreetingBanner.tsx`**
-- Titulo: "PAINEL DE CONTROLE" com tracking wider
-- Subtitulo: meta diaria em pontos ("320 pts/dia para bater a meta")
-- Barra de progresso horizontal com glow dourado
-- Dados vindos do dashboard (monthly_goal, trades acumulados)
-
----
-
-### Bloco 4 — Calendario Trading Journal
-
-**`src/pages/Calendar.tsx`** — Upgrade visual
-
-- **Stat cards no topo**: aplicar estilo StatCard premium com glow
-- **Calendario**:
-  - Cada dia vira bloco interativo com cores semanticas:
-    - Verde (#00FF88/20): meta batida (resultado > dailyGoal)
-    - Vermelho (#FF4D4D/20): prejuizo
-    - Amarelo/dourado: abaixo da meta mas positivo
-    - Cinza escuro: nao operou
-  - Hover: tooltip/popover mostrando pontos, resultado R$, nr trades
-  - Numeros do dia em fonte mono
-  - Border glow sutil na cor do resultado
-- **Barra de progresso da meta**: horizontal acima do calendario
-
----
-
-### Bloco 5 — Graficos Premium
-
-**`src/components/PnLEvolutionChart.tsx`** e **`src/components/DailyWeeklyCharts.tsx`**
-- Linha com `filter: drop-shadow(0 0 6px color)` para efeito glow
-- Area preenchida com gradiente (cor → transparente)
-- Animacao de entrada: `animationBegin={200}` no Recharts
-- Tooltip com estilo glassmorphism
-- Adicionar linha de referencia "meta ideal" (tracejada dourada) quando `monthlyGoal` existir
-
----
-
-### Bloco 6 — Sidebar Premium
+**`src/components/ThemeToggle.tsx`** — Reescrever
+- Botao estilo pill (arredondado, px-3 py-1.5)
+- Dark: fundo cinza escuro com backdrop-blur, icone lua
+- Light: fundo branco com sombra leve, icone sol
+- Click alterna entre dark/light (sem dropdown, sem system)
+- Transicao 250ms
 
 **`src/components/HubSidebar.tsx`**
-- Background mais escuro (`hsl(220 14% 5%)`)
-- Item ativo: barra lateral iluminada (3px dourada com glow)
-- Hover: glow dourado sutil no texto e icone
-- Icones: manter lucide (ja sao finos), adicionar `opacity-70` e `group-hover:opacity-100`
-- Logo com glow sutil
+- Remover ThemeToggle da sidebar
+- Mover para o header do layout (canto superior direito)
+
+**`src/components/DashboardLayoutWrapper.tsx`**
+- Adicionar header fino com ThemeToggle pill + relogio no canto superior direito
 
 ---
 
-### Bloco 7 — Microinteracoes Globais
+### Bloco 3 — Hero / Hub Redesign
 
-**`src/index.css`** — Adicionar:
-- `.animate-count-up` para numeros (opacity 0→1 + translateY)
-- Transicoes em todos os cards (ja parcialmente existe com `glass-card-hover`)
-- Focus states com glow dourado nos inputs
+**`src/pages/Hub.tsx`** — Reescrever WelcomeSection
+- Titulo: **"Controle total do seu risco."** (sem emoji, bold, tracking leve)
+- Subtexto dinamico baseado nos dados:
+  - "Voce ainda tem R$ X disponiveis hoje" ou "Voce ja utilizou X% do risco mensal"
+- Barra de progresso da meta mensal com % e status textual:
+  - "Ritmo saudavel" / "Abaixo da meta" / "Acelerado"
+- Relogio trading terminal: glass card com hora em mono bold + "(BRT)"
+
+**Cards de Dashboards** — Upgrade visual
+- Cada card mostra:
+  - Icone outline + nome + descricao
+  - Bloco de risco: "Risco Mensal: R$ X / Disponivel: R$ X / Usado: X%"
+- Gradientes por tipo: Internacional→dourado, Acoes→verde, Futuros→azul
+- Glass effect (backdrop-blur) + glow sutil
+- Hover: scale 1.02 + glow aumenta
+- Carregar `monthly_risk` e trades acumulados para calcular "disponivel" e "%"
+
+---
+
+### Bloco 4 — Market Sessions Premium
+
+**`src/components/MarketSessionsClock.tsx`**
+- Timeline: barras com gradiente + glow leve + fade em sessoes inativas
+- Linha "Agora": dourada com glow + label "Agora" + pulsacao CSS
+- Sessao ativa: badge "Mercado Aberto" com glow verde
+
+**Status dos mercados** — Adicionar bloco de insights:
+- "EUA aberto — alta volatilidade"
+- "Europa fechando — baixa liquidez"
+- "Asia fechada"
+
+---
+
+### Bloco 5 — Sidebar Premium (refinamento)
+
+**`src/components/HubSidebar.tsx`**
+- Persistir estado collapsed no localStorage
+- Mais padding/espacamento entre items
+- Labels de grupo: menor opacity, mais tracking
+- Hover: leve slide lateral (translateX 2px)
+- Light mode: fundo branco com sombra lateral
+
+---
+
+### Bloco 6 — Dashboard Principal (refinamento)
+
+**`src/pages/Dashboard.tsx`**
+- GreetingBanner: titulo "Controle total do seu risco." em vez de saudacao
+- Subtexto: "Voce ainda tem R$ X disponiveis hoje"
+- Mais padding nos cards (p-8)
+- Mais gap entre secoes (gap-8)
+
+**`src/components/GreetingBanner.tsx`**
+- Receber `monthlyRisk` e `riskUsed` como props adicionais
+- Mostrar "Voce ja utilizou X% do seu risco mensal" como subtexto secundario
+- Status: "Ritmo saudavel" / "Abaixo da meta" / "Acelerado" baseado no uso do risco
+
+---
+
+### Bloco 7 — "Leitura do Dia"
+
+**`src/pages/Hub.tsx`** ou **`src/pages/Dashboard.tsx`**
+- Novo componente `DailyInsight`
+- Card com icone de fogo + frase contextual:
+  - Baseado em hora do dia + resultado acumulado + volatilidade
+  - Ex: "Dia alinhado com sua meta — mantenha consistencia"
+- Posicionar abaixo dos cards de dashboard
+
+---
+
+### Bloco 8 — Background
+
+**`src/index.css`**
+- Body dark: gradiente radial sutil (centro levemente mais claro)
+- Textura grain via pseudo-elemento `::after` com SVG noise pattern a ~3% opacity
 
 ---
 
@@ -122,21 +128,14 @@ Novo layout de cima para baixo:
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/index.css` | Novas variaveis, utilities, keyframes |
-| `tailwind.config.ts` | Font mono, keyframes, animacoes |
-| `src/components/StatCard.tsx` | Reescrita com glow, mono, sparkline |
-| `src/pages/Dashboard.tsx` | Novo layout, progress bar, insights |
-| `src/components/GreetingBanner.tsx` | "Painel de Controle" + meta diaria |
-| `src/pages/Calendar.tsx` | Calendario trading journal premium |
-| `src/components/PnLEvolutionChart.tsx` | Glow lines, gradient fill, meta line |
-| `src/components/DailyWeeklyCharts.tsx` | Mesmas melhorias de graficos |
-| `src/components/HubSidebar.tsx` | Glow hover, barra ativa iluminada |
-| `src/components/MonthHeatmap.tsx` | Cores semanticas + glow borders |
-
-### Notas
-
-- Todas as mudancas respeitam light/dark mode (variaveis CSS)
-- Nenhuma mudanca de banco de dados necessaria
-- Font mono sera carregada via Google Fonts no `index.html`
-- As cores #00FF88 e #FF4D4D serao mapeadas para HSL nas variaveis CSS
+| `index.html` | Font Plus Jakarta Sans |
+| `tailwind.config.ts` | font-sans atualizado |
+| `src/index.css` | Light mode refinado, grain background, card-glow light |
+| `src/components/ThemeToggle.tsx` | Pill toggle dark/light |
+| `src/components/DashboardLayoutWrapper.tsx` | Header com ThemeToggle + clock |
+| `src/components/HubSidebar.tsx` | localStorage persist, mais espacamento, remover ThemeToggle |
+| `src/pages/Hub.tsx` | Hero redesign, cards com risco, DailyInsight |
+| `src/components/GreetingBanner.tsx` | Props de risco, subtexto dinamico |
+| `src/pages/Dashboard.tsx` | Passar risco para GreetingBanner, mais espacamento |
+| `src/components/MarketSessionsClock.tsx` | Glow, pulsacao, insights de mercado |
 
