@@ -203,8 +203,10 @@ export default function Calendar() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Resultado Mensal</p>
-                <p className="text-3xl font-bold font-mono-trading mt-1 animate-count-up">{stats?.totalResultPoints.toFixed(0) || 0} pts</p>
-                <p className="text-sm text-success mt-1">R$ {stats?.totalResult.toFixed(2) || '0.00'}</p>
+                <KpiValue value={stats?.totalResultPoints || 0} unit="pts" variant="success" size="lg" animated decimals={0} className="mt-1" />
+                <p className="text-sm mt-1">
+                  <KpiValue value={stats?.totalResult || 0} prefix="R$" variant="success" size="sm" decimals={2} />
+                </p>
               </div>
               <TrendingUp className="w-6 h-6 text-success/40" />
             </div>
@@ -214,7 +216,7 @@ export default function Calendar() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Taxa de Acerto</p>
-                <p className="text-3xl font-bold font-mono-trading mt-1 animate-count-up">{stats?.winRate.toFixed(1) || 0}%</p>
+                <KpiValue value={stats?.winRate || 0} unit="%" variant="default" size="lg" animated decimals={1} className="mt-1" />
                 <p className="text-sm text-muted-foreground mt-1">{stats?.wins || 0}W / {stats?.losses || 0}L</p>
               </div>
               <Target className="w-6 h-6 text-primary/40" />
@@ -225,9 +227,9 @@ export default function Calendar() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Risco Usado</p>
-                <p className="text-3xl font-bold font-mono-trading mt-1 animate-count-up">{stats?.riskUsedPercent.toFixed(1) || 0}%</p>
+                <KpiValue value={stats?.riskUsedPercent || 0} unit="%" variant="primary" size="lg" animated decimals={1} className="mt-1" />
                 <p className="text-sm text-muted-foreground mt-1">
-                  R$ {stats?.riskUsed.toFixed(2) || '0.00'} de R$ {monthlyRisk?.toFixed(2) || '0.00'}
+                  {formatCurrencyBR(stats?.riskUsed || 0)} de {formatCurrencyBR(monthlyRisk || 0)}
                 </p>
               </div>
               <DollarSign className="w-6 h-6 text-primary/40" />
@@ -239,9 +241,9 @@ export default function Calendar() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">Objetivo Mensal</p>
-                  <p className="text-3xl font-bold font-mono-trading mt-1 animate-count-up">{stats?.goalUsedPercent.toFixed(1) || 0}%</p>
+                  <KpiValue value={stats?.goalUsedPercent || 0} unit="%" variant="primary" size="lg" animated decimals={1} className="mt-1" />
                   <p className="text-sm text-primary mt-1">
-                    R$ {stats?.goalUsed.toFixed(2) || '0.00'} de R$ {monthlyGoal.toFixed(2)}
+                    {formatCurrencyBR(stats?.goalUsed || 0)} de {formatCurrencyBR(monthlyGoal)}
                   </p>
                 </div>
                 <Target className="w-6 h-6 text-primary/40" />
