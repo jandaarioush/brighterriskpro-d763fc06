@@ -45,6 +45,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [currentMonthTrades, setCurrentMonthTrades] = useState<Trade[]>([]);
   const [winRate, setWinRate] = useState(0);
+  const [riskUsed, setRiskUsed] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -98,8 +99,9 @@ export default function Dashboard() {
 
         const totalLoss = monthTrades
           .filter(t => t.result_reais < 0)
-          .reduce((sum, t) => sum + t.result_reais, 0);
+          .reduce((sum, t) => sum + Math.abs(t.result_reais), 0);
         setAccumulatedDrawdown(totalLoss);
+        setRiskUsed(totalLoss);
 
         const resultPercent = userMonthlyRisk > 0 ? (stats.totalResult / userMonthlyRisk) * 100 : 0;
         setMonthlyResultPercent(resultPercent);
@@ -114,45 +116,38 @@ export default function Dashboard() {
     fetchData();
   }, [user]);
 
-  // Calculate daily goal in points for the banner
   const dailyGoalValue = monthlyGoal > 0
     ? calculateDailyGoal(monthlyGoal, accumulatedResult, getWorkingDaysRemaining(new Date()))
     : 0;
   const goalPoints = dailyGoalValue > 0 ? calculateGoalPoints(dailyGoalValue) : null;
 
-  // Insight do mês
   const getMonthInsight = () => {
     if (monthlyGoal <= 0) return null;
     const progress = (accumulatedResult / monthlyGoal) * 100;
-    if (progress >= 95) return { text: "🎯 Meta praticamente batida!", color: "text-success" };
-    if (progress >= 60) return { text: "📈 Acima da média do mês", color: "text-success" };
-    if (progress >= 30) return { text: "💪 Ritmo constante", color: "text-primary" };
-    return { text: "⚡ Precisa acelerar o ritmo", color: "text-primary" };
+    if (progress >= 95) return { text: "Meta praticamente batida!", color: "text-success" };
+    if (progress >= 60) return { text: "Acima da média do mês", color: "text-success" };
+    if (progress >= 30) return { text: "Ritmo constante", color: "text-primary" };
+    return { text: "Precisa acelerar o ritmo", color: "text-primary" };
   };
 
   const insight = getMonthInsight();
 
   return (
     <DashboardLayoutWrapper>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 md:px-6 py-8 max-w-7xl">
         <GreetingBanner 
           user={profile} 
           monthlyGoal={monthlyGoal}
           accumulatedResult={accumulatedResult}
           dailyGoalPoints={goalPoints?.indice || 0}
+          monthlyRisk={monthlyRisk}
+          riskUsed={riskUsed}
         />
         <DashboardTabs dashboardType="futuros" />
-        
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Gestão de risco e performance em tempo real
-          </p>
-        </div>
 
         {/* Status Insight Card */}
         {insight && (
-          <Card className="card-glow card-glow-primary p-4 mb-6 flex items-center gap-3">
+          <Card className="card-glow card-glow-primary p-4 mb-8 flex items-center gap-3">
             <Zap className="w-5 h-5 text-primary" />
             <span className={`text-sm font-medium ${insight.color}`}>{insight.text}</span>
             {dailyGoalValue > 0 && (
@@ -214,8 +209,8 @@ export default function Dashboard() {
           
           <StatCard
             title="Drawdown Acumulado"
-            value={`R$ ${Math.abs(accumulatedDrawdown).toFixed(2)}`}
-            subtitle={`${((Math.abs(accumulatedDrawdown) / monthlyRisk) * 100).toFixed(1)}% do risco mensal`}
+            value={`R$ ${accumulatedDrawdown.toFixed(2)}`}
+            subtitle={`${((accumulatedDrawdown / monthlyRisk) * 100).toFixed(1)}% do risco mensal`}
             icon={Activity}
             variant="danger"
           />

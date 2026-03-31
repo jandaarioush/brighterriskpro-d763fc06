@@ -6,7 +6,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeLogo } from '@/components/ThemeLogo';
-import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface Dashboard {
   id: string;
@@ -32,12 +31,21 @@ const dashboardConfig = {
   },
 };
 
+const SIDEBAR_COLLAPSED_KEY = 'brighter-sidebar-collapsed';
+
 export default function HubSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+    return saved === 'true';
+  });
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const { user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  }, [collapsed]);
 
   useEffect(() => {
     if (user) {
@@ -119,14 +127,16 @@ export default function HubSidebar() {
     <aside
       className={`${
         collapsed ? 'w-16' : 'w-64'
-      } min-h-screen bg-card/50 border-r border-border/50 flex flex-col transition-all duration-300`}
+      } min-h-screen border-r border-border/30 flex flex-col transition-all duration-300
+        bg-card/50 dark:bg-card/30
+        shadow-[1px_0_0_hsl(var(--border)/0.3)]`}
     >
       {/* Header */}
-      <div className="p-4 border-b border-border/50 flex items-center justify-between">
+      <div className="p-4 border-b border-border/30 flex items-center justify-between">
         {!collapsed && (
           <div className="flex items-center gap-2">
             <ThemeLogo className="h-6" />
-            <span className="font-montserrat font-bold text-sm tracking-wide">Risk Pro</span>
+            <span className="font-display font-bold text-sm tracking-wide">Risk Pro</span>
           </div>
         )}
         <Button
@@ -144,11 +154,11 @@ export default function HubSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4">
+      <nav className="flex-1 py-6">
         {/* Visão Geral */}
-        <div className="px-3 mb-4">
+        <div className="px-3 mb-6">
           {!collapsed && (
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em] mb-2 px-2">
+            <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-[0.18em] mb-3 px-2">
               Visão Geral
             </p>
           )}
@@ -156,10 +166,10 @@ export default function HubSidebar() {
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 group transition-all ${
+                className={`w-full justify-start gap-3 group transition-all duration-150 ${
                   isActive('/hub')
                     ? 'sidebar-active-bar bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:translate-x-0.5'
                 } ${collapsed ? 'px-3' : ''}`}
                 onClick={() => navigate('/hub')}
               >
@@ -174,13 +184,13 @@ export default function HubSidebar() {
         </div>
 
         {/* Meus Dashboards */}
-        <div className="px-3">
+        <div className="px-3 mb-6">
           {!collapsed && (
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em] mb-2 px-2">
+            <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-[0.18em] mb-3 px-2">
               Meus Dashboards
             </p>
           )}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {dashboards.map((dashboard) => {
               const config = dashboardConfig[dashboard.type];
               const IconComponent = config.icon;
@@ -191,10 +201,10 @@ export default function HubSidebar() {
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
-                      className={`w-full justify-start gap-3 group transition-all ${
+                      className={`w-full justify-start gap-3 group transition-all duration-150 ${
                         active
                           ? 'sidebar-active-bar bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:translate-x-0.5'
                       } ${collapsed ? 'px-3' : ''}`}
                       onClick={() => handleDashboardClick(dashboard)}
                     >
@@ -216,9 +226,9 @@ export default function HubSidebar() {
 
         {/* Admin */}
         {isAdmin && (
-          <div className="px-3 mt-4">
+          <div className="px-3 mb-6">
             {!collapsed && (
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em] mb-2 px-2">
+              <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-[0.18em] mb-3 px-2">
                 Administração
               </p>
             )}
@@ -226,10 +236,10 @@ export default function HubSidebar() {
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  className={`w-full justify-start gap-3 group transition-all ${
+                  className={`w-full justify-start gap-3 group transition-all duration-150 ${
                     location.pathname.startsWith('/admin')
                       ? 'sidebar-active-bar bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:translate-x-0.5'
                   } ${collapsed ? 'px-3' : ''}`}
                   onClick={() => navigate('/admin')}
                 >
@@ -243,24 +253,15 @@ export default function HubSidebar() {
         )}
 
         {/* Bottom actions */}
-        <div className="px-3 mt-4 space-y-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className={`${collapsed ? 'flex justify-center' : 'px-2'}`}>
-                <ThemeToggle />
-              </div>
-            </TooltipTrigger>
-            {collapsed && <TooltipContent side="right">Alternar tema</TooltipContent>}
-          </Tooltip>
-
+        <div className="px-3 mt-auto space-y-1.5">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 group transition-all ${
+                className={`w-full justify-start gap-3 group transition-all duration-150 ${
                   isActive('/settings')
                     ? 'sidebar-active-bar bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:translate-x-0.5'
                 } ${collapsed ? 'px-3' : ''}`}
                 onClick={() => navigate('/settings')}
               >
@@ -275,7 +276,7 @@ export default function HubSidebar() {
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 group text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all ${
+                className={`w-full justify-start gap-3 group text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:translate-x-0.5 transition-all duration-150 ${
                   collapsed ? 'px-3' : ''
                 }`}
                 onClick={signOut}

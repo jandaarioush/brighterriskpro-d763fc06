@@ -6,9 +6,18 @@ type Props = {
   monthlyGoal?: number;
   accumulatedResult?: number;
   dailyGoalPoints?: number;
+  monthlyRisk?: number;
+  riskUsed?: number;
 };
 
-export default function GreetingBanner({ user, monthlyGoal, accumulatedResult, dailyGoalPoints }: Props) {
+export default function GreetingBanner({
+  user,
+  monthlyGoal,
+  accumulatedResult,
+  dailyGoalPoints,
+  monthlyRisk = 0,
+  riskUsed = 0,
+}: Props) {
   const now = useLocalClock(30_000);
   const greeting = getGreeting(now);
   const firstName = firstNameFrom(user);
@@ -22,20 +31,30 @@ export default function GreetingBanner({ user, monthlyGoal, accumulatedResult, d
     ? Math.max(0, monthlyGoal - (accumulatedResult || 0))
     : null;
 
-  // Insight automático
+  const riskPercent = monthlyRisk > 0 ? (riskUsed / monthlyRisk) * 100 : 0;
+  const riskAvailable = Math.max(0, monthlyRisk - riskUsed);
+
   const getInsight = () => {
     if (!goalProgress) return null;
-    if (goalProgress >= 95) return { text: "Meta praticamente batida! 🎯", color: "text-success" };
-    if (goalProgress >= 60) return { text: "Acima da média do mês 📈", color: "text-success" };
-    if (goalProgress >= 30) return { text: "Ritmo constante, continue assim 💪", color: "text-primary" };
-    return { text: "Precisa acelerar o ritmo ⚡", color: "text-primary" };
+    if (goalProgress >= 95) return { text: "Meta praticamente batida!", color: "text-success" };
+    if (goalProgress >= 60) return { text: "Acima da média do mês", color: "text-success" };
+    if (goalProgress >= 30) return { text: "Ritmo constante, continue assim", color: "text-primary" };
+    return { text: "Precisa acelerar o ritmo", color: "text-primary" };
+  };
+
+  const getRiskStatus = () => {
+    if (riskPercent >= 90) return { label: 'Limite crítico', color: 'text-danger' };
+    if (riskPercent >= 60) return { label: 'Acelerado', color: 'text-primary' };
+    if (riskPercent >= 30) return { label: 'Ritmo saudável', color: 'text-success' };
+    return { label: 'Início do mês', color: 'text-muted-foreground' };
   };
 
   const insight = getInsight();
+  const riskStatus = getRiskStatus();
 
   return (
     <section
-      className="w-full rounded-lg card-glow p-6 mb-6"
+      className="w-full rounded-xl card-glow p-6 mb-8"
       aria-label="Painel de Controle"
     >
       <div className="flex items-start justify-between mb-1">
@@ -43,8 +62,8 @@ export default function GreetingBanner({ user, monthlyGoal, accumulatedResult, d
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-1">
             Painel de Controle
           </p>
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight flex items-center gap-2">
-            {greeting}{firstName && `, ${firstName}`} <span aria-hidden>👋</span>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Controle total do seu risco.
           </h1>
           <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
         </div>
@@ -57,6 +76,17 @@ export default function GreetingBanner({ user, monthlyGoal, accumulatedResult, d
           </div>
         )}
       </div>
+
+      {/* Risk availability */}
+      {monthlyRisk > 0 && (
+        <p className="text-sm text-muted-foreground mt-3">
+          Você ainda tem{' '}
+          <span className="font-mono-trading font-semibold text-primary">
+            R$ {riskAvailable.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </span>{' '}
+          disponíveis · <span className={`font-medium ${riskStatus.color}`}>{riskStatus.label}</span>
+        </p>
+      )}
 
       {goalProgress !== null && (
         <div className="mt-4 space-y-2">

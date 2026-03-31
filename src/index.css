@@ -8,11 +8,11 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* LIGHT MODE */
-    --background: 0 0% 100%;
+    /* LIGHT MODE — Clean & Premium */
+    --background: 0 0% 98%;
     --foreground: 222 47% 11%;
 
-    --card: 0 0% 98%;
+    --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
@@ -57,25 +57,25 @@ All colors MUST be HSL.
 
   .dark {
     /* DARK MODE — Trading Terminal Premium */
-    --background: 220 20% 4%;
+    --background: 220 20% 2%;
     --foreground: 0 0% 95%;
 
-    --card: 220 14% 8%;
+    --card: 220 14% 6%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 220 14% 7%;
+    --popover: 220 14% 5%;
     --popover-foreground: 0 0% 95%;
 
     --primary: 43 85% 52%;
     --primary-foreground: 220 20% 4%;
 
-    --secondary: 220 14% 12%;
+    --secondary: 220 14% 10%;
     --secondary-foreground: 0 0% 95%;
 
-    --muted: 220 14% 12%;
+    --muted: 220 14% 10%;
     --muted-foreground: 0 0% 55%;
 
-    --accent: 220 14% 14%;
+    --accent: 220 14% 12%;
     --accent-foreground: 0 0% 95%;
 
     --success: 152 82% 45%;
@@ -87,8 +87,8 @@ All colors MUST be HSL.
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 14% 14%;
-    --input: 220 14% 14%;
+    --border: 220 14% 12%;
+    --input: 220 14% 12%;
     --ring: 43 85% 52%;
 
     --gradient-primary: linear-gradient(135deg, hsl(43 85% 52%), hsl(38 92% 45%));
@@ -110,7 +110,7 @@ All colors MUST be HSL.
   *,
   *::before,
   *::after {
-    transition: background-color 200ms ease-in-out,
+    transition: background-color 250ms ease-in-out,
                 color 200ms ease-in-out,
                 border-color 200ms ease-in-out,
                 fill 200ms ease-in-out,
@@ -126,11 +126,11 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground font-inter;
+    @apply bg-background text-foreground font-sans;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-montserrat;
+    @apply font-display;
   }
 }
 
@@ -141,9 +141,30 @@ All colors MUST be HSL.
     font-variant-numeric: tabular-nums;
   }
 
+  /* ── Grain background texture ── */
+  .bg-grain::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 128px 128px;
+  }
+
+  .bg-radial-dark {
+    background: radial-gradient(ellipse at 50% 20%, hsl(220 14% 8%) 0%, hsl(220 20% 2%) 70%);
+  }
+
+  .bg-radial-light {
+    background: radial-gradient(ellipse at 50% 20%, hsl(0 0% 100%) 0%, hsl(0 0% 98%) 70%);
+  }
+
   /* ── Card Glow ── */
   .card-glow {
-    background: linear-gradient(145deg, hsl(var(--card)), hsl(220 14% 6%));
+    background: linear-gradient(145deg, hsl(var(--card)), hsl(220 14% 5%));
     border: 1px solid hsl(0 0% 100% / 0.04);
     box-shadow: 0 0 0 1px hsl(0 0% 100% / 0.02),
                 0 4px 24px hsl(0 0% 0% / 0.3);
@@ -152,12 +173,22 @@ All colors MUST be HSL.
                 border-color 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
+  :root .card-glow {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 3px hsl(0 0% 0% / 0.06), 0 4px 16px hsl(0 0% 0% / 0.04);
+  }
+
   .card-glow:hover {
     transform: translateY(-2px);
     border-color: hsl(var(--primary) / 0.2);
     box-shadow: 0 0 0 1px hsl(var(--primary) / 0.1),
                 0 8px 32px hsl(0 0% 0% / 0.4),
                 0 0 20px hsl(var(--primary) / 0.06);
+  }
+
+  :root .card-glow:hover {
+    box-shadow: 0 4px 20px hsl(0 0% 0% / 0.08), 0 0 0 1px hsl(var(--primary) / 0.1);
   }
 
   .card-glow-success {
@@ -253,6 +284,12 @@ All colors MUST be HSL.
     border: 1px solid hsl(0 0% 100% / 0.06);
   }
 
+  :root .glass-card {
+    background: hsl(0 0% 100% / 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(0 0% 0% / 0.06);
+  }
+
   .glass-card-hover {
     @apply glass-card;
     transition: border-color 300ms ease, box-shadow 300ms ease, transform 300ms ease;
@@ -287,7 +324,7 @@ All colors MUST be HSL.
     left: 0;
     top: 25%;
     bottom: 25%;
-    width: 3px;
+    width: 2px;
     border-radius: 0 4px 4px 0;
     background: hsl(var(--primary));
     box-shadow: 0 0 12px hsl(var(--primary) / 0.4);
@@ -324,6 +361,11 @@ All colors MUST be HSL.
     filter: blur(0);
   }
 
+  /* ── Now indicator pulse ── */
+  .now-pulse {
+    animation: now-pulse 2s ease-in-out infinite;
+  }
+
   /* ── Keyframes ── */
   @keyframes shimmer {
     0% { background-position: -200% 0; }
@@ -353,6 +395,17 @@ All colors MUST be HSL.
     }
     50% {
       box-shadow: 0 0 24px hsl(var(--primary) / 0.2);
+    }
+  }
+
+  @keyframes now-pulse {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 8px hsl(var(--primary) / 0.4);
+    }
+    50% {
+      opacity: 0.7;
+      box-shadow: 0 0 16px hsl(var(--primary) / 0.6);
     }
   }
 
