@@ -265,11 +265,11 @@ export default function Calendar() {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Resultado Total</span>
-                <span className="font-semibold font-mono-trading text-success">+{stats?.totalResultPoints || 0} pts</span>
+                <span className="font-semibold font-mono-trading text-success">+{formatNumberBR(stats?.totalResultPoints || 0)} pts</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground"></span>
-                <span className="font-medium font-mono-trading">R$ {stats?.totalResult.toFixed(2) || '0.00'}</span>
+                <span className="font-medium font-mono-trading">{formatCurrencyBR(stats?.totalResult || 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Risco Usado</span>
