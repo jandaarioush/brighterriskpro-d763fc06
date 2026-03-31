@@ -12,6 +12,13 @@ import { QuickTradeDialog } from '@/components/QuickTradeDialog';
 import { DailyWeeklyCharts } from '@/components/DailyWeeklyCharts';
 import DashboardTabs from '@/components/DashboardTabs';
 import { toast } from 'sonner';
+import { KpiValue } from '@/components/KpiValue';
+import { formatNumberBR, formatCurrencyBR } from '@/lib/formatting';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Tooltip,
   TooltipContent,

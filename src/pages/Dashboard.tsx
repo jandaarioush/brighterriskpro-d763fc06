@@ -29,6 +29,8 @@ import {
 import { format } from "date-fns";
 import DashboardLayoutWrapper from "@/components/DashboardLayoutWrapper";
 import DashboardTabs from "@/components/DashboardTabs";
+import { KpiValue } from "@/components/KpiValue";
+import { formatNumberBR } from "@/lib/formatting";
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
@@ -151,8 +153,10 @@ export default function Dashboard() {
             <Zap className="w-5 h-5 text-primary" />
             <span className={`text-sm font-medium ${insight.color}`}>{insight.text}</span>
             {dailyGoalValue > 0 && (
-              <span className="ml-auto text-xs text-muted-foreground">
-                Você precisa fazer <span className="font-mono-trading font-semibold text-primary">{goalPoints?.indice.toFixed(0)} pts/dia</span> para bater sua meta
+              <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1">
+                Você precisa fazer{' '}
+                <KpiValue value={goalPoints?.indice || 0} unit="pts/dia" size="sm" variant="primary" decimals={0} />
+                {' '}para bater sua meta
               </span>
             )}
           </Card>
@@ -162,7 +166,10 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <StatCard
             title="Risco Mensal"
-            value={`R$ ${monthlyRisk.toLocaleString()}`}
+            value=""
+            numericValue={monthlyRisk}
+            prefix="R$"
+            decimals={0}
             subtitle={`${workingDaysInMonth} dias úteis no mês`}
             icon={Shield}
             variant="default"
@@ -170,7 +177,10 @@ export default function Dashboard() {
           
           <StatCard
             title="Risco Diário Atual"
-            value={`R$ ${dailyRisk.toFixed(2)}`}
+            value=""
+            numericValue={dailyRisk}
+            prefix="R$"
+            decimals={2}
             subtitle={`${workingDaysRemaining} dias úteis restantes`}
             icon={AlertTriangle}
             variant="warning"
@@ -178,12 +188,15 @@ export default function Dashboard() {
           
           <StatCard
             title="Resultado Acumulado"
-            value={`R$ ${accumulatedResult.toFixed(2)}`}
-            subtitle={`${monthlyResultPercent.toFixed(1)}% do risco mensal`}
+            value=""
+            numericValue={accumulatedResult}
+            prefix="R$"
+            decimals={2}
+            subtitle={`${formatNumberBR(monthlyResultPercent, 1)}% do risco mensal`}
             icon={TrendingUp}
             variant={accumulatedResult >= 0 ? "success" : "danger"}
             trend={{
-              value: `${monthlyResultPercent.toFixed(1)}%`,
+              value: `${formatNumberBR(monthlyResultPercent, 1)}%`,
               isPositive: accumulatedResult >= 0
             }}
           />
@@ -193,7 +206,10 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard
             title="Stop Índice"
-            value={`${stopIndice.toFixed(0)} pts`}
+            value=""
+            numericValue={stopIndice}
+            unit="pts"
+            decimals={0}
             subtitle="1 ponto = R$ 0,20"
             icon={Target}
             variant="default"
@@ -201,7 +217,10 @@ export default function Dashboard() {
           
           <StatCard
             title="Stop Dólar"
-            value={`${stopDolar.toFixed(1)} pts`}
+            value=""
+            numericValue={stopDolar}
+            unit="pts"
+            decimals={1}
             subtitle="1 ponto = R$ 10,00"
             icon={Target}
             variant="default"
@@ -209,8 +228,11 @@ export default function Dashboard() {
           
           <StatCard
             title="Drawdown Acumulado"
-            value={`R$ ${accumulatedDrawdown.toFixed(2)}`}
-            subtitle={`${((accumulatedDrawdown / monthlyRisk) * 100).toFixed(1)}% do risco mensal`}
+            value=""
+            numericValue={accumulatedDrawdown}
+            prefix="R$"
+            decimals={2}
+            subtitle={`${formatNumberBR((accumulatedDrawdown / (monthlyRisk || 1)) * 100, 1)}% do risco mensal`}
             icon={Activity}
             variant="danger"
           />

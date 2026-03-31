@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
+import { KpiValue } from "@/components/KpiValue";
 
 interface StatCardProps {
   title: string;
@@ -12,6 +13,11 @@ interface StatCardProps {
     isPositive: boolean;
   };
   sparklineData?: number[];
+  /** Structured KPI props — when provided, renders KpiValue instead of raw value string */
+  numericValue?: number;
+  unit?: string;
+  prefix?: string;
+  decimals?: number;
 }
 
 function MiniSparkline({ data, color }: { data: number[]; color: string }) {
@@ -49,6 +55,10 @@ export function StatCard({
   variant = "default",
   trend,
   sparklineData,
+  numericValue,
+  unit,
+  prefix,
+  decimals = 0,
 }: StatCardProps) {
   const glowClass = {
     default: "card-glow",
@@ -57,19 +67,14 @@ export function StatCard({
     warning: "card-glow card-glow-primary",
   }[variant];
 
-  const trendColor = {
-    default: "text-primary",
-    success: "text-success",
-    danger: "text-danger",
-    warning: "text-primary",
-  }[variant];
-
   const sparkColor = {
     default: "hsl(43 85% 52%)",
     success: "hsl(152 82% 45%)",
     danger: "hsl(0 84% 60%)",
     warning: "hsl(43 85% 52%)",
   }[variant];
+
+  const kpiVariant = variant === "warning" ? "primary" : variant;
 
   return (
     <Card className={`p-6 ${glowClass} relative overflow-hidden group`}>
@@ -83,9 +88,22 @@ export function StatCard({
           {title}
         </p>
 
-        <p className="text-3xl lg:text-4xl font-bold font-mono-trading tracking-tight animate-count-up">
-          {value}
-        </p>
+        {numericValue !== undefined ? (
+          <KpiValue
+            value={numericValue}
+            unit={unit}
+            prefix={prefix}
+            variant={kpiVariant}
+            animated
+            size="lg"
+            gradient
+            decimals={decimals}
+          />
+        ) : (
+          <p className="text-3xl lg:text-4xl font-bold font-mono-trading tracking-tight animate-count-up">
+            {value}
+          </p>
+        )}
 
         {sparklineData && sparklineData.length > 1 && (
           <MiniSparkline data={sparklineData} color={sparkColor} />
