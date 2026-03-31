@@ -187,12 +187,12 @@ export default function Calendar() {
                 </div>
               </div>
               <span className="text-lg font-bold font-mono-trading text-primary min-w-[60px] text-right">
-                {stats.goalUsedPercent.toFixed(1)}%
+                {formatNumberBR(stats.goalUsedPercent, 1)}%
               </span>
             </div>
             <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-              <span>R$ {stats.goalUsed.toFixed(2)} atingido</span>
-              <span>Falta R$ {Math.max(0, stats.goalRemaining).toFixed(2)}</span>
+              <span>{formatCurrencyBR(stats.goalUsed)} atingido</span>
+              <span>Falta {formatCurrencyBR(Math.max(0, stats.goalRemaining))}</span>
             </div>
           </Card>
         )}
