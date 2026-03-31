@@ -14,8 +14,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        'montserrat': ['Montserrat', 'sans-serif'],
-        'inter': ['Inter', 'sans-serif'],
+        'sans': ['Plus Jakarta Sans', 'system-ui', '-apple-system', 'sans-serif'],
+        'display': ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        'montserrat': ['Plus Jakarta Sans', 'sans-serif'],
+        'inter': ['Plus Jakarta Sans', 'sans-serif'],
         'mono-trading': ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       colors: {
