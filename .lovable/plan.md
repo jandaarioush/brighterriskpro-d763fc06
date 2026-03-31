@@ -1,141 +1,85 @@
 
 
-## Plano: Redesign Completo — Trading Terminal Premium
+## Plano: Tipografia Premium para Numeros
 
 ### Resumo
 
-Redesign profundo do Hub e Dashboard para parecer um cockpit de trader profissional. Atualiza tipografia global (Plus Jakarta Sans), refina tema light/dark, transforma o ThemeToggle em pill, redesenha o Hero/Hub com painel de controle, melhora cards de dashboards com dados de risco, e adiciona background com textura sutil.
+Upgrade da tipografia de numeros em todo o app para estilo "terminal financeiro": separar valor de unidade, formatar no padrao BR, adicionar count-up animado, e aplicar efeito visual premium.
 
 ---
 
-### Bloco 1 — Tipografia e Design System
+### 1. Utility classes CSS (`src/index.css`)
 
-**`index.html`**
-- Substituir JetBrains Mono + Montserrat + Inter por **Plus Jakarta Sans** (pesos 400-700) + manter **JetBrains Mono** para numeros
+Adicionar classes reutilizaveis:
 
-**`tailwind.config.ts`**
-- Substituir `font-montserrat` e `font-inter` por `font-sans: ['Plus Jakarta Sans', ...]`
-- Manter `font-mono-trading` para numeros
+- `.kpi-number` — `text-4xl font-bold tabular-nums tracking-[0.02em] leading-none` + text-shadow sutil (0 0 10px rgba branco 5%)
+- `.kpi-unit` — `text-base font-medium opacity-70 ml-1.5`
+- `.kpi-profit` — cor verde success
+- `.kpi-loss` — cor vermelha danger
+- `.kpi-gradient` — gradiente metalizado (branco → cinza) com background-clip text (versao ultra premium, dark mode only)
 
-**`src/index.css`**
-- Light mode: background `0 0% 98%` (~#FAFAFA), cards brancos com sombra suave
-- Dark mode: manter #050505 atual
-- `.card-glow` light mode: background branco, sombra leve em vez de gradiente escuro
-- Adicionar `.bg-grain` — textura noise sutil via SVG data URI + gradiente radial
-- Body: aplicar `font-sans` (Plus Jakarta Sans) em tudo
+### 2. Formatacao BR (`src/lib/formatting.ts`)
 
----
+Adicionar funcoes:
 
-### Bloco 2 — ThemeToggle Pill
+- `formatNumberBR(value: number, decimals?: number)` → "5.000" / "100,0"
+- `formatCurrencyBR(value: number)` → "R$ 2.500,00" (ja existe `formatCurrency`, padronizar uso)
+- `splitValueUnit(formatted: string)` → `{ number: string, unit: string }` — separa "5000 pts" em `{ number: "5.000", unit: "pts" }`
 
-**`src/components/ThemeToggle.tsx`** — Reescrever
-- Botao estilo pill (arredondado, px-3 py-1.5)
-- Dark: fundo cinza escuro com backdrop-blur, icone lua
-- Light: fundo branco com sombra leve, icone sol
-- Click alterna entre dark/light (sem dropdown, sem system)
-- Transicao 250ms
+### 3. Componente KpiValue (`src/components/KpiValue.tsx`)
 
-**`src/components/HubSidebar.tsx`**
-- Remover ThemeToggle da sidebar
-- Mover para o header do layout (canto superior direito)
+Novo componente reutilizavel:
 
-**`src/components/DashboardLayoutWrapper.tsx`**
-- Adicionar header fino com ThemeToggle pill + relogio no canto superior direito
+```
+<KpiValue value={5000} unit="pts" variant="success" animated />
+```
 
----
+Props:
+- `value: number` — valor numerico
+- `unit?: string` — "pts", "R$" (prefixo), "%"
+- `prefix?: string` — "R$" aparece antes do numero
+- `variant?: "default" | "success" | "danger" | "primary"`
+- `animated?: boolean` — count-up de 0 ate valor em ~1s
+- `size?: "lg" | "xl"` — tamanho do numero
+- `gradient?: boolean` — ativa efeito metalizado
 
-### Bloco 3 — Hero / Hub Redesign
+Renderiza numero + unidade com baseline alignment, tabular-nums, formatacao BR automatica.
 
-**`src/pages/Hub.tsx`** — Reescrever WelcomeSection
-- Titulo: **"Controle total do seu risco."** (sem emoji, bold, tracking leve)
-- Subtexto dinamico baseado nos dados:
-  - "Voce ainda tem R$ X disponiveis hoje" ou "Voce ja utilizou X% do risco mensal"
-- Barra de progresso da meta mensal com % e status textual:
-  - "Ritmo saudavel" / "Abaixo da meta" / "Acelerado"
-- Relogio trading terminal: glass card com hora em mono bold + "(BRT)"
+Count-up: usar `useEffect` + `requestAnimationFrame` para animar de 0 ao valor em ~800ms com easing.
 
-**Cards de Dashboards** — Upgrade visual
-- Cada card mostra:
-  - Icone outline + nome + descricao
-  - Bloco de risco: "Risco Mensal: R$ X / Disponivel: R$ X / Usado: X%"
-- Gradientes por tipo: Internacional→dourado, Acoes→verde, Futuros→azul
-- Glass effect (backdrop-blur) + glow sutil
-- Hover: scale 1.02 + glow aumenta
-- Carregar `monthly_risk` e trades acumulados para calcular "disponivel" e "%"
+### 4. Atualizar StatCard (`src/components/StatCard.tsx`)
 
----
+- Substituir `<p>{value}</p>` por `<KpiValue>` component
+- Aceitar props estruturadas: `numericValue`, `unit`, `prefix` alem do `value` string existente (backward compatible)
 
-### Bloco 4 — Market Sessions Premium
+### 5. Atualizar Dashboard (`src/pages/Dashboard.tsx`)
 
-**`src/components/MarketSessionsClock.tsx`**
-- Timeline: barras com gradiente + glow leve + fade em sessoes inativas
-- Linha "Agora": dourada com glow + label "Agora" + pulsacao CSS
-- Sessao ativa: badge "Mercado Aberto" com glow verde
+Substituir formatacao inline nos StatCards:
+- `R$ ${monthlyRisk.toLocaleString()}` → usar `KpiValue` com `prefix="R$"` e `value={monthlyRisk}`
+- `${stopIndice.toFixed(0)} pts` → `KpiValue` com `unit="pts"` e `value={stopIndice}`
+- Aplicar `variant` baseado no contexto (success/danger)
 
-**Status dos mercados** — Adicionar bloco de insights:
-- "EUA aberto — alta volatilidade"
-- "Europa fechando — baixa liquidez"
-- "Asia fechada"
+### 6. Atualizar GreetingBanner (`src/components/GreetingBanner.tsx`)
+
+- Numeros de meta diaria e risco disponivel: usar `KpiValue` ou classes `.kpi-number`
+- Formatacao BR em `riskAvailable` e `goalRemaining`
+
+### 7. Atualizar Calendar (`src/pages/Calendar.tsx`)
+
+- Numeros de pontos e R$ nos cards do calendario: aplicar classes `.kpi-number` e `.kpi-unit`
+- Formatacao BR nos valores financeiros
 
 ---
 
-### Bloco 5 — Sidebar Premium (refinamento)
-
-**`src/components/HubSidebar.tsx`**
-- Persistir estado collapsed no localStorage
-- Mais padding/espacamento entre items
-- Labels de grupo: menor opacity, mais tracking
-- Hover: leve slide lateral (translateX 2px)
-- Light mode: fundo branco com sombra lateral
-
----
-
-### Bloco 6 — Dashboard Principal (refinamento)
-
-**`src/pages/Dashboard.tsx`**
-- GreetingBanner: titulo "Controle total do seu risco." em vez de saudacao
-- Subtexto: "Voce ainda tem R$ X disponiveis hoje"
-- Mais padding nos cards (p-8)
-- Mais gap entre secoes (gap-8)
-
-**`src/components/GreetingBanner.tsx`**
-- Receber `monthlyRisk` e `riskUsed` como props adicionais
-- Mostrar "Voce ja utilizou X% do seu risco mensal" como subtexto secundario
-- Status: "Ritmo saudavel" / "Abaixo da meta" / "Acelerado" baseado no uso do risco
-
----
-
-### Bloco 7 — "Leitura do Dia"
-
-**`src/pages/Hub.tsx`** ou **`src/pages/Dashboard.tsx`**
-- Novo componente `DailyInsight`
-- Card com icone de fogo + frase contextual:
-  - Baseado em hora do dia + resultado acumulado + volatilidade
-  - Ex: "Dia alinhado com sua meta — mantenha consistencia"
-- Posicionar abaixo dos cards de dashboard
-
----
-
-### Bloco 8 — Background
-
-**`src/index.css`**
-- Body dark: gradiente radial sutil (centro levemente mais claro)
-- Textura grain via pseudo-elemento `::after` com SVG noise pattern a ~3% opacity
-
----
-
-### Arquivos a Modificar
+### Arquivos
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `index.html` | Font Plus Jakarta Sans |
-| `tailwind.config.ts` | font-sans atualizado |
-| `src/index.css` | Light mode refinado, grain background, card-glow light |
-| `src/components/ThemeToggle.tsx` | Pill toggle dark/light |
-| `src/components/DashboardLayoutWrapper.tsx` | Header com ThemeToggle + clock |
-| `src/components/HubSidebar.tsx` | localStorage persist, mais espacamento, remover ThemeToggle |
-| `src/pages/Hub.tsx` | Hero redesign, cards com risco, DailyInsight |
-| `src/components/GreetingBanner.tsx` | Props de risco, subtexto dinamico |
-| `src/pages/Dashboard.tsx` | Passar risco para GreetingBanner, mais espacamento |
-| `src/components/MarketSessionsClock.tsx` | Glow, pulsacao, insights de mercado |
+| `src/index.css` | Classes `.kpi-*` |
+| `src/lib/formatting.ts` | `formatNumberBR`, `splitValueUnit` |
+| `src/components/KpiValue.tsx` | Novo componente com count-up |
+| `src/components/StatCard.tsx` | Usar KpiValue |
+| `src/pages/Dashboard.tsx` | Passar dados estruturados aos StatCards |
+| `src/components/GreetingBanner.tsx` | Tipografia premium nos numeros |
+| `src/pages/Calendar.tsx` | Formatacao BR + classes kpi |
 
