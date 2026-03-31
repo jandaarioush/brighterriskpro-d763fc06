@@ -273,7 +273,7 @@ export default function Calendar() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Risco Usado</span>
-                <span className="font-semibold font-mono-trading">R$ {stats?.riskUsed.toFixed(2) || '0.00'}</span>
+                <span className="font-semibold font-mono-trading">{formatCurrencyBR(stats?.riskUsed || 0)}</span>
               </div>
               <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
                 <div
