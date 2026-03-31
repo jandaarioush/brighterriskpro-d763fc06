@@ -281,13 +281,13 @@ export default function Calendar() {
                   style={{ width: `${Math.min(stats?.riskUsedPercent || 0, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">{stats?.riskUsedPercent.toFixed(1)}% utilizado</p>
+              <p className="text-xs text-muted-foreground">{formatNumberBR(stats?.riskUsedPercent || 0, 1)}% utilizado</p>
               
               {monthlyGoal && monthlyGoal > 0 && stats && (
                 <>
                   <div className="flex justify-between pt-2 border-t border-border/50">
                     <span className="text-muted-foreground">Objetivo Mensal</span>
-                    <span className="font-semibold font-mono-trading text-primary">R$ {monthlyGoal.toFixed(2)}</span>
+                    <span className="font-semibold font-mono-trading text-primary">{formatCurrencyBR(monthlyGoal)}</span>
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
                     <div
@@ -295,21 +295,21 @@ export default function Calendar() {
                       style={{ width: `${Math.min(stats.goalUsedPercent, 100)}%` }}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">{stats.goalUsedPercent.toFixed(1)}% atingido</p>
+                  <p className="text-xs text-muted-foreground">{formatNumberBR(stats.goalUsedPercent, 1)}% atingido</p>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Falta</span>
-                    <span className="font-semibold font-mono-trading text-primary">R$ {Math.max(0, stats.goalRemaining).toFixed(2)}</span>
+                    <span className="font-semibold font-mono-trading text-primary">{formatCurrencyBR(Math.max(0, stats.goalRemaining))}</span>
                   </div>
                 </>
               )}
 
               <div className="flex justify-between pt-2 border-t border-border/50">
                 <span className="text-muted-foreground">Risco Restante</span>
-                <span className="font-semibold font-mono-trading">R$ {stats?.riskRemaining.toFixed(2) || '0.00'}</span>
+                <span className="font-semibold font-mono-trading">{formatCurrencyBR(stats?.riskRemaining || 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Taxa de Acerto</span>
-                <span className="font-semibold font-mono-trading">{stats?.winRate.toFixed(1)}%</span>
+                <span className="font-semibold font-mono-trading">{formatNumberBR(stats?.winRate || 0, 1)}%</span>
               </div>
             </div>
           </Card>
