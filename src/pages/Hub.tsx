@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { BarChart3, TrendingUp, Globe, ArrowRight, Loader2, Clock } from 'lucide-react';
+import { BarChart3, TrendingUp, Globe, ArrowRight, Loader2, Flame } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import DashboardLayoutWrapper from '@/components/DashboardLayoutWrapper';
-import { useLocalClock } from '@/hooks/useLocalClock';
-import { getGreeting, formatDigitalClock, firstNameFrom } from '@/lib/formatting';
 import MarketSessionsClock from '@/components/MarketSessionsClock';
+
 interface Dashboard {
   id: string;
   name: string;
@@ -23,56 +22,107 @@ const dashboardTypeInfo = {
     label: 'Futuros',
     description: 'Mini Índice e Mini Dólar',
     icon: BarChart3,
-    color: 'from-muted to-muted/50 border-border',
-    iconColor: 'text-primary',
+    gradient: 'from-blue-500/10 to-blue-600/5 dark:from-blue-500/15 dark:to-blue-600/5',
+    borderGlow: 'hover:border-blue-500/30 hover:shadow-[0_0_20px_hsl(220_80%_60%/0.1)]',
+    iconColor: 'text-blue-500',
+    dotColor: 'bg-blue-500',
   },
   acoes: {
     label: 'Ações',
     description: 'Daytrade e Swing Trade de Ações',
     icon: TrendingUp,
-    color: 'from-success/10 to-success/5 border-success/30',
+    gradient: 'from-success/10 to-success/5 dark:from-success/15 dark:to-success/5',
+    borderGlow: 'hover:border-success/30 hover:shadow-[0_0_20px_hsl(152_82%_45%/0.1)]',
     iconColor: 'text-success',
+    dotColor: 'bg-success',
   },
   internacional: {
     label: 'Mercado Internacional',
     description: 'Forex, Cripto e outros ativos',
     icon: Globe,
-    color: 'from-primary/10 to-primary/5 border-primary/30',
+    gradient: 'from-primary/10 to-primary/5 dark:from-primary/15 dark:to-primary/5',
+    borderGlow: 'hover:border-primary/30 hover:shadow-[0_0_20px_hsl(43_85%_52%/0.1)]',
     iconColor: 'text-primary',
+    dotColor: 'bg-primary',
   },
 };
 
-// Welcome Section Component
-function WelcomeSection({ profile }: { profile: { name?: string | null } | null }) {
-  const now = useLocalClock(1000);
-  const greeting = getGreeting(now);
-  const firstName = firstNameFrom(profile) || 'Trader';
-  const clockTime = formatDigitalClock(now);
+// Daily insight based on time of day
+function getDailyInsight(): string {
+  const hour = new Date().getHours();
+  if (hour >= 9 && hour < 12) return 'Mercados abertos — foco e disciplina no operacional.';
+  if (hour >= 12 && hour < 14) return 'Horário de almoço — liquidez reduzida, cuidado com slippage.';
+  if (hour >= 14 && hour < 17) return 'Sessão da tarde ativa — oportunidades em sobreposição de mercados.';
+  if (hour >= 17 && hour < 20) return 'B3 encerrada — acompanhe mercados internacionais.';
+  return 'Mercados fechados — hora de revisão e planejamento.';
+}
+
+// Hero Section
+function HeroSection({
+  totalMonthlyRisk,
+  totalRiskUsed,
+}: {
+  totalMonthlyRisk: number;
+  totalRiskUsed: number;
+}) {
+  const riskAvailable = Math.max(0, totalMonthlyRisk - totalRiskUsed);
+  const riskPercent = totalMonthlyRisk > 0 ? (totalRiskUsed / totalMonthlyRisk) * 100 : 0;
+
+  const getStatus = () => {
+    if (riskPercent >= 90) return { label: 'Limite crítico', color: 'text-danger' };
+    if (riskPercent >= 60) return { label: 'Acelerado', color: 'text-primary' };
+    if (riskPercent >= 30) return { label: 'Ritmo saudável', color: 'text-success' };
+    return { label: 'Início do mês', color: 'text-muted-foreground' };
+  };
+
+  const status = getStatus();
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-4xl font-bold font-montserrat">
-          {greeting}, {firstName}! 👋
-        </h1>
-        <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-border">
-          <Clock className="w-5 h-5 text-primary" />
-          <span className="text-2xl font-mono font-bold tabular-nums tracking-wide text-foreground">
-            {clockTime}
-          </span>
+    <section className="mb-8 hero-enter">
+      <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">
+        Controle total do seu risco.
+      </h1>
+      {totalMonthlyRisk > 0 ? (
+        <div className="space-y-3 hero-enter-delay-1">
+          <p className="text-muted-foreground text-lg">
+            Você ainda tem{' '}
+            <span className="font-mono-trading font-semibold text-primary">
+              R$ {riskAvailable.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>{' '}
+            disponíveis este mês
+          </p>
+          <div className="max-w-lg">
+            <div className="flex justify-between items-center text-xs mb-1.5">
+              <span className="text-muted-foreground">
+                Risco utilizado:{' '}
+                <span className="font-mono-trading font-medium text-foreground">
+                  {riskPercent.toFixed(1)}%
+                </span>
+              </span>
+              <span className={`font-medium ${status.color}`}>{status.label}</span>
+            </div>
+            <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary progress-glow transition-all duration-700"
+                style={{ width: `${Math.min(riskPercent, 100)}%` }}
+              />
+            </div>
+          </div>
         </div>
-      </div>
-      <p className="text-muted-foreground text-lg">
-        Escolha um dashboard para começar a gestão de risco
-      </p>
-    </div>
+      ) : (
+        <p className="text-muted-foreground text-lg hero-enter-delay-1">
+          Configure seu risco mensal para começar a gestão
+        </p>
+      )}
+    </section>
   );
 }
 
 export default function Hub() {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, profile } = useAuth();
+  const [totalRiskUsed, setTotalRiskUsed] = useState(0);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -95,12 +145,36 @@ export default function Hub() {
         await createDefaultDashboards();
       } else {
         setDashboards(data as Dashboard[]);
+        // Load accumulated risk used from trades this month
+        loadTotalRiskUsed();
       }
     } catch (error) {
       console.error('Error loading dashboards:', error);
       toast.error('Erro ao carregar dashboards');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTotalRiskUsed = async () => {
+    try {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+      const { data: trades } = await supabase
+        .from('trades')
+        .select('result_reais')
+        .eq('user_id', user?.id)
+        .gte('trade_date', startOfMonth)
+        .lte('trade_date', endOfMonth);
+
+      const totalLoss = (trades || [])
+        .filter(t => t.result_reais < 0)
+        .reduce((sum, t) => sum + Math.abs(t.result_reais), 0);
+      setTotalRiskUsed(totalLoss);
+    } catch (e) {
+      console.error('Error loading risk used:', e);
     }
   };
 
@@ -148,6 +222,8 @@ export default function Hub() {
     }
   };
 
+  const totalMonthlyRisk = dashboards.reduce((sum, d) => sum + (d.monthly_risk || 0), 0);
+
   if (loading) {
     return (
       <DashboardLayoutWrapper>
@@ -160,37 +236,47 @@ export default function Hub() {
 
   return (
     <DashboardLayoutWrapper>
-      <div className="p-8">
-        {/* Welcome Section */}
-        <WelcomeSection profile={profile} />
+      <div className="p-6 md:p-8 max-w-7xl mx-auto">
+        {/* Hero */}
+        <HeroSection totalMonthlyRisk={totalMonthlyRisk} totalRiskUsed={totalRiskUsed} />
 
-        {/* Dashboards Section */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold font-montserrat mb-6">Meus Dashboards</h2>
+        {/* Dashboard Cards */}
+        <div className="mb-8 hero-enter-delay-2">
+          <h2 className="text-xl font-semibold mb-5 tracking-tight">Meus Dashboards</h2>
 
-          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {dashboards.map((dashboard) => {
               const typeInfo = dashboardTypeInfo[dashboard.type];
               const IconComponent = typeInfo.icon;
+              const riskValue = dashboard.monthly_risk || 0;
 
               return (
                 <Card
                   key={dashboard.id}
-                  className={`flex-1 min-w-0 p-5 bg-gradient-to-br ${typeInfo.color} hover:shadow-lg transition-all cursor-pointer group`}
+                  className={`relative overflow-hidden p-6 bg-gradient-to-br ${typeInfo.gradient}
+                    border border-border/50 backdrop-blur-sm
+                    hover:scale-[1.02] ${typeInfo.borderGlow}
+                    transition-all duration-200 cursor-pointer group`}
                   onClick={() => handleDashboardClick(dashboard)}
                 >
                   <div className="flex items-start justify-between mb-4">
-                    <div className={`p-3 rounded-lg bg-background/50 ${typeInfo.iconColor}`}>
-                      <IconComponent className="w-6 h-6" />
+                    <div className={`p-2.5 rounded-lg bg-background/60 ${typeInfo.iconColor}`}>
+                      <IconComponent className="w-5 h-5" strokeWidth={1.5} />
                     </div>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-1">{dashboard.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{typeInfo.description}</p>
-                  {dashboard.monthly_risk && dashboard.monthly_risk > 0 && (
-                    <p className="text-sm">
-                      Risco Mensal: <span className="font-medium text-primary">R$ {dashboard.monthly_risk.toLocaleString()}</span>
-                    </p>
+                  <h3 className="text-lg font-semibold mb-1">{dashboard.name}</h3>
+                  <p className="text-xs text-muted-foreground mb-4">{typeInfo.description}</p>
+
+                  {riskValue > 0 && (
+                    <div className="space-y-1 pt-3 border-t border-border/30">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Risco Mensal</span>
+                        <span className="font-mono-trading font-semibold text-foreground">
+                          R$ {riskValue.toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </Card>
               );
@@ -198,27 +284,24 @@ export default function Hub() {
           </div>
         </div>
 
-        {/* Market Sessions Clock */}
-        <div className="mb-8">
-          <MarketSessionsClock />
+        {/* Daily Insight */}
+        <div className="mb-8 hero-enter-delay-3">
+          <Card className="card-glow card-glow-primary p-5 flex items-center gap-4">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Flame className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-0.5">
+                Leitura do Dia
+              </p>
+              <p className="text-sm font-medium text-foreground">{getDailyInsight()}</p>
+            </div>
+          </Card>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="p-6">
-            <h3 className="text-sm text-muted-foreground mb-2">Total de Dashboards</h3>
-            <p className="text-3xl font-bold">{dashboards.length}</p>
-          </Card>
-          <Card className="p-6">
-            <h3 className="text-sm text-muted-foreground mb-2">Tipos Ativos</h3>
-            <p className="text-3xl font-bold">
-              {new Set(dashboards.map(d => d.type)).size}
-            </p>
-          </Card>
-          <Card className="p-6">
-            <h3 className="text-sm text-muted-foreground mb-2">Status</h3>
-            <p className="text-lg font-medium text-green-500">Ativo</p>
-          </Card>
+        {/* Market Sessions Clock */}
+        <div className="mb-8 hero-enter-delay-4">
+          <MarketSessionsClock />
         </div>
       </div>
     </DashboardLayoutWrapper>
