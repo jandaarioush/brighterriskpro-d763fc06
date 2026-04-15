@@ -103,7 +103,7 @@ export default function StockSimulator() {
     );
   }, [searchQuery, tickerList]);
 
-  // Check if search query doesn't match any BTG asset
+  // Check if search query doesn't match any asset
   const searchNotFound = useMemo(() => {
     if (!searchQuery.trim()) return false;
     return filteredTickers.length === 0;
@@ -204,7 +204,7 @@ export default function StockSimulator() {
     ));
   };
 
-  // Add manual asset (not in BTG list)
+  // Add manual asset (not in list)
   const addManualAsset = (ticker: string) => {
     const normalized = ticker.toUpperCase().trim();
     // Validate basic format (4-6 characters, alphanumeric)
@@ -557,7 +557,7 @@ export default function StockSimulator() {
                     <div className="flex items-center gap-2 text-amber-500 mb-2">
                       <AlertTriangle className="h-4 w-4" />
                       <span className="font-medium">
-                        O ativo "{searchQuery.toUpperCase()}" não está na lista BTG
+                        O ativo "{searchQuery.toUpperCase()}" não está na lista B3
                       </span>
                     </div>
                     <Button 
@@ -791,7 +791,7 @@ export default function StockSimulator() {
                       R$ {(stopFinanceiroMax / selectedAssets.length).toFixed(2)}
                     </div>
                     <div className="text-muted-foreground">Modo:</div>
-                    <div className="font-medium text-primary">Day Trade (BTG)</div>
+                    <div className="font-medium text-primary">{simulatorModalidade === 'daytrade' ? 'Day Trade' : 'Swing Trade'} (B3)</div>
                   </div>
                 </div>
               </div>
