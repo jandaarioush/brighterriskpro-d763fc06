@@ -59,7 +59,7 @@ interface SelectedAsset {
   objetivoPercentual: number;
 }
 
-type WizardStep = 'select' | 'prices' | 'params' | 'results';
+const [simulatorModalidade, setSimulatorModalidade] = useState<Modalidade>('daytrade');
 
 export default function StockSimulator() {
   const { dashboardId } = useParams<{ dashboardId: string }>();
@@ -90,7 +90,7 @@ export default function StockSimulator() {
 
   // Lista de tickers disponíveis
   const tickerList = useMemo(() => {
-    return btgAssets.map(a => a.ticker);
+    return xpAssets.map(a => a.ticker);
   }, []);
 
   // Filtered tickers based on search - show all assets
@@ -226,20 +226,16 @@ export default function StockSimulator() {
   };
 
   // Obter margem por ação (Day Trade - considera ativos manuais)
-  const getMargemPorAcao = (ticker: string, preco: number, isManual?: boolean): number => {
-    // Ativos manuais: margem = preço (sem alavancagem)
+  const getSimMargemPorAcao = (ticker: string, preco: number, isManual?: boolean): number => {
     if (isManual) return preco;
-    const btgAsset = getBTGAsset(ticker);
-    if (btgAsset) return btgAsset.marginPerShare;
-    return preco;
+    return getXPMargemPorAcao(ticker, preco, simulatorModalidade);
   };
 
-  // Calcular alavancagem (Day Trade - BTG list ou 1x para manuais)
   const getAlavancagem = (ticker: string, isManual?: boolean): number => {
     if (isManual) return 1;
-    const btgAsset = getBTGAsset(ticker);
-    return btgAsset?.leverage || 1;
+    return getXPLeverage(ticker, simulatorModalidade);
   };
+
 
   // Cálculos de margem e stop disponíveis
   const totalMargemUsada = positions.reduce((sum, p) => sum + p.margemNecessaria, 0);
