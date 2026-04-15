@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateDailyStockRisk, getWorkingDaysRemaining, StockTrade } from '@/lib/stockRiskCalculations';
-import { btgAssets, getBTGAsset } from '@/lib/btgAssets';
+import { xpAssets, getXPAsset, getXPLeverage, getMargemPorAcao as getXPMargemPorAcao, type Modalidade } from '@/lib/xpAssets';
 import { format, endOfMonth } from 'date-fns';
 import DashboardLayoutWrapper from '@/components/DashboardLayoutWrapper';
 import DashboardTabs from '@/components/DashboardTabs';
@@ -61,6 +61,8 @@ interface SelectedAsset {
 
 type WizardStep = 'select' | 'prices' | 'params' | 'results';
 
+  const [simulatorModalidade, setSimulatorModalidade] = useState<Modalidade>('daytrade');
+
 export default function StockSimulator() {
   const { dashboardId } = useParams<{ dashboardId: string }>();
   const { user } = useAuth();
@@ -90,7 +92,7 @@ export default function StockSimulator() {
 
   // Lista de tickers disponíveis
   const tickerList = useMemo(() => {
-    return btgAssets.map(a => a.ticker);
+    return xpAssets.map(a => a.ticker);
   }, []);
 
   // Filtered tickers based on search - show all assets
@@ -101,7 +103,7 @@ export default function StockSimulator() {
     );
   }, [searchQuery, tickerList]);
 
-  // Check if search query doesn't match any BTG asset
+  // Check if search query doesn't match any asset
   const searchNotFound = useMemo(() => {
     if (!searchQuery.trim()) return false;
     return filteredTickers.length === 0;
@@ -202,7 +204,7 @@ export default function StockSimulator() {
     ));
   };
 
-  // Add manual asset (not in BTG list)
+  // Add manual asset (not in list)
   const addManualAsset = (ticker: string) => {
     const normalized = ticker.toUpperCase().trim();
     // Validate basic format (4-6 characters, alphanumeric)
@@ -226,20 +228,16 @@ export default function StockSimulator() {
   };
 
   // Obter margem por ação (Day Trade - considera ativos manuais)
-  const getMargemPorAcao = (ticker: string, preco: number, isManual?: boolean): number => {
-    // Ativos manuais: margem = preço (sem alavancagem)
+  const getSimMargemPorAcao = (ticker: string, preco: number, isManual?: boolean): number => {
     if (isManual) return preco;
-    const btgAsset = getBTGAsset(ticker);
-    if (btgAsset) return btgAsset.marginPerShare;
-    return preco;
+    return getXPMargemPorAcao(ticker, preco, simulatorModalidade);
   };
 
-  // Calcular alavancagem (Day Trade - BTG list ou 1x para manuais)
   const getAlavancagem = (ticker: string, isManual?: boolean): number => {
     if (isManual) return 1;
-    const btgAsset = getBTGAsset(ticker);
-    return btgAsset?.leverage || 1;
+    return getXPLeverage(ticker, simulatorModalidade);
   };
+
 
   // Cálculos de margem e stop disponíveis
   const totalMargemUsada = positions.reduce((sum, p) => sum + p.margemNecessaria, 0);
@@ -316,7 +314,7 @@ export default function StockSimulator() {
 
     const newPositions: SimulatorPosition[] = selectedAssets.map(asset => {
       const alavancagem = getAlavancagem(asset.ticker, asset.isManual);
-      const margemPorAcao = getMargemPorAcao(asset.ticker, asset.preco, asset.isManual);
+      const margemPorAcao = getSimMargemPorAcao(asset.ticker, asset.preco, asset.isManual);
       const stopAlocado = stopFinanceiroMax * (stopPercentEach / 100);
       // CORREÇÃO: Margem alocada proporcional (mesma proporção do stop)
       const margemAlocada = valorAlocado * (stopPercentEach / 100);
@@ -523,7 +521,7 @@ export default function StockSimulator() {
                 <ScrollArea className="h-[200px]">
                   <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                     {filteredTickers.map((ticker) => {
-                      const btgAsset = getBTGAsset(ticker);
+                      const xpAsset = getXPAsset(ticker);
                       const selected = isSelected(ticker);
                       return (
                         <TooltipProvider key={ticker}>
@@ -540,8 +538,8 @@ export default function StockSimulator() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              {btgAsset ? (
-                                <p>{btgAsset.leverage}x | R$ {btgAsset.marginPerShare.toFixed(2)}/ação</p>
+                              {xpAsset ? (
+                                <p>{getXPLeverage(ticker, simulatorModalidade)}x ({simulatorModalidade === 'daytrade' ? 'DT' : 'ST'})</p>
                               ) : (
                                 <p>Ativo disponível</p>
                               )}
@@ -559,7 +557,7 @@ export default function StockSimulator() {
                     <div className="flex items-center gap-2 text-amber-500 mb-2">
                       <AlertTriangle className="h-4 w-4" />
                       <span className="font-medium">
-                        O ativo "{searchQuery.toUpperCase()}" não está na lista BTG
+                        O ativo "{searchQuery.toUpperCase()}" não está na lista B3
                       </span>
                     </div>
                     <Button 
@@ -643,7 +641,7 @@ export default function StockSimulator() {
               <ScrollArea className="h-[400px] pr-4">
                 <div className="space-y-4">
                   {selectedAssets.map((asset) => {
-                    const btgAsset = getBTGAsset(asset.ticker);
+                    const xpAsset = getXPAsset(asset.ticker);
                     return (
                       <div key={asset.ticker} className="p-4 rounded-lg border bg-card">
                         <div className="flex justify-between items-center mb-3">
@@ -662,9 +660,9 @@ export default function StockSimulator() {
                             <span className="text-xs text-amber-500 bg-amber-500/10 px-2 py-1 rounded">
                               Manual - 1x | Margem = Preço
                             </span>
-                          ) : btgAsset ? (
+                          ) : xpAsset ? (
                             <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                              {btgAsset.leverage}x | R$ {btgAsset.marginPerShare.toFixed(2)}/ação
+                              {getXPLeverage(asset.ticker, simulatorModalidade)}x ({simulatorModalidade === 'daytrade' ? 'Day Trade' : 'Swing Trade'})
                             </span>
                           ) : null}
                         </div>
@@ -793,7 +791,7 @@ export default function StockSimulator() {
                       R$ {(stopFinanceiroMax / selectedAssets.length).toFixed(2)}
                     </div>
                     <div className="text-muted-foreground">Modo:</div>
-                    <div className="font-medium text-primary">Day Trade (BTG)</div>
+                    <div className="font-medium text-primary">{simulatorModalidade === 'daytrade' ? 'Day Trade' : 'Swing Trade'} (B3)</div>
                   </div>
                 </div>
               </div>

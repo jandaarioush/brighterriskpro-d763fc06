@@ -6,7 +6,7 @@ import { StockPnLEvolutionChart } from '@/components/stock/StockPnLEvolutionChar
 import { StockRiskCalculator } from '@/components/stock/StockRiskCalculator';
 import { StockMonthHeatmap } from '@/components/stock/StockMonthHeatmap';
 import { StockTradeForm } from '@/components/stock/StockTradeForm';
-import { BrokerSelectionDialog, BrokerType } from '@/components/stock/BrokerSelectionDialog';
+import { BrokerSelectionDialog, type BrokerType } from '@/components/stock/BrokerSelectionDialog';
 import DashboardLayoutWrapper from '@/components/DashboardLayoutWrapper';
 import { Card } from '@/components/ui/card';
 import { 
@@ -226,8 +226,7 @@ export default function StockDashboard() {
             Gestão de risco para {dashboard.type === 'acoes' ? 'Ações' : 'Mercado Internacional'}
             {broker && (
               <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-                {broker === 'btg' ? 'BTG Pactual' : 
-                 broker === 'xp' ? 'XP' : 
+                {broker === 'xp' ? 'XP' : 
                  broker === 'clear' ? 'Clear' : 
                  broker === 'warren' ? 'Warren' : 'Outra'}
               </span>
@@ -247,7 +246,6 @@ export default function StockDashboard() {
             </div>
           </div>
           <StockRiskCalculator 
-            broker={broker || 'outra'} 
             capitalTotal={capitalTotal} 
             onCapitalChange={handleCapitalChange} 
           />

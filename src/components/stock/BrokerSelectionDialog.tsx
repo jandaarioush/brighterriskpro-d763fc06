@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Building2 } from 'lucide-react';
 
-export type BrokerType = 'btg' | 'xp' | 'clear' | 'warren' | 'outra';
+export type BrokerType = 'xp' | 'clear' | 'warren' | 'outra';
 
 interface BrokerSelectionDialogProps {
   open: boolean;
@@ -19,8 +19,7 @@ interface BrokerSelectionDialogProps {
 }
 
 const brokerOptions: { value: BrokerType; label: string; description: string }[] = [
-  { value: 'btg', label: 'BTG Pactual', description: 'Alavancagem até 105x em alguns ativos' },
-  { value: 'xp', label: 'XP Investimentos', description: 'Corretora tradicional' },
+  { value: 'xp', label: 'XP Investimentos', description: 'Alavancagem B3 — Day Trade e Swing Trade' },
   { value: 'clear', label: 'Clear', description: 'Corretora do grupo XP' },
   { value: 'warren', label: 'Warren', description: 'Plataforma digital' },
   { value: 'outra', label: 'Outra', description: 'Sem alavancagem específica' },

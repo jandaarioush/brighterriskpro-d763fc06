@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Calculator, Plus, Trash2, TrendingDown } from 'lucide-react';
-import { btgAssets, findBTGAsset, getBTGTickers } from '@/lib/btgAssets';
-import { BrokerType } from './BrokerSelectionDialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calculator, Plus, Trash2, TrendingDown, ExternalLink } from 'lucide-react';
+import { xpAssets, findXPAsset, getXPTickers, getXPLeverage, getDesagio, type Modalidade } from '@/lib/xpAssets';
 import {
   Command,
   CommandEmpty,
@@ -32,17 +32,16 @@ interface StockPosition {
 }
 
 interface StockRiskCalculatorProps {
-  broker: BrokerType;
   capitalTotal: number;
   onCapitalChange: (capital: number) => void;
 }
 
-export function StockRiskCalculator({ broker, capitalTotal, onCapitalChange }: StockRiskCalculatorProps) {
+export function StockRiskCalculator({ capitalTotal, onCapitalChange }: StockRiskCalculatorProps) {
   const [stopFinanceiroMax, setStopFinanceiroMax] = useState<number>(500);
   const [positions, setPositions] = useState<StockPosition[]>([]);
+  const [modalidade, setModalidade] = useState<Modalidade>('daytrade');
 
-  const isBTG = broker === 'btg';
-  const btgTickers = useMemo(() => getBTGTickers(), []);
+  const xpTickers = useMemo(() => getXPTickers(), []);
 
   const addPosition = () => {
     const newPosition: StockPosition = {
@@ -67,18 +66,15 @@ export function StockRiskCalculator({ broker, capitalTotal, onCapitalChange }: S
 
         const updated = { ...p, ...updates };
 
-        // Recalculate quantity and max loss when relevant fields change
         if (updated.precoAtivo > 0 && updated.stopPercentual > 0) {
           const stopPorAcao = updated.precoAtivo * (updated.stopPercentual / 100);
           
-          // Get remaining stop budget for this position
           const otherPositionsLoss = positions
             .filter(pos => pos.id !== id)
             .reduce((sum, pos) => sum + pos.perdaMaxima, 0);
           
           const availableStop = Math.max(0, stopFinanceiroMax - otherPositionsLoss);
           
-          // Calculate max quantity based on available stop
           updated.quantidade = Math.floor(availableStop / stopPorAcao);
           updated.perdaMaxima = updated.quantidade * stopPorAcao;
         }
@@ -91,7 +87,6 @@ export function StockRiskCalculator({ broker, capitalTotal, onCapitalChange }: S
   const recalculateAllPositions = (newStopMax: number) => {
     if (positions.length === 0) return;
 
-    // Distribute stop evenly among positions initially, then recalculate
     const stopPerPosition = newStopMax / positions.length;
 
     setPositions(
@@ -117,13 +112,25 @@ export function StockRiskCalculator({ broker, capitalTotal, onCapitalChange }: S
           <Calculator className="w-5 h-5" />
           Calculadora de Posição
         </CardTitle>
-        {isBTG && (
-          <p className="text-xs text-muted-foreground">
-            Usando lista de ativos BTG com alavancagem
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          Alavancagem B3 — {modalidade === 'daytrade' ? 'Day Trade' : 'Swing Trade'}
+        </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Modalidade */}
+        <div className="space-y-2">
+          <Label>Modalidade</Label>
+          <Select value={modalidade} onValueChange={(v) => setModalidade(v as Modalidade)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daytrade">Day Trade</SelectItem>
+              <SelectItem value="swing">Swing Trade</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Capital Total */}
         <div className="space-y-2">
           <Label htmlFor="capital">Capital Total</Label>
@@ -172,8 +179,8 @@ export function StockRiskCalculator({ broker, capitalTotal, onCapitalChange }: S
               key={position.id}
               position={position}
               index={index}
-              isBTG={isBTG}
-              btgTickers={btgTickers}
+              modalidade={modalidade}
+              xpTickers={xpTickers}
               onUpdate={(updates) => updatePosition(position.id, updates)}
               onRemove={() => removePosition(position.id)}
             />
@@ -230,6 +237,28 @@ export function StockRiskCalculator({ broker, capitalTotal, onCapitalChange }: S
             Clique em "Adicionar Ativo" para calcular o tamanho da posição
           </p>
         )}
+
+        {/* Disclaimer */}
+        <div className="pt-4 border-t border-border/50 space-y-1">
+          <p className="text-[10px] text-muted-foreground italic">
+            *Os valores podem ser alterados sem aviso prévio
+          </p>
+          <p className="text-[10px] text-muted-foreground italic">
+            *As informações são de atualização da B3, podendo haver mudanças ao longo do pregão
+          </p>
+          <p className="text-[10px] text-muted-foreground italic">
+            *Caso não tenha o ativo procurado, consultar em{' '}
+            <a
+              href="https://simulador.b3.com.br/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-0.5"
+            >
+              simulador.b3.com.br
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
@@ -238,29 +267,28 @@ export function StockRiskCalculator({ broker, capitalTotal, onCapitalChange }: S
 interface PositionCardProps {
   position: StockPosition;
   index: number;
-  isBTG: boolean;
-  btgTickers: string[];
+  modalidade: Modalidade;
+  xpTickers: string[];
   onUpdate: (updates: Partial<StockPosition>) => void;
   onRemove: () => void;
 }
 
-function PositionCard({ position, index, isBTG, btgTickers, onUpdate, onRemove }: PositionCardProps) {
+function PositionCard({ position, index, modalidade, xpTickers, onUpdate, onRemove }: PositionCardProps) {
   const [tickerOpen, setTickerOpen] = useState(false);
   const [tickerSearch, setTickerSearch] = useState('');
 
-  const btgAsset = isBTG ? findBTGAsset(position.ticker) : null;
+  const xpAsset = findXPAsset(position.ticker);
+  const leverage = xpAsset ? getXPLeverage(position.ticker, modalidade) : null;
+  const desagio = leverage ? getDesagio(leverage) : null;
+  const margemPorAcao = leverage && position.precoAtivo > 0 ? position.precoAtivo / leverage : null;
 
   const handleTickerSelect = (ticker: string) => {
-    const asset = findBTGAsset(ticker);
-    onUpdate({ 
-      ticker,
-      // If BTG, we could auto-fill some data, but we still need user to input price
-    });
+    onUpdate({ ticker });
     setTickerOpen(false);
     setTickerSearch('');
   };
 
-  const filteredTickers = btgTickers.filter(t => 
+  const filteredTickers = xpTickers.filter(t => 
     t.toLowerCase().includes(tickerSearch.toLowerCase())
   );
 
@@ -286,48 +314,39 @@ function PositionCard({ position, index, isBTG, btgTickers, onUpdate, onRemove }
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs">Ticker</Label>
-            {isBTG ? (
-              <Popover open={tickerOpen} onOpenChange={setTickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start font-normal"
-                  >
-                    {position.ticker || 'Selecionar...'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0" align="start">
-                  <Command>
-                    <CommandInput 
-                      placeholder="Buscar ativo..." 
-                      value={tickerSearch}
-                      onValueChange={setTickerSearch}
-                    />
-                    <CommandList>
-                      <CommandEmpty>Nenhum ativo encontrado</CommandEmpty>
-                      <CommandGroup>
-                        {filteredTickers.slice(0, 20).map((ticker) => (
-                          <CommandItem
-                            key={ticker}
-                            value={ticker}
-                            onSelect={() => handleTickerSelect(ticker)}
-                          >
-                            {ticker}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <Input
-                placeholder="PETR4"
-                value={position.ticker}
-                onChange={(e) => onUpdate({ ticker: e.target.value.toUpperCase() })}
-                className="uppercase"
-              />
-            )}
+            <Popover open={tickerOpen} onOpenChange={setTickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start font-normal"
+                >
+                  {position.ticker || 'Selecionar...'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0" align="start">
+                <Command>
+                  <CommandInput 
+                    placeholder="Buscar ativo..." 
+                    value={tickerSearch}
+                    onValueChange={setTickerSearch}
+                  />
+                  <CommandList>
+                    <CommandEmpty>Nenhum ativo encontrado</CommandEmpty>
+                    <CommandGroup>
+                      {filteredTickers.slice(0, 20).map((ticker) => (
+                        <CommandItem
+                          key={ticker}
+                          value={ticker}
+                          onSelect={() => handleTickerSelect(ticker)}
+                        >
+                          {ticker}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-1.5">
@@ -342,13 +361,23 @@ function PositionCard({ position, index, isBTG, btgTickers, onUpdate, onRemove }
           </div>
         </div>
 
-        {/* BTG Info */}
-        {btgAsset && (
-          <div className="flex items-center gap-2 text-xs bg-primary/10 rounded px-2 py-1">
-            <span className="text-muted-foreground">Alavancagem BTG:</span>
-            <span className="font-medium text-primary">{btgAsset.leverage}x</span>
-            <span className="text-muted-foreground">| Margem:</span>
-            <span className="font-medium">R$ {btgAsset.marginPerShare.toFixed(2)}/ação</span>
+        {/* Asset Info */}
+        {xpAsset && leverage && (
+          <div className="flex flex-wrap items-center gap-2 text-xs bg-primary/10 rounded px-2 py-1.5">
+            <span className="text-muted-foreground">Alavancagem B3:</span>
+            <span className="font-medium text-primary">{leverage}x</span>
+            {desagio !== null && (
+              <>
+                <span className="text-muted-foreground">| Deságio:</span>
+                <span className="font-medium">{desagio.toFixed(2)}%</span>
+              </>
+            )}
+            {margemPorAcao !== null && (
+              <>
+                <span className="text-muted-foreground">| Margem:</span>
+                <span className="font-medium">R$ {margemPorAcao.toFixed(2)}/ação</span>
+              </>
+            )}
           </div>
         )}
 

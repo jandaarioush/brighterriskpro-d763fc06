@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Search, CheckCircle2, DollarSign, Target, Percent, Wallet } from "lucide-react";
-import { btgAssets, getBTGAsset } from "@/lib/btgAssets";
+import { xpAssets, getXPAsset, getXPLeverage } from "@/lib/xpAssets";
 
 const STEPS = [
   { num: 1, label: "Selecionar Ativos" },
@@ -33,7 +33,7 @@ function TooltipOverlay({ text }: { text: string }) {
 }
 
 const TOOLTIPS = [
-  "Selecione os ativos que deseja operar da lista BTG.",
+  "Selecione os ativos que deseja operar da lista B3.",
   "Defina preços de entrada, stop loss e objetivo por ativo.",
   "O sistema calcula margem, quantidade e risco automaticamente.",
 ];
@@ -44,7 +44,7 @@ export function StockInteractiveTour() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredTickers = useMemo(() => {
-    const tickers = btgAssets.map(a => a.ticker);
+    const tickers = xpAssets.map(a => a.ticker);
     if (!searchQuery.trim()) return tickers.slice(0, 30);
     return tickers.filter(t => t.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 30);
   }, [searchQuery]);
@@ -54,9 +54,8 @@ export function StockInteractiveTour() {
     const stopPercentEach = 100 / numPositions;
 
     return MOCK_ASSETS.map(asset => {
-      const btg = getBTGAsset(asset.ticker);
-      const alavancagem = btg?.leverage || 1;
-      const margemPorAcao = btg?.marginPerShare || asset.preco;
+      const leverage = getXPLeverage(asset.ticker, 'daytrade');
+      const margemPorAcao = asset.preco / leverage;
       const stopAlocado = STOP_MAX * (stopPercentEach / 100);
       const margemAlocada = VALOR_ALOCADO * (stopPercentEach / 100);
 
@@ -77,7 +76,7 @@ export function StockInteractiveTour() {
         preco: asset.preco,
         stopPercentual: asset.stopPercentual,
         objetivoPercentual: asset.objetivoPercentual,
-        alavancagem,
+        alavancagem: leverage,
         quantidade,
         perdaMaxima,
         ganhoObjetivo,

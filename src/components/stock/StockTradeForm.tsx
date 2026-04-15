@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { calculateTradeResult } from '@/lib/stockRiskCalculations';
-import { getBTGAsset, btgAssets } from '@/lib/btgAssets';
+import { getXPAsset, xpAssets, getXPLeverage, type Modalidade } from '@/lib/xpAssets';
 import { Plus, Loader2, Check, ChevronsUpDown, Info } from 'lucide-react';
 import {
   Command,
@@ -39,7 +39,7 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
   const [formData, setFormData] = useState({
     trade_date: new Date().toISOString().split('T')[0],
     ticker: '',
-    modalidade: 'daytrade' as 'daytrade' | 'swing',
+    modalidade: 'daytrade' as Modalidade,
     preco_entrada: '',
     preco_saida: '',
     quantidade: '',
@@ -52,41 +52,26 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
     notes: '',
   });
 
-  // Lista de tickers BTG
-  const btgTickers = useMemo(() => btgAssets.map(a => a.ticker), []);
+  const xpTickers = useMemo(() => xpAssets.map(a => a.ticker), []);
 
-  // Info do ativo BTG selecionado
-  const selectedBTGAsset = useMemo(() => {
+  const selectedXPAsset = useMemo(() => {
     if (!formData.ticker) return null;
-    return getBTGAsset(formData.ticker);
+    return getXPAsset(formData.ticker);
   }, [formData.ticker]);
 
-  // Handler para seleção de ticker
   const handleTickerSelect = (ticker: string) => {
-    const btgAsset = getBTGAsset(ticker);
-    if (formData.modalidade === 'daytrade' && btgAsset) {
-      setFormData({ 
-        ...formData, 
-        ticker, 
-        alavancagem: btgAsset.leverage.toString() 
-      });
-    } else {
-      setFormData({ ...formData, ticker });
-    }
+    const leverage = getXPLeverage(ticker, formData.modalidade);
+    setFormData({ 
+      ...formData, 
+      ticker, 
+      alavancagem: leverage.toString() 
+    });
     setTickerOpen(false);
   };
 
-  // Handler para mudança de modalidade
-  const handleModalidadeChange = (modalidade: 'daytrade' | 'swing') => {
-    const btgAsset = formData.ticker ? getBTGAsset(formData.ticker) : null;
-    
-    if (modalidade === 'daytrade' && btgAsset) {
-      setFormData({ ...formData, modalidade, alavancagem: btgAsset.leverage.toString() });
-    } else if (modalidade === 'swing') {
-      setFormData({ ...formData, modalidade, alavancagem: '5' });
-    } else {
-      setFormData({ ...formData, modalidade, alavancagem: '1' });
-    }
+  const handleModalidadeChange = (modalidade: Modalidade) => {
+    const leverage = formData.ticker ? getXPLeverage(formData.ticker, modalidade) : 1;
+    setFormData({ ...formData, modalidade, alavancagem: leverage.toString() });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,11 +93,7 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
     setLoading(true);
 
     const { resultadoReais, resultadoPercentual } = calculateTradeResult(
-      precoEntrada,
-      precoSaida,
-      quantidade,
-      alavancagem,
-      corretagem
+      precoEntrada, precoSaida, quantidade, alavancagem, corretagem
     );
 
     const capitalUtilizado = precoEntrada * quantidade;
@@ -143,7 +124,6 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
 
       toast.success('Trade registrado com sucesso!');
       
-      // Reset form
       setFormData({
         trade_date: new Date().toISOString().split('T')[0],
         ticker: '',
@@ -153,7 +133,7 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
         quantidade: '',
         alavancagem: '1',
         corretagem: '0',
-        risco_percentual: formData.risco_percentual, // Keep last risk
+        risco_percentual: formData.risco_percentual,
         setup_utilizado: '',
         tag: '',
         nota_disciplina: '',
@@ -169,7 +149,6 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
     }
   };
 
-  // Calculate preview
   const previewResult = () => {
     const precoEntrada = parseFloat(formData.preco_entrada);
     const precoSaida = parseFloat(formData.preco_saida);
@@ -183,6 +162,7 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
   };
 
   const preview = previewResult();
+  const currentLeverage = selectedXPAsset ? getXPLeverage(formData.ticker, formData.modalidade) : null;
 
   return (
     <Card>
@@ -205,7 +185,7 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
               />
             </div>
             
-            {/* Ticker com Autocomplete BTG */}
+            {/* Ticker com Autocomplete */}
             <div className="space-y-2">
               <Label htmlFor="ticker">Ticker *</Label>
               <Popover open={tickerOpen} onOpenChange={setTickerOpen}>
@@ -225,8 +205,7 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
                     <CommandInput 
                       placeholder="Buscar ticker..." 
                       onValueChange={(value) => {
-                        if (value && !btgTickers.includes(value.toUpperCase())) {
-                          // Permite ticker customizado
+                        if (value && !xpTickers.includes(value.toUpperCase())) {
                           setFormData({ ...formData, ticker: value.toUpperCase() });
                         }
                       }}
@@ -234,7 +213,7 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
                     <CommandList>
                       <CommandEmpty>
                         <div className="py-2 text-center">
-                          <p className="text-sm text-muted-foreground">Ticker não encontrado na lista BTG</p>
+                          <p className="text-sm text-muted-foreground">Ticker não encontrado na lista</p>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -247,9 +226,10 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
                           </Button>
                         </div>
                       </CommandEmpty>
-                      <CommandGroup heading="Ativos BTG">
-                        {btgTickers.map((ticker) => {
-                          const asset = getBTGAsset(ticker);
+                      <CommandGroup heading="Ativos B3">
+                        {xpTickers.map((ticker) => {
+                          const asset = getXPAsset(ticker);
+                          const lev = asset ? getXPLeverage(ticker, formData.modalidade) : 1;
                           return (
                             <CommandItem
                               key={ticker}
@@ -265,7 +245,7 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
                               <span className="font-medium">{ticker}</span>
                               {asset && (
                                 <span className="ml-auto text-xs text-muted-foreground">
-                                  {asset.leverage}x | R$ {asset.marginPerShare.toFixed(2)}/ação
+                                  {lev}x
                                 </span>
                               )}
                             </CommandItem>
@@ -277,11 +257,11 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
                 </PopoverContent>
               </Popover>
               
-              {/* Info do ativo BTG selecionado */}
-              {selectedBTGAsset && formData.modalidade === 'daytrade' && (
+              {/* Info do ativo selecionado */}
+              {selectedXPAsset && currentLeverage && (
                 <div className="flex items-center gap-1 text-xs text-primary">
                   <Info className="h-3 w-3" />
-                  <span>BTG: {selectedBTGAsset.leverage}x alavancagem | R$ {selectedBTGAsset.marginPerShare.toFixed(2)}/ação</span>
+                  <span>B3: {currentLeverage}x alavancagem ({formData.modalidade === 'daytrade' ? 'Day Trade' : 'Swing Trade'})</span>
                 </div>
               )}
             </div>
@@ -292,7 +272,7 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
               <Label htmlFor="modalidade">Modalidade</Label>
               <Select 
                 value={formData.modalidade} 
-                onValueChange={(v) => handleModalidadeChange(v as 'daytrade' | 'swing')}
+                onValueChange={(v) => handleModalidadeChange(v as Modalidade)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -364,10 +344,10 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
                 value={formData.alavancagem}
                 onChange={(e) => setFormData({ ...formData, alavancagem: e.target.value })}
                 placeholder="1"
-                className={selectedBTGAsset && formData.modalidade === 'daytrade' ? 'border-primary/50' : ''}
+                className={selectedXPAsset ? 'border-primary/50' : ''}
               />
-              {selectedBTGAsset && formData.modalidade === 'daytrade' && (
-                <p className="text-xs text-primary">Automático: BTG {selectedBTGAsset.leverage}x</p>
+              {selectedXPAsset && currentLeverage && (
+                <p className="text-xs text-primary">Automático: B3 {currentLeverage}x</p>
               )}
             </div>
 
@@ -465,8 +445,14 @@ export function StockTradeForm({ dashboardId, capitalTotal, onTradeAdded }: Stoc
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Registrar Trade
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              'Registrar Trade'
+            )}
           </Button>
         </form>
       </CardContent>
