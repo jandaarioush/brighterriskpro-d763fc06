@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateDailyStockRisk, getWorkingDaysRemaining, StockTrade } from '@/lib/stockRiskCalculations';
-import { btgAssets, getBTGAsset } from '@/lib/btgAssets';
+import { xpAssets, getXPAsset, getXPLeverage, getMargemPorAcao as getXPMargemPorAcao, type Modalidade } from '@/lib/xpAssets';
 import { format, endOfMonth } from 'date-fns';
 import DashboardLayoutWrapper from '@/components/DashboardLayoutWrapper';
 import DashboardTabs from '@/components/DashboardTabs';
