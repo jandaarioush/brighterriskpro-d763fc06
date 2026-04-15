@@ -538,8 +538,8 @@ export default function StockSimulator() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              {btgAsset ? (
-                                <p>{btgAsset.leverage}x | R$ {btgAsset.marginPerShare.toFixed(2)}/ação</p>
+                              {xpAsset ? (
+                                <p>{getXPLeverage(ticker, simulatorModalidade)}x ({simulatorModalidade === 'daytrade' ? 'DT' : 'ST'})</p>
                               ) : (
                                 <p>Ativo disponível</p>
                               )}
@@ -660,9 +660,9 @@ export default function StockSimulator() {
                             <span className="text-xs text-amber-500 bg-amber-500/10 px-2 py-1 rounded">
                               Manual - 1x | Margem = Preço
                             </span>
-                          ) : btgAsset ? (
+                          ) : xpAsset ? (
                             <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                              {btgAsset.leverage}x | R$ {btgAsset.marginPerShare.toFixed(2)}/ação
+                              {getXPLeverage(asset.ticker, simulatorModalidade)}x ({simulatorModalidade === 'daytrade' ? 'Day Trade' : 'Swing Trade'})
                             </span>
                           ) : null}
                         </div>
