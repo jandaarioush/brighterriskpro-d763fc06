@@ -314,7 +314,7 @@ export default function StockSimulator() {
 
     const newPositions: SimulatorPosition[] = selectedAssets.map(asset => {
       const alavancagem = getAlavancagem(asset.ticker, asset.isManual);
-      const margemPorAcao = getMargemPorAcao(asset.ticker, asset.preco, asset.isManual);
+      const margemPorAcao = getSimMargemPorAcao(asset.ticker, asset.preco, asset.isManual);
       const stopAlocado = stopFinanceiroMax * (stopPercentEach / 100);
       // CORREÇÃO: Margem alocada proporcional (mesma proporção do stop)
       const margemAlocada = valorAlocado * (stopPercentEach / 100);
@@ -521,7 +521,7 @@ export default function StockSimulator() {
                 <ScrollArea className="h-[200px]">
                   <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                     {filteredTickers.map((ticker) => {
-                      const btgAsset = getBTGAsset(ticker);
+                      const xpAsset = getXPAsset(ticker);
                       const selected = isSelected(ticker);
                       return (
                         <TooltipProvider key={ticker}>
@@ -641,7 +641,7 @@ export default function StockSimulator() {
               <ScrollArea className="h-[400px] pr-4">
                 <div className="space-y-4">
                   {selectedAssets.map((asset) => {
-                    const btgAsset = getBTGAsset(asset.ticker);
+                    const xpAsset = getXPAsset(asset.ticker);
                     return (
                       <div key={asset.ticker} className="p-4 rounded-lg border bg-card">
                         <div className="flex justify-between items-center mb-3">
