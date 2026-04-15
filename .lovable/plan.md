@@ -1,73 +1,83 @@
 
 
-## Plano: Tipografia Premium para Numeros
+## Plano: Substituir BTG por XP + Desagio + Swing Trade
 
 ### Resumo
 
-Upgrade da tipografia de numeros em todo o app para estilo "terminal financeiro": separar valor de unidade, formatar no padrao BR, adicionar count-up animado, e aplicar efeito visual premium.
+Remover toda referencia ao BTG, criar `xpAssets.ts` com ~250 ativos extraidos do Excel (com alavancagem Day Trade e Swing Trade), integrar logica de desagio (margem = preco / alavancagem) na calculadora e simulador, adicionar seletor Day Trade / Swing Trade, e disclaimer legal.
 
 ---
 
-### 1. Utility classes CSS (`src/index.css`)
+### Logica do Desagio
 
-Adicionar classes reutilizaveis:
+O desagio XP define quanta margem a corretora exige por acao:
 
-- `.kpi-number` — `text-4xl font-bold tabular-nums tracking-[0.02em] leading-none` + text-shadow sutil (0 0 10px rgba branco 5%)
-- `.kpi-unit` — `text-base font-medium opacity-70 ml-1.5`
-- `.kpi-profit` — cor verde success
-- `.kpi-loss` — cor vermelha danger
-- `.kpi-gradient` — gradiente metalizado (branco → cinza) com background-clip text (versao ultra premium, dark mode only)
-
-### 2. Formatacao BR (`src/lib/formatting.ts`)
-
-Adicionar funcoes:
-
-- `formatNumberBR(value: number, decimals?: number)` → "5.000" / "100,0"
-- `formatCurrencyBR(value: number)` → "R$ 2.500,00" (ja existe `formatCurrency`, padronizar uso)
-- `splitValueUnit(formatted: string)` → `{ number: string, unit: string }` — separa "5000 pts" em `{ number: "5.000", unit: "pts" }`
-
-### 3. Componente KpiValue (`src/components/KpiValue.tsx`)
-
-Novo componente reutilizavel:
-
-```
-<KpiValue value={5000} unit="pts" variant="success" animated />
+```text
+margemPorAcao = precoAtivo / alavancagem
 ```
 
-Props:
-- `value: number` — valor numerico
-- `unit?: string` — "pts", "R$" (prefixo), "%"
-- `prefix?: string` — "R$" aparece antes do numero
-- `variant?: "default" | "success" | "danger" | "primary"`
-- `animated?: boolean` — count-up de 0 ate valor em ~1s
-- `size?: "lg" | "xl"` — tamanho do numero
-- `gradient?: boolean` — ativa efeito metalizado
+Exemplo: PETR4 a R$35, alavancagem 312x → margem = R$0.11/acao
+Em Swing Trade (14x) → margem = R$2.50/acao
 
-Renderiza numero + unidade com baseline alignment, tabular-nums, formatacao BR automatica.
+Isso substitui o campo `marginPerShare` fixo do BTG por calculo dinamico baseado no preco digitado pelo usuario.
 
-Count-up: usar `useEffect` + `requestAnimationFrame` para animar de 0 ao valor em ~800ms com easing.
+---
 
-### 4. Atualizar StatCard (`src/components/StatCard.tsx`)
+### 1. Criar `src/lib/xpAssets.ts`
 
-- Substituir `<p>{value}</p>` por `<KpiValue>` component
-- Aceitar props estruturadas: `numericValue`, `unit`, `prefix` alem do `value` string existente (backward compatible)
+- Interface `XPAsset`: `{ ticker, dayTradeLeverage, swingTradeLeverage }`
+- ~250 ativos do Excel (ABCB4 ate YDUQ3)
+- Funcoes: `findXPAsset()`, `getXPAsset()`, `getXPTickers()`, `getXPLeverage(ticker, modalidade)`
+- `getMargemPorAcao(ticker, preco, modalidade)` → `preco / leverage`
 
-### 5. Atualizar Dashboard (`src/pages/Dashboard.tsx`)
+### 2. Deletar `src/lib/btgAssets.ts`
 
-Substituir formatacao inline nos StatCards:
-- `R$ ${monthlyRisk.toLocaleString()}` → usar `KpiValue` com `prefix="R$"` e `value={monthlyRisk}`
-- `${stopIndice.toFixed(0)} pts` → `KpiValue` com `unit="pts"` e `value={stopIndice}`
-- Aplicar `variant` baseado no contexto (success/danger)
+### 3. Atualizar `src/components/stock/StockRiskCalculator.tsx`
 
-### 6. Atualizar GreetingBanner (`src/components/GreetingBanner.tsx`)
+- Remover prop `broker` e logica `isBTG`
+- Sempre mostrar autocomplete com lista XP
+- Adicionar toggle **Day Trade** / **Swing Trade** (estado global do componente)
+- Info do ativo: "Alavancagem B3: Xx | Desagio: Y% | Margem: R$ Z/acao"
+- Desagio calculado como `(1 / alavancagem) * 100`
+- Margem = `preco / alavancagem`
+- Logica matematica do stop permanece identica
+- Adicionar disclaimer no rodape
 
-- Numeros de meta diaria e risco disponivel: usar `KpiValue` ou classes `.kpi-number`
-- Formatacao BR em `riskAvailable` e `goalRemaining`
+### 4. Atualizar `src/components/stock/BrokerSelectionDialog.tsx`
 
-### 7. Atualizar Calendar (`src/pages/Calendar.tsx`)
+- Remover opcao BTG
+- Atualizar XP: "Alavancagem B3 — Day Trade e Swing Trade"
+- Simplificar ou remover dialog se so resta XP como corretora com dados
 
-- Numeros de pontos e R$ nos cards do calendario: aplicar classes `.kpi-number` e `.kpi-unit`
-- Formatacao BR nos valores financeiros
+### 5. Atualizar `src/components/stock/StockTradeForm.tsx`
+
+- Substituir imports btgAssets → xpAssets
+- `handleTickerSelect`: preencher alavancagem com `getXPLeverage(ticker, modalidade)`
+- `handleModalidadeChange`: Swing → usar swingTradeLeverage do XP (nao valor fixo 5)
+
+### 6. Atualizar `src/pages/StockSimulator.tsx`
+
+- Substituir imports btgAssets → xpAssets
+- Adicionar seletor Day Trade / Swing Trade no Step 1
+- `getMargemPorAcao` usa `preco / leverage` dinamico
+- `getAlavancagem` usa modalidade selecionada
+- Remover textos "BTG"
+
+### 7. Atualizar `src/pages/StockDashboard.tsx`
+
+- Remover referencia "BTG Pactual" de badges
+
+### 8. Atualizar `src/components/landing/StockInteractiveTour.tsx`
+
+- Substituir imports btgAssets → xpAssets
+
+### 9. Disclaimer (StockRiskCalculator + StockSimulator)
+
+```
+*Os valores podem ser alterados sem aviso previo*
+*As informacoes sao de atualizacao da B3, podendo haver mudancas ao longo do pregao*
+*Caso nao tenha o ativo procurado, consultar em https://simulador.b3.com.br/*
+```
 
 ---
 
@@ -75,11 +85,12 @@ Substituir formatacao inline nos StatCards:
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/index.css` | Classes `.kpi-*` |
-| `src/lib/formatting.ts` | `formatNumberBR`, `splitValueUnit` |
-| `src/components/KpiValue.tsx` | Novo componente com count-up |
-| `src/components/StatCard.tsx` | Usar KpiValue |
-| `src/pages/Dashboard.tsx` | Passar dados estruturados aos StatCards |
-| `src/components/GreetingBanner.tsx` | Tipografia premium nos numeros |
-| `src/pages/Calendar.tsx` | Formatacao BR + classes kpi |
+| `src/lib/xpAssets.ts` | **Novo** — ~250 ativos com DT/ST leverage |
+| `src/lib/btgAssets.ts` | **Deletar** |
+| `src/components/stock/StockRiskCalculator.tsx` | Toggle modalidade, desagio, disclaimer |
+| `src/components/stock/BrokerSelectionDialog.tsx` | Remover BTG |
+| `src/components/stock/StockTradeForm.tsx` | Imports XP, leverage por modalidade |
+| `src/pages/StockSimulator.tsx` | Imports XP, seletor modalidade |
+| `src/pages/StockDashboard.tsx` | Remover texto BTG |
+| `src/components/landing/StockInteractiveTour.tsx` | Imports XP |
 
