@@ -1,38 +1,59 @@
+<final-text>Objetivo
 
-Objetivo
+Corrigir a tela branca publicada atacando o culpado mais provável que ainda sobrou: o grafo de dependências usado no build.
 
-Executar o Plano B removendo `react-helmet-async` por completo. Pela leitura do código, ele só é usado em `src/main.tsx` e `src/pages/Demo.tsx`, então a superfície de mudança é pequena e é a forma mais limpa de eliminar a fonte mais provável da duplicação de React no build publicado.
+Do I know what the issue is?
 
-Implementação
+Sim — o código já não usa mais `react-helmet-async`, mas o repositório ainda está inconsistente:
+- `package.json` e `package-lock.json` já estão limpos
+- `src/main.tsx` e `src/pages/Demo.tsx` já não usam Helmet
+- porém `bun.lock` ainda referencia `react-helmet-async`
 
-1. `src/main.tsx`
-   - remover o import de `HelmetProvider`
-   - remover o wrapper `<HelmetProvider>`
-   - renderizar `<App />` diretamente
+Como existem lockfiles de npm e Bun ao mesmo tempo, o build publicado pode estar instalando uma árvore antiga mesmo depois das mudanças no código. Isso combina com o sintoma: hash do bundle mudou, mas o erro `Cannot read properties of null (reading 'useState')` continua.
 
-2. `src/pages/Demo.tsx`
-   - remover `Helmet` do import
-   - remover o bloco `<Helmet>...</Helmet>`
-   - manter toda a página e a lógica do formulário intactas
+Plano
 
-3. Dependências
-   - remover `react-helmet-async` do `package.json`
-   - sincronizar o lockfile usado no projeto para o build não instalar a dependência antiga por engano
+1. Normalizar o gerenciador de pacotes
+- usar `npm` como fonte única de verdade, porque o projeto já tem `package-lock.json` e o README aponta para `npm`
+- remover `bun.lock` e `bun.lockb` do repositório
+- manter `package-lock.json` sincronizado com o `package.json`
 
-4. Meta tags
-   - manter `vite.config.ts` como está, com `dedupe`, como proteção extra
-   - revisar `index.html`: ele já tem `<title>` e meta tags estáticas, então pode assumir esse papel global após a remoção
-   - só ajustar o texto do `index.html` se quisermos preservar exatamente a copy que hoje está no `/demo`
+2. Preservar os fixes já feitos
+- manter `vite.config.ts` com `dedupe: ["react", "react-dom", "react/jsx-runtime"]`
+- manter a remoção de `react-helmet-async` do código
 
-Validação
+3. Republicar
+- gerar novo publish após a limpeza dos lockfiles
+- fazer hard refresh no domínio
 
-1. gerar novo build/publicação
-2. fazer hard refresh no domínio
-3. confirmar que o bundle publicado mudou
-4. validar que o erro `Cannot read properties of null (reading 'useState')` desapareceu
+4. Validação
+- confirmar que o bundle publicado mudou
+- validar que a home monta sem tela branca
+- checar se o erro de `useState` desapareceu no console
+
+Fallback se ainda falhar
+- fazer um bisect no topo do app em `src/App.tsx`
+- montar temporariamente uma versão mínima e reintroduzir providers nesta ordem:
+  1. `BrowserRouter`
+  2. `ThemeProvider`
+  3. `QueryClientProvider`
+  4. `TooltipProvider`
+  5. `Toaster` / `Sonner`
+  6. `AuthProvider`
+- isso isola rapidamente se o problema restante vem de algum provider/lib e não mais do lockfile
+
+Arquivos envolvidos
+- `bun.lock`
+- `bun.lockb`
+- `package-lock.json`
+- `package.json`
+- `vite.config.ts`
+- `src/main.tsx`
+- `src/pages/Demo.tsx`
+- `src/App.tsx` (somente se o fallback for necessário)
 
 Impacto esperado
-
-- sem mudanças em backend, banco, auth ou regras de negócio
+- sem mudança de regra de negócio
+- sem mudança de banco/auth
 - risco baixo
-- a única perda potencial é o SEO/meta dinâmico específico do `/demo`, mas isso pode ficar coberto pelas tags estáticas do `index.html`
+- maior chance de resolver de forma definitiva porque elimina a inconsistência de instalação do build publicado</final-text>
