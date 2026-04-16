@@ -1,21 +1,37 @@
 
-## Diagnostico
 
-A captura mostra `riskpro.brighter.com.br` (dominio publicado) com tela em branco. Investiguei:
+## Diagnóstico
 
-- **Codigo do app esta saudavel**: `src/lib/xpAssets.ts` exporta corretamente todas as funcoes usadas (`xpAssets`, `findXPAsset`, `getXPAsset`, `getXPTickers`, `getXPLeverage`, `getDesagio`, `getMargemPorAcao`, tipo `Modalidade`).
-- **Imports nos 4 consumidores batem** (`StockRiskCalculator.tsx`, `StockTradeForm.tsx`, `StockSimulator.tsx`, `StockInteractiveTour.tsx`).
-- **Sem referencias residuais a `btgAssets`** em todo o `src/`.
-- **Console do preview sem erros de runtime** (apenas mensagem benigna do `lovable.js`).
+Erro no console do domínio publicado:
+```
+Uncaught TypeError: Cannot read properties of null (reading 'useState')
+  at at.useState (index-DKJTTv-e.js:9:6397)
+```
 
-## Causa provavel
+Isso é o sintoma clássico de **duas cópias do React** no bundle de produção. O preview funciona (Vite dev resolve módulos sob demanda) mas o build falha. O culpado mais provável neste projeto é `react-helmet-async`, que historicamente força bundlers a empacotar uma segunda instância de React quando não há `dedupe` configurado.
 
-A URL na captura e o **dominio publicado** (`riskpro.brighter.com.br`), nao o preview. O dominio publicado serve a **versao publicada anteriormente**, que ficou com HTML em cache apontando para assets antigos (hashes `.js` que nao existem mais no servidor depois das ultimas edicoes), resultando em tela branca.
+## Fix (1 arquivo)
 
-## Acao recomendada (sem mudanca de codigo)
+**`vite.config.ts`** — adicionar `resolve.dedupe` para garantir uma única instância de React/ReactDOM no bundle:
 
-1. **Republicar o projeto** (botao "Publish" no canto superior direito do Lovable) para que `riskpro.brighter.com.br` sirva o build atual com a refatoracao XP.
-2. Apos publicar, dar um hard refresh (Ctrl+Shift+R) na aba do navegador.
-3. Se quiser confirmar que o codigo atual roda sem republicar, abrir o **Preview URL** (`id-preview--e91fbb14...lovable.app`) — esse sempre reflete o estado mais recente.
+```ts
+resolve: {
+  alias: {
+    "@": path.resolve(__dirname, "./src"),
+  },
+  dedupe: ["react", "react-dom", "react/jsx-runtime"],
+},
+```
 
-Como o codigo nao tem bugs detectaveis, **nao proponho mudancas de arquivo**. Caso o problema persista mesmo apos republicar, eu precisaria de uma nova captura ja com o DevTools aberto na aba **Console** mostrando os erros reais do dominio publicado para diagnosticar mais a fundo.
+Isso resolve o erro sem mudar nenhum código de aplicação. Depois é só republicar.
+
+## Plano B (se o dedupe não bastar)
+
+Remover `react-helmet-async` (usado apenas em `main.tsx` como `<HelmetProvider>` wrapper, sem `<Helmet>` ativos no projeto até onde vimos). Dropar o provider e o pacote elimina a fonte de duplicação. Aplico só se o A não resolver.
+
+## Próximos passos
+
+1. Aplicar o `dedupe` no `vite.config.ts`.
+2. Você clica em **Publish → Update**.
+3. Hard refresh em `riskpro.brighter.com.br`.
+
