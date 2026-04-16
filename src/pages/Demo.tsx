@@ -215,15 +215,6 @@ export default function Demo() {
     });
   };
   return <>
-      <Helmet>
-        <title>Brighter Risk Pro — Gestão de Risco para Traders</title>
-        <meta name="description" content="Gestão de risco dinâmica, metas e travas inteligentes. Disciplina operacional com o Brighter Risk Pro." />
-        <meta property="og:title" content="Brighter Risk Pro — Gestão de Risco para Traders" />
-        <meta property="og:description" content="Gestão de risco dinâmica, metas e travas inteligentes." />
-        <meta property="og:type" content="website" />
-        <meta name="twitter:card" content="summary_large_image" />
-      </Helmet>
-
       <div className="min-h-screen bg-background">
         {/* Navbar */}
         <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
