@@ -59,7 +59,7 @@ interface SelectedAsset {
   objetivoPercentual: number;
 }
 
-type WizardStep = 'select' | 'prices' | 'params' | 'results';
+type WizardStep = 'modalidade' | 'select' | 'prices' | 'params' | 'results';
 
 export default function StockSimulator() {
   const { dashboardId } = useParams<{ dashboardId: string }>();
