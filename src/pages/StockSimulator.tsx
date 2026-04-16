@@ -69,7 +69,7 @@ export default function StockSimulator() {
   const [loading, setLoading] = useState(true);
 
   // Wizard state
-  const [currentStep, setCurrentStep] = useState<WizardStep>('select');
+  const [currentStep, setCurrentStep] = useState<WizardStep>('modalidade');
   const [selectedAssets, setSelectedAssets] = useState<SelectedAsset[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -395,7 +395,9 @@ export default function StockSimulator() {
   const canProceedParams = isStopValido && valorAlocado > 0 && stopFinanceiroMax > 0;
 
   const handleNext = () => {
-    if (currentStep === 'select' && canProceedSelect) {
+    if (currentStep === 'modalidade') {
+      setCurrentStep('select');
+    } else if (currentStep === 'select' && canProceedSelect) {
       setCurrentStep('prices');
     } else if (currentStep === 'prices' && canProceedPrices) {
       setCurrentStep('params');
@@ -405,7 +407,9 @@ export default function StockSimulator() {
   };
 
   const handleBack = () => {
-    if (currentStep === 'prices') {
+    if (currentStep === 'select') {
+      setCurrentStep('modalidade');
+    } else if (currentStep === 'prices') {
       setCurrentStep('select');
     } else if (currentStep === 'params') {
       setCurrentStep('prices');
@@ -417,7 +421,7 @@ export default function StockSimulator() {
   const handleReset = () => {
     setSelectedAssets([]);
     setPositions([]);
-    setCurrentStep('select');
+    setCurrentStep('modalidade');
     setSearchQuery('');
   };
 
