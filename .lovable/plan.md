@@ -1,37 +1,38 @@
 
+Objetivo
 
-## Diagnóstico
+Executar o Plano B removendo `react-helmet-async` por completo. Pela leitura do código, ele só é usado em `src/main.tsx` e `src/pages/Demo.tsx`, então a superfície de mudança é pequena e é a forma mais limpa de eliminar a fonte mais provável da duplicação de React no build publicado.
 
-Erro no console do domínio publicado:
-```
-Uncaught TypeError: Cannot read properties of null (reading 'useState')
-  at at.useState (index-DKJTTv-e.js:9:6397)
-```
+Implementação
 
-Isso é o sintoma clássico de **duas cópias do React** no bundle de produção. O preview funciona (Vite dev resolve módulos sob demanda) mas o build falha. O culpado mais provável neste projeto é `react-helmet-async`, que historicamente força bundlers a empacotar uma segunda instância de React quando não há `dedupe` configurado.
+1. `src/main.tsx`
+   - remover o import de `HelmetProvider`
+   - remover o wrapper `<HelmetProvider>`
+   - renderizar `<App />` diretamente
 
-## Fix (1 arquivo)
+2. `src/pages/Demo.tsx`
+   - remover `Helmet` do import
+   - remover o bloco `<Helmet>...</Helmet>`
+   - manter toda a página e a lógica do formulário intactas
 
-**`vite.config.ts`** — adicionar `resolve.dedupe` para garantir uma única instância de React/ReactDOM no bundle:
+3. Dependências
+   - remover `react-helmet-async` do `package.json`
+   - sincronizar o lockfile usado no projeto para o build não instalar a dependência antiga por engano
 
-```ts
-resolve: {
-  alias: {
-    "@": path.resolve(__dirname, "./src"),
-  },
-  dedupe: ["react", "react-dom", "react/jsx-runtime"],
-},
-```
+4. Meta tags
+   - manter `vite.config.ts` como está, com `dedupe`, como proteção extra
+   - revisar `index.html`: ele já tem `<title>` e meta tags estáticas, então pode assumir esse papel global após a remoção
+   - só ajustar o texto do `index.html` se quisermos preservar exatamente a copy que hoje está no `/demo`
 
-Isso resolve o erro sem mudar nenhum código de aplicação. Depois é só republicar.
+Validação
 
-## Plano B (se o dedupe não bastar)
+1. gerar novo build/publicação
+2. fazer hard refresh no domínio
+3. confirmar que o bundle publicado mudou
+4. validar que o erro `Cannot read properties of null (reading 'useState')` desapareceu
 
-Remover `react-helmet-async` (usado apenas em `main.tsx` como `<HelmetProvider>` wrapper, sem `<Helmet>` ativos no projeto até onde vimos). Dropar o provider e o pacote elimina a fonte de duplicação. Aplico só se o A não resolver.
+Impacto esperado
 
-## Próximos passos
-
-1. Aplicar o `dedupe` no `vite.config.ts`.
-2. Você clica em **Publish → Update**.
-3. Hard refresh em `riskpro.brighter.com.br`.
-
+- sem mudanças em backend, banco, auth ou regras de negócio
+- risco baixo
+- a única perda potencial é o SEO/meta dinâmico específico do `/demo`, mas isso pode ficar coberto pelas tags estáticas do `index.html`
