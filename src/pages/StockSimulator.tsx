@@ -61,11 +61,10 @@ interface SelectedAsset {
 
 type WizardStep = 'select' | 'prices' | 'params' | 'results';
 
-  const [simulatorModalidade, setSimulatorModalidade] = useState<Modalidade>('daytrade');
-
 export default function StockSimulator() {
   const { dashboardId } = useParams<{ dashboardId: string }>();
   const { user } = useAuth();
+  const [simulatorModalidade, setSimulatorModalidade] = useState<Modalidade>('daytrade');
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
 
