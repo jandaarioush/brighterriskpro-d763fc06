@@ -1,59 +1,41 @@
-<final-text>Objetivo
 
-Corrigir a tela branca publicada atacando o culpado mais provável que ainda sobrou: o grafo de dependências usado no build.
 
-Do I know what the issue is?
+## Resposta: quando o site parou de funcionar
 
-Sim — o código já não usa mais `react-helmet-async`, mas o repositório ainda está inconsistente:
-- `package.json` e `package-lock.json` já estão limpos
-- `src/main.tsx` e `src/pages/Demo.tsx` já não usam Helmet
-- porém `bun.lock` ainda referencia `react-helmet-async`
+Analisando o histórico de commits, identifiquei a janela exata da quebra.
 
-Como existem lockfiles de npm e Bun ao mesmo tempo, o build publicado pode estar instalando uma árvore antiga mesmo depois das mudanças no código. Isso combina com o sintoma: hash do bundle mudou, mas o erro `Cannot read properties of null (reading 'useState')` continua.
+### Linha do tempo
 
-Plano
+```text
+31/Mar  7d951c1  Premium KPI typography                  ← último commit "estável" conhecido
+        ...
+15/Abr  2116888..04922fb  Substituição BTG → XP assets   ← grandes mudanças funcionais
+        (8 arquivos, +488/-365 linhas, novo lib/xpAssets.ts)
 
-1. Normalizar o gerenciador de pacotes
-- usar `npm` como fonte única de verdade, porque o projeto já tem `package-lock.json` e o README aponta para `npm`
-- remover `bun.lock` e `bun.lockb` do repositório
-- manter `package-lock.json` sincronizado com o `package.json`
+16/Abr  286a4af  Save plan in Lovable                    ← já investigando o erro
+16/Abr  c198437  Save plan in Lovable
+16/Abr  664a28f  Changes
+16/Abr  f6216aa  Added React dedupe in Vite              ← tentativa de fix #1
+16/Abr  a9e3c70  Removed helmet-async from build         ← tentativa de fix #2
+16/Abr  78e592e  Removed bun lock files                  ← tentativa de fix #3
+```
 
-2. Preservar os fixes já feitos
-- manter `vite.config.ts` com `dedupe: ["react", "react-dom", "react/jsx-runtime"]`
-- manter a remoção de `react-helmet-async` do código
+### Conclusão
 
-3. Republicar
-- gerar novo publish após a limpeza dos lockfiles
-- fazer hard refresh no domínio
+O site **parou de funcionar no build publicado entre 31/Mar e 16/Abr**, e o ponto de virada mais provável é o conjunto de commits do **dia 15/Abr (`2116888` → `04922fb`)** — a refatoração que substituiu BTG por XP. Esse foi o último bloco de mudanças funcionais antes do dia 16/Abr, quando você abriu o erro pela primeira vez e começamos a tentar corrigir.
 
-4. Validação
-- confirmar que o bundle publicado mudou
-- validar que a home monta sem tela branca
-- checar se o erro de `useState` desapareceu no console
+Importante notar: **o erro `Cannot read properties of null (reading 'useState')` é um sintoma de build, não necessariamente causado por aqueles arquivos**. O que provavelmente aconteceu:
 
-Fallback se ainda falhar
-- fazer um bisect no topo do app em `src/App.tsx`
-- montar temporariamente uma versão mínima e reintroduzir providers nesta ordem:
-  1. `BrowserRouter`
-  2. `ThemeProvider`
-  3. `QueryClientProvider`
-  4. `TooltipProvider`
-  5. `Toaster` / `Sonner`
-  6. `AuthProvider`
-- isso isola rapidamente se o problema restante vem de algum provider/lib e não mais do lockfile
+1. Até 31/Mar o site funcionava publicado.
+2. Entre 31/Mar e 15/Abr **nenhum publish foi feito** (o publish é manual).
+3. No dia 16/Abr você clicou em Publish pela primeira vez depois de semanas, e o build novo veio quebrado.
+4. Como o build não é refeito a cada commit, o "ponto de quebra real" pode ser qualquer coisa nesse intervalo — não dá para saber só pelo git, porque o último build saudável foi gerado com código de **antes de 31/Mar**.
 
-Arquivos envolvidos
-- `bun.lock`
-- `bun.lockb`
-- `package-lock.json`
-- `package.json`
-- `vite.config.ts`
-- `src/main.tsx`
-- `src/pages/Demo.tsx`
-- `src/App.tsx` (somente se o fallback for necessário)
+### O que isso muda no diagnóstico
 
-Impacto esperado
-- sem mudança de regra de negócio
-- sem mudança de banco/auth
-- risco baixo
-- maior chance de resolver de forma definitiva porque elimina a inconsistência de instalação do build publicado</final-text>
+A causa não é uma "regressão pontual" identificável por commit. É uma incompatibilidade do **grafo de dependências atual** com o build de produção, que só apareceu agora porque o build não rodava há semanas. Por isso `dedupe`, remoção de `react-helmet-async` e limpeza de lockfiles fazem sentido — todos são fontes plausíveis num app que ficou muito tempo sem ser republicado.
+
+### Próximo passo recomendado
+
+Para confirmar e desbloquear, eu sugiro o **bisect de providers no `App.tsx`** que já estava aprovado: simplificar para um `<App>` mínimo, publicar, e ir reintroduzindo provider por provider até identificar o que quebra no bundle de produção. É o caminho mais rápido para sair do loop, já que o git por si só não consegue apontar o commit culpado.
+
