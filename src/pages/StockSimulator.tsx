@@ -59,7 +59,7 @@ interface SelectedAsset {
   objetivoPercentual: number;
 }
 
-type WizardStep = 'select' | 'prices' | 'params' | 'results';
+type WizardStep = 'modalidade' | 'select' | 'prices' | 'params' | 'results';
 
 export default function StockSimulator() {
   const { dashboardId } = useParams<{ dashboardId: string }>();
@@ -69,7 +69,7 @@ export default function StockSimulator() {
   const [loading, setLoading] = useState(true);
 
   // Wizard state
-  const [currentStep, setCurrentStep] = useState<WizardStep>('select');
+  const [currentStep, setCurrentStep] = useState<WizardStep>('modalidade');
   const [selectedAssets, setSelectedAssets] = useState<SelectedAsset[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -395,7 +395,9 @@ export default function StockSimulator() {
   const canProceedParams = isStopValido && valorAlocado > 0 && stopFinanceiroMax > 0;
 
   const handleNext = () => {
-    if (currentStep === 'select' && canProceedSelect) {
+    if (currentStep === 'modalidade') {
+      setCurrentStep('select');
+    } else if (currentStep === 'select' && canProceedSelect) {
       setCurrentStep('prices');
     } else if (currentStep === 'prices' && canProceedPrices) {
       setCurrentStep('params');
@@ -405,7 +407,9 @@ export default function StockSimulator() {
   };
 
   const handleBack = () => {
-    if (currentStep === 'prices') {
+    if (currentStep === 'select') {
+      setCurrentStep('modalidade');
+    } else if (currentStep === 'prices') {
       setCurrentStep('select');
     } else if (currentStep === 'params') {
       setCurrentStep('prices');
@@ -417,7 +421,7 @@ export default function StockSimulator() {
   const handleReset = () => {
     setSelectedAssets([]);
     setPositions([]);
-    setCurrentStep('select');
+    setCurrentStep('modalidade');
     setSearchQuery('');
   };
 
@@ -463,28 +467,104 @@ export default function StockSimulator() {
 
         {/* Step Indicator */}
         {currentStep !== 'results' && (
-          <div className="flex items-center justify-center gap-4 mb-8">
+          <div className="flex items-center justify-center gap-4 mb-8 flex-wrap">
             <StepIndicator 
               step={1} 
+              label="Modalidade" 
+              isActive={currentStep === 'modalidade'} 
+              isCompleted={currentStep === 'select' || currentStep === 'prices' || currentStep === 'params'} 
+            />
+            <div className={`h-px w-12 ${currentStep !== 'modalidade' ? 'bg-primary' : 'bg-border'}`} />
+            <StepIndicator 
+              step={2} 
               label="Selecionar Ativos" 
               isActive={currentStep === 'select'} 
               isCompleted={currentStep === 'prices' || currentStep === 'params'} 
             />
-            <div className={`h-px w-12 ${currentStep !== 'select' ? 'bg-primary' : 'bg-border'}`} />
+            <div className={`h-px w-12 ${currentStep === 'prices' || currentStep === 'params' ? 'bg-primary' : 'bg-border'}`} />
             <StepIndicator 
-              step={2} 
+              step={3} 
               label="Preços" 
               isActive={currentStep === 'prices'} 
               isCompleted={currentStep === 'params'} 
             />
             <div className={`h-px w-12 ${currentStep === 'params' ? 'bg-primary' : 'bg-border'}`} />
             <StepIndicator 
-              step={3} 
+              step={4} 
               label="Parâmetros" 
               isActive={currentStep === 'params'} 
               isCompleted={false} 
             />
           </div>
+        )}
+
+        {/* Step 0: Modalidade */}
+        {currentStep === 'modalidade' && (
+          <Card className="p-6 max-w-4xl mx-auto">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold mb-2">Escolha a Modalidade</h2>
+              <p className="text-muted-foreground">
+                A modalidade define a alavancagem disponível para cada ativo
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setSimulatorModalidade('daytrade');
+                  setSelectedAssets([]);
+                }}
+                className={`p-6 rounded-lg border-2 text-left transition-all ${
+                  simulatorModalidade === 'daytrade'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <TrendingUp className="h-6 w-6 text-primary" />
+                  <h3 className="text-xl font-bold">Day Trade</h3>
+                  {simulatorModalidade === 'daytrade' && (
+                    <CheckCircle2 className="h-5 w-5 text-primary ml-auto" />
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Operações intradiárias com alavancagem maior. Posição zerada no mesmo dia.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSimulatorModalidade('swing');
+                  setSelectedAssets([]);
+                }}
+                className={`p-6 rounded-lg border-2 text-left transition-all ${
+                  simulatorModalidade === 'swing'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <Target className="h-6 w-6 text-primary" />
+                  <h3 className="text-xl font-bold">Swing Trade</h3>
+                  {simulatorModalidade === 'swing' && (
+                    <CheckCircle2 className="h-5 w-5 text-primary ml-auto" />
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Posições mantidas overnight, com alavancagem reduzida pela corretora.
+                </p>
+              </button>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleNext} size="lg">
+                Próximo
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </Card>
         )}
 
         {/* Step 1: Select Assets */}
