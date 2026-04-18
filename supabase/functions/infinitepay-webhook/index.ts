@@ -199,6 +199,37 @@ serve(async (req) => {
 
     console.log("Webhook processed successfully:", order_nsu);
 
+    // Fan-out: forward payload to external site (non-blocking)
+    const forwardUrl = Deno.env.get("EXTERNAL_FORWARD_URL");
+    const forwardToken = Deno.env.get("EXTERNAL_FORWARD_TOKEN");
+
+    if (forwardUrl) {
+      const forwardPayload = {
+        source: "brighter-riskpro",
+        event: "payment_approved",
+        order_nsu,
+        transaction_nsu,
+        invoice_slug,
+        amount,
+        paid_amount,
+        installments,
+        capture_method,
+        plano: pendingOrder?.plano,
+        email: pendingOrder?.email,
+        name: pendingOrder?.name,
+        phone: pendingOrder?.phone,
+        receipt_url,
+        items,
+        occurred_at: new Date().toISOString(),
+      };
+
+      // Use waitUntil so the response returns immediately but the forward keeps running
+      // @ts-expect-error EdgeRuntime is available in Supabase Edge Functions
+      EdgeRuntime.waitUntil(
+        forwardToExternal(supabase, forwardUrl, forwardToken, order_nsu, forwardPayload)
+      );
+    }
+
     // Respond quickly with 200 OK (Infinite Pay requirement)
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
