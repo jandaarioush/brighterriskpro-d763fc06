@@ -1,39 +1,94 @@
 
 
-## Causa
+## Objetivo
 
-O `StockSimulator` já suporta `Modalidade` ('daytrade' | 'swingtrade') via `xpAssets` (a alavancagem muda por modalidade), mas o estado `simulatorModalidade` está fixo em `'daytrade'` — sem UI para escolha. Isso distorce o cálculo de margem/quantidade para quem opera swing.
+Espelhar os eventos pós-venda do Infinite Pay para um segundo site (webhook externo) **em paralelo**, sem afetar a confirmação de pagamento aqui.
 
-## Solução
+## Como funciona hoje
 
-Adicionar uma **nova Etapa 1: Modalidade** no wizard, empurrando as outras etapas adiante. Fluxo final:
+A edge function `infinitepay-webhook` recebe o POST da Infinite Pay, valida token, grava `pending_orders → paid`, cria `subscription`, atualiza `profile` e responde 200. Tudo síncrono.
 
-1. **Modalidade** (novo) — Day Trade vs Swing Trade
-2. Selecionar Ativos
-3. Preços
-4. Parâmetros → Resultados
+## Solução: forward não-bloqueante
 
-Escolhi nova etapa (em vez de embutir na seleção de ativos) porque a modalidade afeta diretamente a lista de alavancagens mostradas/calculadas — o usuário precisa decidir antes para entender o impacto na seleção.
+Adicionar um **fan-out** dentro da `infinitepay-webhook` que dispara um POST para `EXTERNAL_FORWARD_URL` em paralelo, sem `await` na resposta principal — usando `EdgeRuntime.waitUntil()` (mantém o processo vivo até terminar, mas a Infinite Pay já recebeu seu 200).
 
-## Mudanças em `src/pages/StockSimulator.tsx`
+### Por que assim e não outra abordagem
 
-1. **`WizardStep`** — adicionar `'modalidade'` como primeiro valor:
-   ```ts
-   type WizardStep = 'modalidade' | 'select' | 'prices' | 'params' | 'results';
-   ```
-2. **Estado inicial** — `useState<WizardStep>('modalidade')`.
-3. **StepIndicator** — passar de 3 para 4 passos: Modalidade → Ativos → Preços → Parâmetros.
-4. **Novo bloco JSX** para `currentStep === 'modalidade'`: Card com dois botões grandes (Day Trade / Swing Trade) usando o mesmo padrão visual dos cards existentes, com descrição curta ("Operações intradiárias com alavancagem maior" / "Posições mantidas overnight, alavancagem reduzida"), botão "Próximo".
-5. **`handleNext` / `handleBack`** — incluir transição `modalidade ↔ select`.
-6. **`handleReset`** — voltar para `'modalidade'`.
-7. **Recalcular posições** quando `simulatorModalidade` mudar (nada a fazer se ainda não houver posições, mas resetar `selectedAssets` ao trocar modalidade depois de já ter selecionado evita inconsistência — alternativa: limpar `selectedAssets` quando muda modalidade no step 1, sem prompt).
-8. **Remover** o filtro `currentStep !== 'results'` do StepIndicator se quiser exibi-lo também na nova etapa (ou manter oculto — vou manter o indicador visível em todas as etapas exceto `results`, igual hoje).
+| Opção | Prós | Contras |
+|---|---|---|
+| **Fan-out na própria função (escolhida)** | Simples, 1 deploy, sem nova infra | Acoplamento leve no código |
+| Segunda função chamada por trigger no DB | Desacoplado | Precisa pg_net + cron, mais peças |
+| Webhook duplo configurado na Infinite Pay | Zero código | Infinite Pay normalmente só aceita 1 URL |
 
-Sem mudanças em `xpAssets.ts`, banco, ou outros arquivos. A função `getXPLeverage`/`getXPMargemPorAcao` já recebe `modalidade` corretamente.
+Fan-out é o padrão certo aqui.
+
+### Garantias
+
+- **Não bloqueia**: usa `waitUntil`, então erro/lentidão no site externo **não** afeta o 200 devolvido à Infinite Pay
+- **Sem conflito de dados**: o site externo recebe uma cópia read-only do payload, nada escreve no banco daqui
+- **Idempotência**: payload inclui `order_nsu` para o destino deduplicar
+- **Auditável**: cada tentativa loga em `webhook_events` com `provider='external_forward'` e status `forwarded` / `forward_failed` + status HTTP
+- **Retry simples**: 1 retry após 2s em caso de falha de rede / 5xx (não retry em 4xx)
+- **Segurança**: header `X-Forward-Token` com secret compartilhado para o destino validar
+
+## Implementação
+
+### 1. Secrets novos (vou pedir via add_secret após aprovação)
+- `EXTERNAL_FORWARD_URL` — URL completa do endpoint do outro site
+- `EXTERNAL_FORWARD_TOKEN` — token compartilhado para autenticar o forward
+
+### 2. Edição em `supabase/functions/infinitepay-webhook/index.ts`
+
+Adicionar, **logo antes do `return 200` final**:
+
+```ts
+const forwardUrl = Deno.env.get("EXTERNAL_FORWARD_URL");
+const forwardToken = Deno.env.get("EXTERNAL_FORWARD_TOKEN");
+
+if (forwardUrl) {
+  const forwardPayload = {
+    source: "brighter-riskpro",
+    event: "payment_approved",
+    order_nsu,
+    transaction_nsu,
+    invoice_slug,
+    amount,
+    paid_amount,
+    plano: pendingOrder?.plano,
+    email: pendingOrder?.email,
+    name: pendingOrder?.name,
+    phone: pendingOrder?.phone,
+    receipt_url,
+    occurred_at: new Date().toISOString(),
+  };
+
+  // não bloqueia a resposta à Infinite Pay
+  EdgeRuntime.waitUntil(
+    forwardToExternal(supabase, forwardUrl, forwardToken, order_nsu, forwardPayload)
+  );
+}
+```
+
+E uma helper `forwardToExternal()` com:
+- `fetch` com timeout 10s
+- 1 retry após 2s se erro de rede ou 5xx
+- log em `webhook_events` (status `forwarded` ou `forward_failed`, com http status no `raw_payload`)
+
+### 3. Sem mudanças em
+- Schema do banco (reusa `webhook_events`)
+- `supabase/config.toml` (função já existe com `verify_jwt = false`)
+- Frontend
+- Outras funções
 
 ## Validação
 
-1. Abrir `/stock-dashboard/:id/simulator` → deve aparecer Etapa 1 "Modalidade" com 2 cards.
-2. Escolher Swing Trade → avançar → confirmar que ao chegar em Resultados a alavancagem usada nos cálculos corresponde aos valores swing do `xpAssets`.
-3. Voltar para Modalidade, trocar para Day Trade e refazer — quantidades devem mudar.
+1. Curl no `infinitepay-webhook` simulando um pagamento → confirmar 200 imediato + log no `webhook_events` mostrando linha `external_forward` com status `forwarded`
+2. Apontar `EXTERNAL_FORWARD_URL` para um endpoint inválido → confirmar que o pagamento ainda é processado normalmente e fica `forward_failed` no log
+3. Conferir que o site externo recebeu o payload com header `X-Forward-Token` correto
+
+## O que preciso de você antes de implementar
+
+1. Confirmar a URL do site externo que receberá o forward (você define agora ou prefere configurar depois via secret?)
+2. Confirmar que o site externo aceita um POST JSON com o shape descrito acima — ou se você prefere outro formato (ex.: query string, form-urlencoded, campos com nomes diferentes)
+3. Confirmar se quer apenas o evento `payment_approved` ou também outros futuros (refund, chargeback) — hoje só temos approved
 
