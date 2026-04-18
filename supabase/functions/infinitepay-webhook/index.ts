@@ -199,6 +199,37 @@ serve(async (req) => {
 
     console.log("Webhook processed successfully:", order_nsu);
 
+    // Fan-out: forward payload to external site (non-blocking)
+    const forwardUrl = Deno.env.get("EXTERNAL_FORWARD_URL");
+    const forwardToken = Deno.env.get("EXTERNAL_FORWARD_TOKEN");
+
+    if (forwardUrl) {
+      const forwardPayload = {
+        source: "brighter-riskpro",
+        event: "payment_approved",
+        order_nsu,
+        transaction_nsu,
+        invoice_slug,
+        amount,
+        paid_amount,
+        installments,
+        capture_method,
+        plano: pendingOrder?.plano,
+        email: pendingOrder?.email,
+        name: pendingOrder?.name,
+        phone: pendingOrder?.phone,
+        receipt_url,
+        items,
+        occurred_at: new Date().toISOString(),
+      };
+
+      // Use waitUntil so the response returns immediately but the forward keeps running
+      // @ts-expect-error EdgeRuntime is available in Supabase Edge Functions
+      EdgeRuntime.waitUntil(
+        forwardToExternal(supabase, forwardUrl, forwardToken, order_nsu, forwardPayload)
+      );
+    }
+
     // Respond quickly with 200 OK (Infinite Pay requirement)
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
@@ -214,3 +245,79 @@ serve(async (req) => {
     });
   }
 });
+
+// Forward webhook payload to an external endpoint with timeout, 1 retry, and audit logging.
+async function forwardToExternal(
+  supabase: ReturnType<typeof createClient>,
+  url: string,
+  token: string | undefined,
+  orderNsu: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const maxAttempts = 2;
+  let lastStatus = 0;
+  let lastError: string | null = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["X-Forward-Token"] = token;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      lastStatus = res.status;
+
+      if (res.ok) {
+        await supabase.from("webhook_events").insert({
+          provider: "external_forward",
+          event: "payment_approved",
+          order_id: orderNsu,
+          email: (payload.email as string) ?? null,
+          raw_payload: { ...payload, http_status: res.status, attempt },
+          status: "forwarded",
+          processed_at: new Date().toISOString(),
+        });
+        console.log(`Forward succeeded for ${orderNsu} (attempt ${attempt}, status ${res.status})`);
+        return;
+      }
+
+      // 4xx: don't retry
+      if (res.status >= 400 && res.status < 500) {
+        const body = await res.text().catch(() => "");
+        lastError = `HTTP ${res.status}: ${body.slice(0, 500)}`;
+        break;
+      }
+
+      // 5xx: retry once
+      lastError = `HTTP ${res.status}`;
+    } catch (err) {
+      clearTimeout(timeout);
+      lastError = err instanceof Error ? err.message : "Unknown error";
+    }
+
+    if (attempt < maxAttempts) {
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+
+  await supabase.from("webhook_events").insert({
+    provider: "external_forward",
+    event: "payment_approved",
+    order_id: orderNsu,
+    email: (payload.email as string) ?? null,
+    raw_payload: { ...payload, http_status: lastStatus, attempts: maxAttempts },
+    status: "forward_failed",
+    error: lastError,
+    processed_at: new Date().toISOString(),
+  });
+  console.error(`Forward failed for ${orderNsu}: ${lastError}`);
+}
