@@ -245,3 +245,79 @@ serve(async (req) => {
     });
   }
 });
+
+// Forward webhook payload to an external endpoint with timeout, 1 retry, and audit logging.
+async function forwardToExternal(
+  supabase: ReturnType<typeof createClient>,
+  url: string,
+  token: string | undefined,
+  orderNsu: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const maxAttempts = 2;
+  let lastStatus = 0;
+  let lastError: string | null = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["X-Forward-Token"] = token;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      lastStatus = res.status;
+
+      if (res.ok) {
+        await supabase.from("webhook_events").insert({
+          provider: "external_forward",
+          event: "payment_approved",
+          order_id: orderNsu,
+          email: (payload.email as string) ?? null,
+          raw_payload: { ...payload, http_status: res.status, attempt },
+          status: "forwarded",
+          processed_at: new Date().toISOString(),
+        });
+        console.log(`Forward succeeded for ${orderNsu} (attempt ${attempt}, status ${res.status})`);
+        return;
+      }
+
+      // 4xx: don't retry
+      if (res.status >= 400 && res.status < 500) {
+        const body = await res.text().catch(() => "");
+        lastError = `HTTP ${res.status}: ${body.slice(0, 500)}`;
+        break;
+      }
+
+      // 5xx: retry once
+      lastError = `HTTP ${res.status}`;
+    } catch (err) {
+      clearTimeout(timeout);
+      lastError = err instanceof Error ? err.message : "Unknown error";
+    }
+
+    if (attempt < maxAttempts) {
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+
+  await supabase.from("webhook_events").insert({
+    provider: "external_forward",
+    event: "payment_approved",
+    order_id: orderNsu,
+    email: (payload.email as string) ?? null,
+    raw_payload: { ...payload, http_status: lastStatus, attempts: maxAttempts },
+    status: "forward_failed",
+    error: lastError,
+    processed_at: new Date().toISOString(),
+  });
+  console.error(`Forward failed for ${orderNsu}: ${lastError}`);
+}
