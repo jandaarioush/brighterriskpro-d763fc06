@@ -8,27 +8,27 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* LIGHT MODE — Clean & Premium */
-    --background: 0 0% 98%;
-    --foreground: 222 47% 11%;
+    /* LIGHT MODE — Brighter Hub palette */
+    --background: 40 10% 96%;
+    --foreground: 220 18% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 220 18% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 220 18% 12%;
 
-    --primary: 43 96% 46%;
+    --primary: 39 82% 47%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 40 10% 92%;
+    --secondary-foreground: 220 18% 12%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 40 8% 90%;
+    --muted-foreground: 220 10% 45%;
 
-    --accent: 220 14% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 40 10% 92%;
+    --accent-foreground: 220 18% 12%;
 
     --success: 152 82% 39%;
     --success-foreground: 0 0% 100%;
@@ -39,16 +39,31 @@ All colors MUST be HSL.
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 43 96% 46%;
+    --border: 40 8% 85%;
+    --input: 40 8% 85%;
+    --ring: 39 82% 47%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --gradient-primary: linear-gradient(135deg, hsl(43 96% 46%), hsl(38 92% 40%));
+    /* Brighter brand tokens */
+    --gold: 39 82% 47%;
+    --gold-light: 40 89% 61%;
+    --graphite: 40 10% 92%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 18% 12%;
+    --sidebar-primary: 39 82% 47%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 10% 95%;
+    --sidebar-accent-foreground: 220 18% 12%;
+    --sidebar-border: 40 8% 88%;
+    --sidebar-ring: 39 82% 47%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(39 82% 47%), hsl(40 89% 61%));
     --gradient-success: linear-gradient(135deg, hsl(152 82% 39%), hsl(158 64% 52%));
     --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%), hsl(0 72% 51%));
-    --shadow-glow: 0 0 20px hsl(43 96% 46% / 0.2);
+    --shadow-glow: 0 0 20px hsl(39 82% 47% / 0.2);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     --chart-1: 0 84% 60%;
@@ -56,27 +71,27 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* DARK MODE — Trading Terminal Premium */
-    --background: 220 20% 2%;
-    --foreground: 0 0% 95%;
+    /* DARK MODE — Brighter Hub navy-black + gold */
+    --background: 228 16% 4%;
+    --foreground: 0 0% 91%;
 
-    --card: 220 14% 6%;
-    --card-foreground: 0 0% 95%;
+    --card: 224 16% 10%;
+    --card-foreground: 0 0% 91%;
 
-    --popover: 220 14% 5%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 224 16% 10%;
+    --popover-foreground: 0 0% 91%;
 
-    --primary: 43 85% 52%;
-    --primary-foreground: 220 20% 4%;
+    --primary: 39 82% 47%;
+    --primary-foreground: 228 16% 4%;
 
-    --secondary: 220 14% 10%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 224 16% 10%;
+    --secondary-foreground: 0 0% 91%;
 
-    --muted: 220 14% 10%;
-    --muted-foreground: 0 0% 55%;
+    --muted: 224 12% 16%;
+    --muted-foreground: 220 10% 55%;
 
-    --accent: 220 14% 12%;
-    --accent-foreground: 0 0% 95%;
+    --accent: 224 16% 12%;
+    --accent-foreground: 0 0% 91%;
 
     --success: 152 82% 45%;
     --success-foreground: 0 0% 98%;
@@ -87,14 +102,29 @@ All colors MUST be HSL.
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 14% 12%;
-    --input: 220 14% 12%;
-    --ring: 43 85% 52%;
+    --border: 224 12% 18%;
+    --input: 224 12% 18%;
+    --ring: 39 82% 47%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(43 85% 52%), hsl(38 92% 45%));
+    /* Brighter brand tokens */
+    --gold: 39 82% 47%;
+    --gold-light: 40 89% 61%;
+    --graphite: 224 16% 10%;
+
+    /* Sidebar */
+    --sidebar-background: 224 16% 7%;
+    --sidebar-foreground: 0 0% 91%;
+    --sidebar-primary: 39 82% 47%;
+    --sidebar-primary-foreground: 228 16% 4%;
+    --sidebar-accent: 224 16% 12%;
+    --sidebar-accent-foreground: 0 0% 91%;
+    --sidebar-border: 224 12% 16%;
+    --sidebar-ring: 39 82% 47%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(39 82% 47%), hsl(40 89% 61%));
     --gradient-success: linear-gradient(135deg, hsl(152 82% 45%), hsl(158 64% 52%));
     --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%), hsl(0 72% 51%));
-    --shadow-glow: 0 0 24px hsl(43 85% 52% / 0.25);
+    --shadow-glow: 0 0 24px hsl(39 82% 47% / 0.25);
 
     --chart-1: 0 84% 60%;
     --chart-2: 152 82% 45%;
