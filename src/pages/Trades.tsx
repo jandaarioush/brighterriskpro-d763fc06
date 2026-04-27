@@ -38,13 +38,15 @@ import {
   Upload,
   Pencil,
   Trash2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  FileSpreadsheet
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { EditTradeDialog } from "@/components/EditTradeDialog";
 import DashboardTabs from "@/components/DashboardTabs";
+import { ProfitImportDialog } from "@/components/ProfitImportDialog";
 import { z } from "zod";
 
 interface Trade {
@@ -179,6 +181,7 @@ export default function Trades() {
   const [customSetups, setCustomSetups] = useState<string[]>([]);
   const [customTags, setCustomTags] = useState<string[]>([]);
   const [showImportTemplate, setShowImportTemplate] = useState(false);
+  const [showProfitImport, setShowProfitImport] = useState(false);
 
   // Default setup and tag options
   const defaultSetups = [
@@ -687,6 +690,15 @@ export default function Trades() {
                   <Upload className="w-4 h-4" />
                   Importar
                 </Button>
+
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setShowProfitImport(true)}
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Importar do Profit
+                </Button>
               </div>
             </div>
 
@@ -852,6 +864,13 @@ export default function Trades() {
         open={!!editingTrade}
         onOpenChange={(open) => !open && setEditingTrade(null)}
         onTradeUpdated={fetchTrades}
+      />
+
+      {/* Profit Import Dialog */}
+      <ProfitImportDialog
+        open={showProfitImport}
+        onOpenChange={setShowProfitImport}
+        onImported={fetchTrades}
       />
 
       {/* Delete Confirmation Dialog */}
