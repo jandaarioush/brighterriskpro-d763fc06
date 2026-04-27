@@ -866,6 +866,13 @@ export default function Trades() {
         onTradeUpdated={fetchTrades}
       />
 
+      {/* Profit Import Dialog */}
+      <ProfitImportDialog
+        open={showProfitImport}
+        onOpenChange={setShowProfitImport}
+        onImported={fetchTrades}
+      />
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deletingTradeId} onOpenChange={() => setDeletingTradeId(null)}>
         <AlertDialogContent>
