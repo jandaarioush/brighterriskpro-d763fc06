@@ -1,118 +1,87 @@
 ## Objetivo
 
-Adicionar em `/trades` um botão **"Importar do Profit"** que abre um diálogo para upload de arquivo PDF/Excel da Nelogica, mostra preview das linhas detectadas e confirma a inserção em massa na tabela `trades`.
-
-Esta é a primeira fatia do plano maior já aprovado — foca apenas em **upload + parsing + preview + confirmação**. A análise de performance (`PerformanceAnalysis`) fica para a próxima iteração.
+Trazer a **tipografia** e a **paleta de cores** do projeto **Brighter Core Hub** para o **Brighter Risk Pro**, mantendo a identidade do ecossistema Brighter consistente entre os dois apps.
 
 ---
 
-## Fluxo
+## O que muda
 
-1. Em `/trades`, ao lado do botão "Importar" (CSV) atual, adicionar **"Importar do Profit"** (ícone `FileSpreadsheet`).
-2. Modal abre com drop-zone aceitando `.pdf`, `.xlsx`, `.xls` (máx 10 MB).
-3. Ao selecionar arquivo → envia base64 para edge function `parse-profit-report`.
-4. Estado **"Analisando arquivo..."** com spinner.
-5. Resposta exibe:
-   - **Cards de totais**: nº de trades detectados, resultado total R$, período (data inicial → final), nº de linhas ignoradas.
-   - **Tabela de preview** (scroll, máx altura 400px): Data | Ativo | Resultado (R$) | Pontos | Contratos.
-   - **Lista de avisos** (collapse): linhas ignoradas com motivo (ex.: "Ativo BOVA11 não suportado", "Linha sem data válida").
-6. Botões: **Cancelar** | **Confirmar e importar N trades**.
-7. Confirmar → `INSERT` em massa em `trades` (mesmo path do CSV existente em `Trades.tsx`), toast de sucesso, fecha modal e recarrega lista.
+### Tipografia
 
----
+| Onde | Hoje (Risk Pro) | Depois (Hub) |
+|---|---|---|
+| Body / sans | Plus Jakarta Sans | **Inter** |
+| Títulos / display | Plus Jakarta Sans | **Montserrat** |
+| Números (mono) | JetBrains Mono | JetBrains Mono (mantido — regra do projeto) |
 
-## Backend
+Carregamento via Google Fonts em `index.html`:  
+`Montserrat (400/500/600/700/800)` + `Inter (300/400/500/600/700)` + `JetBrains Mono` (mantido).
 
-### Edge function `parse-profit-report`
+### Paleta de cores (HSL)
 
-- Path: `supabase/functions/parse-profit-report/index.ts`
-- Auth: validação de JWT em código (default Lovable).
-- Input: `{ filename: string, contentBase64: string }`.
-- Validação Zod: filename string, contentBase64 ≤ ~14MB base64.
-- Detecta tipo por extensão e/ou magic bytes.
-- **Excel** (`xlsx` via esm.sh):
-  - Lê primeira sheet com dados, normaliza headers (lowercase, sem acento).
-  - Localiza colunas: `data`, `ativo`/`papel`, `resultado`/`resultado liquido`/`liquido`, `pontos` (opcional), `qtde`/`quantidade` (opcional), `c/v`/`lado` (opcional).
-  - Parseia datas (Excel serial ou string `dd/MM/yyyy`).
-  - Parseia valores BR (`1.234,56` → `1234.56`).
-- **PDF** (`unpdf` via esm.sh):
-  - `extractText` por página, junta linhas.
-  - Heurística: linhas que começam com `dd/MM/yyyy`, separa por whitespace, identifica ativo (`WIN*`/`WDO*`/outros) e valor numérico final como resultado em R$.
-- Mapeia ativo:
-  - `WIN*` → `indice`
-  - `WDO*` → `dolar`
-  - Outros → ignorado, vai para `skipped` com motivo.
-- Agrega por `(trade_date, asset_type)` somando `result_reais`, `result_points`, `contracts`.
-- Output:
-  ```ts
-  {
-    trades: Array<{
-      trade_date: string;        // YYYY-MM-DD
-      asset_type: 'indice' | 'dolar';
-      result_reais: number;
-      result_points: number;
-      contracts: number;
-    }>,
-    skipped: Array<{ raw: string; reason: string }>,
-    totals: { count: number; sumReais: number; firstDate: string; lastDate: string; }
-  }
-  ```
-- CORS headers em todas as respostas.
-- Sem persistência — quem grava é o frontend após confirmação.
+Os tokens semânticos continuam os mesmos (`--background`, `--primary`, `--card`, etc.) — **só os valores HSL mudam** para casar com o Hub. Tokens específicos do Risk Pro (`--success`, `--danger`, gradientes, `--shadow-glow`, charts) são preservados.
 
-### Sem migração SQL
+**Light mode:**
 
-Reutiliza tabela `trades` existente (mesmas colunas usadas no CSV import).
+| Token | Hoje | Hub |
+|---|---|---|
+| `--background` | 0 0% 98% | 40 10% 96% (off-white quente) |
+| `--foreground` | 222 47% 11% | 220 18% 12% |
+| `--primary` (gold) | 43 96% 46% | 39 82% 47% |
+| `--card` | 0 0% 100% | 0 0% 100% (igual) |
+| `--border` | 220 13% 91% | 40 8% 85% |
+| `--muted` | 220 14% 96% | 40 8% 90% |
+| `--radius` | 0.5rem | 0.75rem |
+
+**Dark mode:**
+
+| Token | Hoje | Hub |
+|---|---|---|
+| `--background` | 220 20% 2% (Deep Black) | 228 16% 4% (Deep Navy-Black) |
+| `--card` | 220 14% 6% | 224 16% 10% |
+| `--primary` | 43 85% 52% | 39 82% 47% |
+| `--border` | 220 14% 12% | 224 12% 18% |
+
+**Novos tokens** (do Hub): `--gold`, `--gold-light`, `--graphite` + sidebar tokens (`--sidebar-*`).
+
+### Tailwind
+
+`tailwind.config.ts`:
+- `fontFamily.sans` → Inter, `fontFamily.display` → Montserrat (apelidos `montserrat`/`inter` apontando para os reais).
+- Adicionar `colors.gold` (DEFAULT + light), `colors.graphite`, `colors.sidebar.*`.
+
+### Utilitários CSS
+
+Trazer do Hub (em `@layer utilities` no `src/index.css`, **adicionando** sem remover os atuais):
+- `.text-gradient-gold` (substitui o atual com o gradient mais quente do Hub)
+- `.glow-gold`, `.glow-gold-sm`, `.glow-gold-hover`
+- `.border-gradient-gold`
+- `.bg-grid-pattern`
+- `.card-premium`
+- Animação `pulse-glow` no Tailwind keyframes.
 
 ---
 
-## Frontend
+## Arquivos editados
 
-### Novo componente `src/components/ProfitImportDialog.tsx`
+1. `index.html` — troca `<link>` do Google Fonts.
+2. `tailwind.config.ts` — fontes + tokens `gold`, `graphite`, `sidebar`.
+3. `src/index.css` — atualização dos blocos `:root` e `.dark` (HSL Hub) + utilitários gold; mantém todos os utilitários atuais (`card-glow`, `kpi-number`, `glass-card`, animações etc.).
 
-- `Dialog` controlado por prop `open` / `onOpenChange`.
-- Estados: `idle` → `parsing` → `preview` → `importing` → `done`.
-- Drop-zone: input `type="file"` estilizado + drag-and-drop nativo, validação de tamanho/extensão.
-- Conversão para base64 via `FileReader.readAsDataURL`.
-- Chama `supabase.functions.invoke('parse-profit-report', { body: { filename, contentBase64 } })`.
-- Renderiza preview com `Table`, `Card`, `Badge` (shadcn) seguindo design system (mono `JetBrains Mono` para números em pt-BR via `formatBRL` de `src/lib/formatting.ts`).
-- Confirmação: `supabase.from('trades').insert(...)` em batch, com `user_id` do `useAuth`.
-- Toasts via `sonner` para sucesso/erro.
-
-### Edição em `src/pages/Trades.tsx`
-
-- Importar `ProfitImportDialog` e ícone `FileSpreadsheet`.
-- Adicionar estado `profitOpen` e botão ao lado do "Importar" CSV.
-- Após import, chamar o mesmo `fetchTrades` (ou equivalente) já existente.
+Sem mudanças em componentes — todos já consomem tokens semânticos (`bg-background`, `text-foreground`, `bg-primary`...), então a aparência se atualiza automaticamente para o look do Hub.
 
 ---
 
-## Datas e formatação
+## Memória
 
-- Datas armazenadas como string `YYYY-MM-DD` (regra do projeto, evita shift de timezone BRT).
-- Parsing de `dd/MM/yyyy` → split + reverse + join.
-- Valores R$ exibidos com `JetBrains Mono` em `5.000,00`.
-
----
-
-## Validação e segurança
-
-- Zod no edge function (filename, base64, limite de tamanho).
-- Frontend valida extensão e tamanho antes de enviar.
-- `user_id` setado server-side no client autenticado (via RLS já existente em `trades`).
-- Nenhum dado sensível logado.
+Atualizar `mem://style/design-system` e a linha Core do `mem://index.md`:
+- Trocar "Plus Jakarta Sans" por "Montserrat (display) + Inter (body); JetBrains Mono para números".
+- Trocar "Deep Black (#050505)" pela paleta navy-black do Hub (`hsl(228 16% 4%)`) e gold `hsl(39 82% 47%)`.
 
 ---
 
-## Fora do escopo desta fatia
+## Fora do escopo
 
-- Componente `PerformanceAnalysis` e regras determinísticas → próxima entrega.
-- Aba "Análise" em `/dashboard` → próxima entrega.
-- Stocks/International dashboards → futuro.
-- OCR de PDFs escaneados (Profit exporta texto nativo).
-
----
-
-## Memória a salvar após implementação
-
-- `mem://features/profit-report-import` — formato esperado, mapeamento de ativos, agregação por dia/ativo, edge function envolvida.
+- Não troca componentes individualmente; mudança é via tokens.
+- Não mexe em `src/integrations/supabase/*` nem em lógica de negócio.
+- Não altera o modo padrão (dark continua sendo o default do app).
