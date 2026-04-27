@@ -333,19 +333,32 @@ All colors MUST be HSL.
   }
 
   .text-gradient-gold {
-    background: linear-gradient(
-      135deg,
-      hsl(43 96% 56%) 0%,
-      hsl(43 96% 70%) 50%,
-      hsl(38 92% 50%) 100%
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--gold)), hsl(var(--gold-light)));
+  }
+
+  .border-gradient-gold {
+    border-image: linear-gradient(135deg, hsl(var(--gold)), hsl(var(--gold-light))) 1;
+  }
+
+  .bg-grid-pattern {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .card-premium {
+    @apply bg-card/80 border border-border/50 backdrop-blur-sm;
+    transition: all 0.3s ease;
+  }
+  .card-premium:hover {
+    @apply border-primary/20;
+    box-shadow: 0 0 20px -5px hsl(var(--gold) / 0.15);
   }
 
   .glass-card {
-    background: hsl(220 13% 12% / 0.6);
+    background: hsl(224 16% 10% / 0.6);
     backdrop-filter: blur(12px);
     border: 1px solid hsl(0 0% 100% / 0.06);
   }
@@ -362,13 +375,24 @@ All colors MUST be HSL.
   }
 
   .glass-card-hover:hover {
-    border-color: hsl(43 96% 56% / 0.3);
-    box-shadow: 0 0 24px hsl(43 96% 56% / 0.08);
+    border-color: hsl(var(--gold) / 0.3);
+    box-shadow: 0 0 24px hsl(var(--gold) / 0.08);
     transform: translateY(-2px);
   }
 
   .glow-gold {
-    box-shadow: 0 0 30px hsl(43 96% 56% / 0.15);
+    box-shadow: 0 0 30px -5px hsl(var(--gold) / 0.3);
+  }
+
+  .glow-gold-sm {
+    box-shadow: 0 0 15px -3px hsl(var(--gold) / 0.2);
+  }
+
+  .glow-gold-hover {
+    transition: box-shadow 0.3s ease;
+  }
+  .glow-gold-hover:hover {
+    box-shadow: 0 0 25px -5px hsl(var(--gold) / 0.35);
   }
 
   /* ── Glassmorphism tooltip ── */
