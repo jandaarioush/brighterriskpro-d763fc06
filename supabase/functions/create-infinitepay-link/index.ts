@@ -121,7 +121,7 @@ serve(async (req) => {
     }));
 
     // Call Infinite Pay API
-    const response = await fetch("https://api.infinitepay.io/invoices/public/checkout/links", {
+    const response = await fetch("https://api.checkout.infinitepay.io/links", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
