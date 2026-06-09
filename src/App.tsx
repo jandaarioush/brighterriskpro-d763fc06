@@ -92,9 +92,9 @@ const App = () => (
               <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
               <Route path="/cookies" element={<Cookies />} />
               <Route path="/lgpd" element={<LGPD />} />
-              <Route path="/upload-videos" element={<UploadVideos />} />
-              <Route path="/upload-admin" element={<UploadAdmin />} />
-              <Route path="/admin" element={<Admin />} />
+              <Route path="/upload-videos" element={<ProtectedRoute><AdminRoute><UploadVideos /></AdminRoute></ProtectedRoute>} />
+              <Route path="/upload-admin" element={<ProtectedRoute><AdminRoute><UploadAdmin /></AdminRoute></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute><AdminRoute><Admin /></AdminRoute></ProtectedRoute>} />
               <Route path="/hub" element={<ProtectedRoute><Hub /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/dashboard/:dashboardId" element={<ProtectedRoute><StockDashboard /></ProtectedRoute>} />

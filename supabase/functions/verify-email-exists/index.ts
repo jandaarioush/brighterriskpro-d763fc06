@@ -58,17 +58,10 @@ serve(async (req: Request) => {
       );
     }
 
-    // Return minimal information - just existence and payment status if requested
-    const response: {
-      exists: boolean;
-      paymentStatus?: string;
-    } = {
+    // Return only existence — never leak payment/subscription status to unauthenticated callers
+    const response: { exists: boolean } = {
       exists: !!profile,
     };
-
-    if (checkPaymentStatus && profile) {
-      response.paymentStatus = profile.status_pagamento;
-    }
 
     return new Response(
       JSON.stringify(response),

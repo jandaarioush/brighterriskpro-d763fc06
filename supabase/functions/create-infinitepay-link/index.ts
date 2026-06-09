@@ -79,11 +79,29 @@ serve(async (req) => {
 
     const selectedPlan = plans[body.plano];
 
+    // Anti-abuse: refuse if a pending order was created for this email in the last 60 seconds
+    const cooldownIso = new Date(Date.now() - 60 * 1000).toISOString();
+    const customerEmailPre = body.customer.email.trim().toLowerCase();
+    const { data: recentOrder } = await supabase
+      .from("pending_orders")
+      .select("id")
+      .eq("email", customerEmailPre)
+      .eq("status", "pending")
+      .gt("created_at", cooldownIso)
+      .limit(1)
+      .maybeSingle();
+    if (recentOrder) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Aguarde alguns instantes antes de gerar um novo link de pagamento." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 429 }
+      );
+    }
+
     // Generate unique order NSU
     const orderNsu = `BRP-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
     // Prepare customer data
-    const customerEmail = body.customer.email.trim().toLowerCase();
+    const customerEmail = customerEmailPre;
     const customerName = body.customer.name.trim().substring(0, 100);
     const customerPhone = body.customer.phone_number.startsWith("+") 
       ? body.customer.phone_number 
