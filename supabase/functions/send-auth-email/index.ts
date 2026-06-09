@@ -110,7 +110,7 @@ serve(async (req) => {
     
     // Check if this is a direct call from frontend (has email and type)
     if (data.email && data.type === 'recovery') {
-      console.log('🔑 [RECOVERY] Requisição de recuperação para:', data.email);
+      console.log('🔑 [RECOVERY] Requisição de recuperação recebida');
       
       // Validate API key
       if (!resendApiKey) {
@@ -134,11 +134,11 @@ serve(async (req) => {
         .maybeSingle();
       
       if (profileError || !profileData) {
-        console.error('❌ [RECOVERY] Usuário não encontrado:', trimmedEmail);
+        console.error('❌ [RECOVERY] Usuário não encontrado');
         throw new Error('Usuário não encontrado');
       }
       
-      console.log('✅ [RECOVERY] Usuário encontrado:', profileData.id);
+      console.log('✅ [RECOVERY] Usuário encontrado');
       
       // Generate 6-digit code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -169,7 +169,7 @@ serve(async (req) => {
       const html = getResetPasswordEmailHTML(code);
 
       // Send email using Resend API with timeout
-      console.log('📤 [RECOVERY] Enviando email via Resend para:', trimmedEmail);
+      console.log('📤 [RECOVERY] Enviando email via Resend');
       console.log('📤 [RECOVERY] Remetente: Brighter <contato@brighter.com.br>');
       
       // Create abort controller for timeout

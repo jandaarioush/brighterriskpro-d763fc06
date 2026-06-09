@@ -61,7 +61,7 @@ serve(async (req) => {
     
     const { email, code, newPassword } = await req.json();
     
-    console.log('🔍 [VALIDATE] Validando código para:', email);
+    console.log('🔍 [VALIDATE] Validando código');
     
     // Validate input
     if (!email || !code || !newPassword) {
@@ -121,7 +121,7 @@ serve(async (req) => {
       throw new Error('Usuário não encontrado');
     }
     
-    console.log('✅ [VALIDATE] Usuário encontrado:', profile.id);
+    console.log('✅ [VALIDATE] Usuário encontrado');
     
     // Update password using Supabase Admin
     console.log('🔄 [VALIDATE] Atualizando senha...');
