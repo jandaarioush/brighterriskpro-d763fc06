@@ -36,9 +36,9 @@ export default function RecuperarSenha() {
 
       const trimmedEmail = email.trim().toLowerCase();
 
-      // Check if email exists via secure edge function
+      // Check if email exists via secure edge function (no payment status leaked)
       const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-email-exists', {
-        body: { email: trimmedEmail, checkPaymentStatus: true }
+        body: { email: trimmedEmail }
       });
 
       if (verifyError) {
@@ -53,12 +53,6 @@ export default function RecuperarSenha() {
         return;
       }
 
-      // Check payment status
-      if (verifyData?.paymentStatus === 'revoked') {
-        toast.error('Sua assinatura foi cancelada. Entre em contato com o suporte.');
-        setLoading(false);
-        return;
-      }
 
       // Send password reset email via edge function
       console.log('🔄 Chamando edge function para:', trimmedEmail);
