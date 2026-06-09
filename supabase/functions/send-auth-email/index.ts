@@ -125,30 +125,60 @@ serve(async (req) => {
       console.log('✅ [RECOVERY] Cliente Supabase Admin criado');
       
       const trimmedEmail = data.email.trim().toLowerCase();
-      
-      // Verify user exists
-      const { data: profileData, error: profileError } = await supabaseAdmin
+
+      // Verify user exists (silently — do not leak existence to caller)
+      const { data: profileData } = await supabaseAdmin
         .from('profiles')
-        .select('id, email')
+        .select('id, email, status_pagamento')
         .eq('email', trimmedEmail)
         .maybeSingle();
-      
-      if (profileError || !profileData) {
-        console.error('❌ [RECOVERY] Usuário não encontrado');
-        throw new Error('Usuário não encontrado');
+
+      // Generic success response used for all non-deliverable cases to prevent enumeration & abuse
+      const genericSuccess = new Response(JSON.stringify({
+        success: true,
+        message: 'Se o email estiver cadastrado, um código será enviado.',
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      if (!profileData) {
+        console.log('ℹ️ [RECOVERY] Email não cadastrado — retornando resposta genérica');
+        return genericSuccess;
       }
-      
-      console.log('✅ [RECOVERY] Usuário encontrado');
-      
+
+      if (profileData.status_pagamento === 'revoked') {
+        console.log('ℹ️ [RECOVERY] Conta revogada — não enviando código');
+        return genericSuccess;
+      }
+
+      // Cooldown: refuse if an active, unused code was issued in the last 60 seconds
+      const cooldownIso = new Date(Date.now() - 60 * 1000).toISOString();
+      const { data: recentCode } = await supabaseAdmin
+        .from('password_reset_codes')
+        .select('id')
+        .eq('email', trimmedEmail)
+        .eq('used', false)
+        .gt('created_at', cooldownIso)
+        .limit(1)
+        .maybeSingle();
+
+      if (recentCode) {
+        console.log('🚫 [RECOVERY] Cooldown ativo — código recente já enviado');
+        return genericSuccess;
+      }
+
+      // Invalidate all previous unused codes for this email to prevent DB pollution & reuse
+      await supabaseAdmin
+        .from('password_reset_codes')
+        .update({ used: true })
+        .eq('email', trimmedEmail)
+        .eq('used', false);
+
       // Generate 6-digit code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
-      console.log('✅ [RECOVERY] Código gerado (6 dígitos)');
-      
+
       // Calculate expiration (15 minutes)
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-      
+
       // Save code to database
-      console.log('💾 [RECOVERY] Salvando código no banco...');
       const { error: insertError } = await supabaseAdmin
         .from('password_reset_codes')
         .insert({
@@ -156,13 +186,12 @@ serve(async (req) => {
           code: code,
           expires_at: expiresAt
         });
-      
+
       if (insertError) {
-        console.error('❌ [RECOVERY] Erro ao salvar código:', insertError);
+        console.error('❌ [RECOVERY] Erro ao salvar código');
         throw new Error('Erro ao gerar código de recuperação');
       }
-      
-      console.log('✅ [RECOVERY] Código salvo no banco (expira em 15min)');
+
       
       // Prepare email HTML
       console.log('📧 [RECOVERY] Preparando HTML do email...');
