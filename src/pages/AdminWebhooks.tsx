@@ -65,33 +65,47 @@ export default function AdminWebhooks() {
   };
 
   const handleTestWebhook = async () => {
+    setTestLoading(true);
     try {
-      setTestLoading(true);
-      const payload = JSON.parse(testPayload);
+      // Validate JSON syntax
+      let payload: any;
+      try {
+        payload = JSON.parse(testPayload);
+      } catch (e) {
+        toast.error('JSON inválido: ' + (e as Error).message);
+        return;
+      }
 
-      // Get webhook token from environment or use a default for testing
-      const token = 'test-token'; // In production, get this from config
+      // Basic shape validation
+      if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
+        toast.error('Payload deve ser um objeto JSON.');
+        return;
+      }
+      if (!payload.event || typeof payload.event !== 'string') {
+        toast.error('Campo obrigatório ausente: event (string).');
+        return;
+      }
+      if (JSON.stringify(payload).length > 50_000) {
+        toast.error('Payload muito grande (limite 50KB).');
+        return;
+      }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/infinitepay-webhook?token=${token}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      // Invoke via authenticated supabase client (no hardcoded webhook token in client code).
+      // The function will reject the call if the caller is not authorized server-side.
+      const { error } = await supabase.functions.invoke('infinitepay-webhook', {
+        body: payload,
+        headers: { 'x-admin-test': '1' },
+      });
 
-      if (!response.ok) {
-        throw new Error('Erro ao processar webhook');
+      if (error) {
+        throw new Error(error.message || 'Erro ao processar webhook');
       }
 
       toast.success('Webhook processado com sucesso!');
       setTestPayload('');
       loadWebhookEvents();
     } catch (error: any) {
-      toast.error('Erro: ' + error.message);
+      toast.error('Erro: ' + (error?.message ?? 'desconhecido'));
     } finally {
       setTestLoading(false);
     }

@@ -110,7 +110,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Determine action - default to 'create' for backwards compatibility
     const action = body.action || 'create';
 
-    console.log(`Admin action: ${action} by ${user.email}`);
+    console.log(`Admin action: ${action} by user ${user.id}`);
 
     switch (action) {
       case 'create': {
@@ -277,7 +277,7 @@ const handler = async (req: Request): Promise<Response> => {
           .eq('id', userIdToDelete)
           .single();
 
-        console.log(`Deleting user ${userIdToDelete} (${targetUser?.email})`);
+        console.log(`Deleting user ${userIdToDelete}`);
 
         // Delete user from auth (this will cascade to profiles due to RLS policies)
         const { error: deleteError } = await supabase.auth.admin.deleteUser(userIdToDelete);
@@ -326,7 +326,7 @@ const handler = async (req: Request): Promise<Response> => {
           .eq('id', userId)
           .single();
 
-        console.log(`Resetting password for user ${userId} (${targetUser?.email})`);
+        console.log(`Resetting password for user ${userId}`);
 
         // Update password using Admin API
         const { error: updateError } = await supabase.auth.admin.updateUserById(

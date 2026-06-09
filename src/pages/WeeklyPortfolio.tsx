@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/StatCard';
@@ -51,6 +51,7 @@ interface Dashboard {
 
 export default function WeeklyPortfolio() {
   const { dashboardId } = useParams<{ dashboardId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [trades, setTrades] = useState<StockTrade[]>([]);
@@ -183,7 +184,7 @@ export default function WeeklyPortfolio() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Trades da Semana</h2>
-            <Button onClick={() => window.location.href = `/stock-dashboard/${dashboardId}`}>
+            <Button onClick={() => navigate(`/stock-dashboard/${dashboardId}`)}>
               <Plus className="h-4 w-4 mr-2" />
               Adicionar Trade
             </Button>
