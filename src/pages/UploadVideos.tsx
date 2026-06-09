@@ -91,12 +91,18 @@ export default function UploadVideos() {
       formData.append('file', video.file);
       formData.append('fileName', video.fileName);
 
-      // Get the edge function URL
+      // Get current session for auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Não autenticado');
+
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const functionUrl = `https://${projectId}.supabase.co/functions/v1/upload-video`;
 
       const response = await fetch(functionUrl, {
         method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: formData,
       });
 
